@@ -1,9 +1,11 @@
-/* cloud.js — OPTIONAL Firebase cloud sync so data is safe even if phone is lost.
-   Disabled until the user pastes their Firebase config + a Sync ID in Settings.
-   Text hisaab syncs across devices; images stay local on each device. */
+/* cloud.js — Firebase (optional).
+   - LIVE share links: publishes each shared customer's hisaab to a public
+     `share/{token}` doc so a permanent link always shows the current hisaab.
+   - Cross-device sync (optional): mirrors the whole dataset to `khatas/{syncId}`.
+   Stays a no-op until a Firebase config is present (firebase-config.js or Settings). */
 
 const Cloud = (() => {
-  let enabled = false, docRef = null, unsub = null, pushT = null, onRemote = null;
+  let ready = false, syncOn = false, db = null, docRef = null, unsub = null, pushT = null, onRemote = null;
 
   function loadScript(src) {
     return new Promise((res, rej) => {
@@ -21,66 +23,74 @@ const Cloud = (() => {
     await loadScript(base + 'firebase-firestore-compat.js');
   }
 
-  function localNewer(remote) {
-    return new Date(Store.getData().updatedAt || 0) >= new Date(remote.updatedAt || 0);
+  function getActiveConfig() {
+    const c = (Store.getShop().cloud) || {};
+    if (c.config) { try { return typeof c.config === 'string' ? JSON.parse(c.config) : c.config; } catch (e) {} }
+    if (typeof window !== 'undefined' && window.FIREBASE_CONFIG) return window.FIREBASE_CONFIG;
+    return null;
   }
-
-  async function pull(snapshotData) {
-    if (!snapshotData || !snapshotData.payload) return false;
-    let rd; try { rd = JSON.parse(snapshotData.payload); } catch (e) { return false; }
-    if (localNewer(rd)) return false;
-    Store.replaceAll(rd);
-    if (onRemote) onRemote();
-    return true;
-  }
-
-  async function push() {
-    if (!docRef) return;
-    try {
-      await docRef.set({ payload: JSON.stringify(Store.getData()), updatedAt: new Date().toISOString(), device: navigator.userAgent.slice(0, 60) });
-    } catch (e) { console.warn('cloud push', e); }
-  }
-  function schedulePush() { if (!enabled) return; clearTimeout(pushT); pushT = setTimeout(push, 1500); }
 
   async function init(cb) {
     onRemote = cb;
-    const c = (Store.getShop().cloud) || {};
-    if (!c.enabled || !c.config || !c.syncId) { enabled = false; return { ok: false }; }
+    const cfg = getActiveConfig();
+    if (!cfg) { ready = false; return { ok: false }; }
     try {
-      const cfg = typeof c.config === 'string' ? JSON.parse(c.config) : c.config;
-      const syncId = String(c.syncId).trim();
       await loadSDK();
-      const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
+      firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
       await firebase.auth().signInAnonymously();
-      docRef = firebase.firestore().collection('khatas').doc(syncId);
-
-      const snap = await docRef.get();
-      if (snap.exists) { const adopted = await pull(snap.data()); if (!adopted) await push(); }
-      else { await push(); }
-
-      unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, err => console.warn('cloud sub', err));
-
-      enabled = true;
-      Store.onSave(schedulePush);
+      db = firebase.firestore();
+      ready = true;
+      const c = (Store.getShop().cloud) || {};
+      if (c.enabled && c.syncId) { try { await startSync(String(c.syncId).trim()); } catch (e) { console.warn('sync', e); } }
       return { ok: true };
-    } catch (e) {
-      enabled = false;
-      console.warn('cloud init', e);
-      return { ok: false, error: e.message || String(e) };
-    }
+    } catch (e) { ready = false; console.warn('cloud init', e); return { ok: false, error: e.message || String(e) }; }
   }
 
-  function isEnabled() { return enabled; }
+  /* ---- dataset sync (optional) ---- */
+  function localNewer(remote) { return new Date(Store.getData().updatedAt || 0) >= new Date(remote.updatedAt || 0); }
+  async function pull(sd) {
+    if (!sd || !sd.payload) return false;
+    let rd; try { rd = JSON.parse(sd.payload); } catch (e) { return false; }
+    if (localNewer(rd)) return false;
+    Store.replaceAll(rd); if (onRemote) onRemote(); return true;
+  }
+  async function push() {
+    if (!docRef) return;
+    try { await docRef.set({ payload: JSON.stringify(Store.getData()), updatedAt: new Date().toISOString() }); } catch (e) { console.warn('push', e); }
+  }
+  function schedulePush() { if (!syncOn) return; clearTimeout(pushT); pushT = setTimeout(push, 1500); }
+  async function startSync(syncId) {
+    docRef = db.collection('khatas').doc(syncId);
+    const snap = await docRef.get();
+    if (snap.exists) { const adopted = await pull(snap.data()); if (!adopted) await push(); } else { await push(); }
+    unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
+    syncOn = true;
+    Store.onSave(schedulePush);
+  }
+
+  /* ---- live share links ---- */
+  async function publishShare(token, data) {
+    if (!ready || !db || !token) return false;
+    try { await db.collection('share').doc(token).set({ data, updatedAt: new Date().toISOString() }); return true; }
+    catch (e) { console.warn('publishShare', e); return false; }
+  }
+  async function fetchShare(token) {
+    if (!db || !token) return null;
+    try { const s = await db.collection('share').doc(token).get(); return s.exists ? s.data() : null; }
+    catch (e) { console.warn('fetchShare', e); return null; }
+  }
+
   async function testConnect(configStr, syncId) {
     try {
-      const cfg = JSON.parse(configStr);
+      const cfg = configStr ? JSON.parse(configStr) : getActiveConfig();
+      if (!cfg) return { ok: false, error: 'Config nahi mila' };
       await loadSDK();
-      const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
+      firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
       await firebase.auth().signInAnonymously();
-      await firebase.firestore().collection('khatas').doc(String(syncId).trim()).get();
+      await firebase.firestore().collection('khatas').doc(String(syncId || 'test').trim()).get();
       return { ok: true };
     } catch (e) { return { ok: false, error: e.message || String(e) }; }
   }
 
-  return { init, isEnabled, testConnect, push };
+  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect };
 })();

@@ -188,6 +188,20 @@ const Store = (() => {
     p.txns = p.txns.filter(x => x.id !== txnId); save();
   }
 
+  /* ---------- Shareable permanent link token (per party) ---------- */
+  function randToken() {
+    const a = 'abcdefghijkmnpqrstuvwxyz23456789';
+    let s = '';
+    for (let i = 0; i < 14; i++) s += a[Math.floor(Math.random() * a.length)];
+    return s;
+  }
+  function ensureShareId(kind, id) {
+    const p = getParty(kind, id);
+    if (!p) return '';
+    if (!p.shareId) { p.shareId = randToken(); save(); }
+    return p.shareId;
+  }
+
   /* ---------- Customer wrappers (backward compatible) ---------- */
   function getCustomers() { return data.customers; }
   function getSuppliers() { return data.suppliers; }
@@ -252,6 +266,7 @@ const Store = (() => {
     init, save, onSave, getData, replaceAll,
     getShop, setShop,
     getParties, getParty, addParty, updateParty, deleteParty, addPartyTxn, deletePartyTxn,
+    ensureShareId,
     getCustomers, getSuppliers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
     addTxn, deleteTxn,
     addQuote, updateQuote, deleteQuote, allQuotes,

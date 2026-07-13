@@ -40,22 +40,41 @@ par khud sync. **Bilkul free** (Firebase Spark plan).
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
+       // Permanent customer links: sirf jis ke paas secret link ho wo parh sakta hai
+       match /share/{token} {
+         allow read: if true;
+         allow write: if request.auth != null;
+       }
+       // Aap ka apna data (multi-device sync)
        match /khatas/{docId} {
          allow read, write: if request.auth != null;
        }
      }
    }
    ```
-   (Sirf signed-in — anonymous — users ko access. Aap ka **Sync ID** secret rakhein.)
+   (`share` link ka token secret + mushkil hota hai, isliye sirf link wala hi hisaab dekhta hai. Baaki sab sirf aap likh/parh sakte hain.)
 
-### 5) App me daalein
-1. App → **Settings → Cloud Sync**.
-2. **Cloud sync on** karein.
-3. **Sync ID**: koi mushkil, secret naam (misaal `altariq-9x7k2m`). **Har device par bilkul yehi likhein.**
-4. **Firebase Config**: qadam 2 wala JSON paste karein.
-5. **Connection Test** → ✅ aaye to **Save** karein.
+### 5) Config app me daalein (Live customer links ke liye — zaroori)
+Permanent live links customer ke phone par khulte hain, isliye config **`js/firebase-config.js`** file me hona chahiye (sirf Settings kaafi nahi).
 
-Bas! Ab jis bhi device par same **Sync ID** + config dalenge, hisaab khud sync hoga.
+**Aasan:** qadam 2 wala config mujhe bhej dein — main `firebase-config.js` me daal kar deploy kar dunga.
+
+**Khud karna ho:** `js/firebase-config.js` kholein:
+```js
+window.FIREBASE_CONFIG = {
+  apiKey: "AIza........",
+  authDomain: "altariq-hisaab.firebaseapp.com",
+  projectId: "altariq-hisaab",
+  appId: "1:1234567890:web:abcdef123456"
+};
+```
+Save + push. Bas! Har customer ka **pakka link** khud banega jo hamesha taaza hisaab dikhayega.
+
+### 6) (Optional) Multi-device sync
+Apna data ek se zyada device par sync karna ho:
+1. App → **Settings → Cloud Sync** → **on**.
+2. **Sync ID**: koi mushkil secret naam (har device par yehi).
+3. **Firebase Config** paste → **Connection Test** → **Save**.
 
 ## Aksar poochhe jaane wale
 

@@ -73,6 +73,7 @@
 <body>
   <div class="sheet" id="sheet"></div>
 
+  <script src="js/firebase-config.js"></script>
   <script>
     function decodeData(str) {
       str = str.replace(/-/g, '+').replace(/_/g, '/');
@@ -102,21 +103,42 @@
       };
       return { shop: d.shop, shopPhone: d.shopPhone, logo: d.logo, name: d.name, phone: d.phone, balance: d.balance, gen: d.gen, txns: (d.txns || []).map(t => ({ a: t.a, y: t.y, n: t.n, d: t.d })) };
     }
+    const sheet = document.getElementById('sheet');
+    function showErr(msg, ic) {
+      sheet.innerHTML = '<div class="error"><div class="big">' + (ic || '⚠️') + '</div><p>' + msg + '</p></div>';
+    }
+    function getParam(name) {
+      try { const v = new URL(location.href).searchParams.get(name); if (v) return v; } catch (e) {}
+      const mm = (location.hash || '').match(new RegExp('[#&]' + name + '=([^&]+)'));
+      return mm ? decodeURIComponent(mm[1]) : null;
+    }
+    function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+    async function loadLive(token) {
+      if (!window.FIREBASE_CONFIG) { showErr('Live hisaab abhi set nahi hua. Baraye meharbani sahib se naya link mangwayein.', '📄'); return; }
+      showErr('Hisaab load ho raha hai…', '⏳');
+      try {
+        if (!(window.firebase && window.firebase.firestore)) {
+          const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+          await loadScript(base + 'firebase-app-compat.js');
+          await loadScript(base + 'firebase-firestore-compat.js');
+        }
+        firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
+        const doc = await firebase.firestore().collection('share').doc(token).get();
+        if (!doc.exists || !doc.data().data) { showErr('Hisaab nahi mila. Naya link mangwayein.', '📄'); return; }
+        renderData(norm(doc.data().data));
+      } catch (e) { showErr('Load nahi hua. Internet check karke dobara kholein.'); }
+    }
     function render() {
-      const sheet = document.getElementById('sheet');
-      const hash = location.hash || '';
-      const m = hash.match(/[#&]d=([^&]+)/);
-      if (!m) {
-        sheet.innerHTML = '<div class="error"><div class="big">📄</div><p>Hisaab ka data nahi mila.<br>Baraye meharbani sahi link kholein.</p></div>';
-        return;
-      }
+      const id = getParam('id');
+      if (id) { loadLive(id); return; }
+      const m = (location.hash || '').match(/[#&]d=([^&]+)/);
+      if (!m) { showErr('Hisaab ka data nahi mila. Baraye meharbani sahi link kholein.', '📄'); return; }
       let data;
       try { data = norm(decodeData(decodeURIComponent(m[1]))); }
-      catch (e) {
-        sheet.innerHTML = '<div class="error"><div class="big">⚠️</div><p>Link kharab ho gaya lagta hai. Naya link mangwayein.</p></div>';
-        return;
-      }
-
+      catch (e) { showErr('Link kharab ho gaya lagta hai. Naya link mangwayein.'); return; }
+      renderData(data);
+    }
+    function renderData(data) {
       const b = data.balance;
       const balCls = b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero';
       const balTxtCls = b > 0 ? 'pos-t' : b < 0 ? 'neg-t' : 'zero-t';

@@ -192,7 +192,7 @@ function sendReminder(custId) {
   const c = Store.getCustomer(custId); if (!c) return;
   const phone = intlPhone(c.phone);
   if (!phone) { toast('Is customer ka number add karein'); return; }
-  const shop = Store.getShop(), link = buildViewerLink(c), b = Store.balanceOf(c);
+  const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein. Shukriya.\n\nApna hisaab (PDF) yahan dekhein:\n${link}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
@@ -337,7 +337,7 @@ function renderDetail() {
         <button class="t-del" title="Delete">🗑</button></div>`;
     }).join('');
     $$('#txnList .txn').forEach(el => {
-      el.querySelector('.t-del').addEventListener('click', e => { e.stopPropagation(); if (confirm('Ye lein-dein delete karein?')) { Store.deletePartyTxn(currentKind, currentCustId, el.dataset.id); renderDetail(); } });
+      el.querySelector('.t-del').addEventListener('click', e => { e.stopPropagation(); if (confirm('Ye lein-dein delete karein?')) { Store.deletePartyTxn(currentKind, currentCustId, el.dataset.id); renderDetail(); republishIfShared(curParty()); } });
       const th = el.querySelector('.t-thumb'); if (th) th.addEventListener('click', () => openImage(th.dataset.img));
     });
     hydrateImages(list);
@@ -381,7 +381,7 @@ $('#btnEditCust').addEventListener('click', () => {
 $('#saveCust').addEventListener('click', () => {
   const name = $('#custName').value.trim(), phone = $('#custPhone').value.trim();
   if (!name) { toast('Naam likhna zaroori hai'); return; }
-  if (editingCust) { Store.updateParty(currentKind, currentCustId, { name, phone }); renderDetail(); closeModal('custModal'); }
+  if (editingCust) { Store.updateParty(currentKind, currentCustId, { name, phone }); renderDetail(); republishIfShared(curParty()); closeModal('custModal'); }
   else { const c = Store.addParty(currentKind, { name, phone }); closeModal('custModal'); openDetail(currentKind, c.id); }
 });
 $('#deleteCust').addEventListener('click', () => {
@@ -434,6 +434,7 @@ $('#saveTxn').addEventListener('click', async () => {
   Store.addPartyTxn(currentKind, currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value, date, img: imgId });
   const notify = currentKind === 'customer' && $('#txnNotify').checked;
   closeModal('txnModal'); renderDetail();
+  republishIfShared(curParty());
   if (notify) sendEntryNotification(currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value });
   else toast('Entry save ho gayi');
 });
@@ -495,29 +496,41 @@ $('#deleteQuote').addEventListener('click', () => {
 });
 
 /* ---------- Link + WhatsApp ---------- */
-function buildViewerLink(c) {
+// compact v2 payload — short links (logo loaded by viewer; dates base36; type d/c)
+function sharePayload(c) {
   const shop = Store.getShop();
-  // compact v2 payload — keep the link short (logo loaded by the viewer itself,
-  // only a CUSTOM uploaded logo is embedded; dates as base36 epoch; type as d/c)
-  const payload = {
-    v: 2,
-    s: shop.name || 'Al Tariq Printers',
-    sp: shop.phone || '',
-    lg: shop.logoSmall || '',
-    n: c.name, p: c.phone || '',
-    b: Store.balanceOf(c),
+  return {
+    v: 2, s: shop.name || 'Al Tariq Printers', sp: shop.phone || '', lg: shop.logoSmall || '',
+    n: c.name, p: c.phone || '', b: Store.balanceOf(c),
     t: c.txns.map(t => [t.amount, t.type === 'debit' ? 'd' : 'c', t.note || '', Math.floor(new Date(t.date).getTime() / 1000).toString(36)]),
     g: Math.floor(Date.now() / 1000).toString(36)
   };
-  const enc = encodeData(payload);
+}
+function shareBase() {
+  const shop = Store.getShop();
   let base = (shop.viewerBase || '').trim();
   if (!base) base = location.origin + location.pathname.replace(/\/index\.html.*$/, '').replace(/\/$/, '');
-  base = base.replace(/\/+$/, '');
-  return base + '/view.html#d=' + enc;
+  return base.replace(/\/+$/, '');
+}
+// SNAPSHOT link (data baked into URL) — used when cloud is off
+function buildViewerLink(c) { return shareBase() + '/view.html#d=' + encodeData(sharePayload(c)); }
+
+// PERMANENT live link if Firebase is active (customer sees current hisaab anytime),
+// else falls back to the snapshot link.
+function shareLinkFor(party) {
+  if (Cloud.isReady()) {
+    const token = Store.ensureShareId(currentKind, party.id);
+    Cloud.publishShare(token, sharePayload(party));
+    return shareBase() + '/view.html?id=' + token;
+  }
+  return buildViewerLink(party);
+}
+function republishIfShared(party) {
+  if (party && party.shareId && Cloud.isReady()) Cloud.publishShare(party.shareId, sharePayload(party));
 }
 function entryMessage(c, entry) {
   const shop = Store.getShop();
-  const link = buildViewerLink(c);
+  const link = shareLinkFor(c);
   const b = Store.balanceOf(c);
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Ab aap par baqi: *${fmtMoney(b)}*` : b < 0 ? `Ab hamare zimmay: *${fmtMoney(b)}*` : `Ab hisaab barabar hai.`;
@@ -541,13 +554,13 @@ async function sendEntryNotification(custId, entry) {
 }
 $('#btnWhatsApp').addEventListener('click', () => {
   const c = curParty();
-  const phone = intlPhone(c.phone), shop = Store.getShop(), link = buildViewerLink(c), b = Store.balanceOf(c);
+  const phone = intlPhone(c.phone), shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 });
 $('#btnCopyLink').addEventListener('click', async () => {
-  const link = buildViewerLink(curParty());
+  const link = shareLinkFor(curParty());
   try { await navigator.clipboard.writeText(link); toast('Link copy ho gaya ✅'); } catch (e) { prompt('Link copy karein:', link); }
 });
 
