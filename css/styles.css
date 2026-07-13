@@ -234,6 +234,11 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .badge.Cancelled { background: #fee2e2; color: #991b1b; }
 .q-thumb, .t-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0; cursor: pointer; }
 
+/* Image capture buttons */
+.img-btns { display: flex; gap: 10px; }
+.img-btn { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; font-weight: 700; font-size: 14px; color: var(--black); }
+.img-btn:active { background: #f1f5f9; }
+
 /* Image preview in modal */
 .img-preview { display: block; margin-top: 10px; max-width: 100%; max-height: 180px; border-radius: 10px; }
 

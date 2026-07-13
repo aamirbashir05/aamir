@@ -389,7 +389,7 @@ function openTxn(type) {
   const notifyRow = $('#txnNotify').closest('.switch-row');
   if (currentKind === 'customer') { notifyRow.style.display = 'flex'; $('#txnNotify').checked = Store.getShop().autoWhatsApp !== false; }
   else { notifyRow.style.display = 'none'; $('#txnNotify').checked = false; }
-  $('#txnImage').value = ''; pendingTxnImg = null;
+  $('#txnImage').value = ''; $('#txnImageCam').value = ''; pendingTxnImg = null;
   $('#txnImgPreview').classList.add('hidden');
   openModal('txnModal');
 }
@@ -401,11 +401,15 @@ $('#btnGave').addEventListener('click', () => openTxn('debit'));
 $('#btnGot').addEventListener('click', () => openTxn('credit'));
 $('#typeDebit').addEventListener('click', () => { txnType = 'debit'; updateTypeToggle(); });
 $('#typeCredit').addEventListener('click', () => { txnType = 'credit'; updateTypeToggle(); });
-$('#txnImage').addEventListener('change', async e => {
+async function handleTxnImage(e) {
   const f = e.target.files[0]; if (!f) return;
   try { pendingTxnImg = await fileToDataURL(f, 1200, 0.7); const p = $('#txnImgPreview'); p.src = pendingTxnImg; p.classList.remove('hidden'); }
   catch (err) { toast('Tasveer load na hui'); }
-});
+}
+$('#txnImage').addEventListener('change', handleTxnImage);
+$('#txnImageCam').addEventListener('change', handleTxnImage);
+$('#txnCamBtn').addEventListener('click', () => $('#txnImageCam').click());
+$('#txnGalBtn').addEventListener('click', () => $('#txnImage').click());
 
 $('#saveTxn').addEventListener('click', async () => {
   const amt = txnCalc.value;
@@ -428,7 +432,7 @@ $('#btnAddQuote').addEventListener('click', () => {
   $('#quoteJob').value = ''; $('#quoteRate').value = ''; $('#quoteNote').value = '';
   $('#quoteStatus').value = 'Rate Diya';
   $('#quoteDate').value = new Date().toISOString().slice(0, 10);
-  $('#quoteImage').value = ''; pendingQuoteImg = null; $('#quoteImgPreview').classList.add('hidden');
+  $('#quoteImage').value = ''; $('#quoteImageCam').value = ''; pendingQuoteImg = null; $('#quoteImgPreview').classList.add('hidden');
   $('#deleteQuoteRow').style.display = 'none';
   openModal('quoteModal'); setTimeout(() => $('#quoteJob').focus(), 200);
 });
@@ -439,17 +443,21 @@ function openQuote(id) {
   $('#quoteJob').value = q.job; $('#quoteRate').value = q.rate; $('#quoteNote').value = q.note || '';
   $('#quoteStatus').value = q.status || 'Quoted';
   $('#quoteDate').value = new Date(q.date).toISOString().slice(0, 10);
-  $('#quoteImage').value = ''; pendingQuoteImg = null;
+  $('#quoteImage').value = ''; $('#quoteImageCam').value = ''; pendingQuoteImg = null;
   const p = $('#quoteImgPreview');
   if (q.img) { Store.getImage(q.img).then(u => { if (u) { p.src = u; p.classList.remove('hidden'); } }); } else p.classList.add('hidden');
   $('#deleteQuoteRow').style.display = 'flex';
   openModal('quoteModal');
 }
-$('#quoteImage').addEventListener('change', async e => {
+async function handleQuoteImage(e) {
   const f = e.target.files[0]; if (!f) return;
   try { pendingQuoteImg = await fileToDataURL(f, 1200, 0.7); const p = $('#quoteImgPreview'); p.src = pendingQuoteImg; p.classList.remove('hidden'); }
   catch (err) { toast('Tasveer load na hui'); }
-});
+}
+$('#quoteImage').addEventListener('change', handleQuoteImage);
+$('#quoteImageCam').addEventListener('change', handleQuoteImage);
+$('#quoteCamBtn').addEventListener('click', () => $('#quoteImageCam').click());
+$('#quoteGalBtn').addEventListener('click', () => $('#quoteImage').click());
 $('#saveQuote').addEventListener('click', async () => {
   const job = $('#quoteJob').value.trim();
   const rate = parseFloat($('#quoteRate').value);

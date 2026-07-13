@@ -184,8 +184,13 @@
       </div>
       <div class="field"><label>Tafseel / Note (optional)</label><input id="txnNote" placeholder="Misaal: Visiting cards 1000" autocomplete="off"></div>
       <div class="field"><label>Tareekh</label><input id="txnDate" type="date"></div>
-      <div class="field"><label>Tasveer lagayein (optional) — design/parchi ki photo</label>
-        <input type="file" id="txnImage" accept="image/*">
+      <div class="field"><label>Tasveer (optional) — design/parchi ki photo</label>
+        <div class="img-btns">
+          <button type="button" class="img-btn" id="txnCamBtn">📷 Camera</button>
+          <button type="button" class="img-btn" id="txnGalBtn">🖼️ Gallery / File</button>
+        </div>
+        <input type="file" id="txnImageCam" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="txnImage" accept="image/*" class="hidden">
         <img id="txnImgPreview" class="img-preview hidden">
       </div>
       <label class="switch-row"><span>💬 Entry ke baad WhatsApp bhejein</span><input type="checkbox" id="txnNotify" checked></label>
@@ -210,7 +215,14 @@
         </select></div>
       <div class="field"><label>Note (optional)</label><input id="quoteNote" placeholder="Misaal: file mail par aayegi" autocomplete="off"></div>
       <div class="field"><label>Tareekh</label><input id="quoteDate" type="date"></div>
-      <div class="field"><label>Tasveer (optional)</label><input type="file" id="quoteImage" accept="image/*"><img id="quoteImgPreview" class="img-preview hidden"></div>
+      <div class="field"><label>Tasveer (optional)</label>
+        <div class="img-btns">
+          <button type="button" class="img-btn" id="quoteCamBtn">📷 Camera</button>
+          <button type="button" class="img-btn" id="quoteGalBtn">🖼️ Gallery / File</button>
+        </div>
+        <input type="file" id="quoteImageCam" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="quoteImage" accept="image/*" class="hidden">
+        <img id="quoteImgPreview" class="img-preview hidden"></div>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveQuote">Save</button></div>
       <div class="modal-actions" id="deleteQuoteRow" style="margin-top:10px;"><button class="save danger" id="deleteQuote" style="flex:1;">🗑 Rate Delete</button></div>
     </div>
