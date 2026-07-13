@@ -497,11 +497,17 @@ $('#deleteQuote').addEventListener('click', () => {
 /* ---------- Link + WhatsApp ---------- */
 function buildViewerLink(c) {
   const shop = Store.getShop();
+  // compact v2 payload — keep the link short (logo loaded by the viewer itself,
+  // only a CUSTOM uploaded logo is embedded; dates as base36 epoch; type as d/c)
   const payload = {
-    v: 1, shop: shop.name || 'Al Tariq Printers', shopPhone: shop.phone || '', logo: shop.logoSmall || (typeof DEFAULT_LOGO_SMALL !== 'undefined' ? DEFAULT_LOGO_SMALL : ''),
-    name: c.name, phone: c.phone || '', balance: Store.balanceOf(c),
-    txns: c.txns.map(t => ({ a: t.amount, y: t.type, n: t.note, d: t.date })),
-    gen: new Date().toISOString()
+    v: 2,
+    s: shop.name || 'Al Tariq Printers',
+    sp: shop.phone || '',
+    lg: shop.logoSmall || '',
+    n: c.name, p: c.phone || '',
+    b: Store.balanceOf(c),
+    t: c.txns.map(t => [t.amount, t.type === 'debit' ? 'd' : 'c', t.note || '', Math.floor(new Date(t.date).getTime() / 1000).toString(36)]),
+    g: Math.floor(Date.now() / 1000).toString(36)
   };
   const enc = encodeData(payload);
   let base = (shop.viewerBase || '').trim();

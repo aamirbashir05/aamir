@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17181d">
-  <title>Aap ka Hisaab</title>
+  <title>Al Tariq Printers — Aap ka Hisaab</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
+  <meta property="og:title" content="Al Tariq Printers — Aap ka Hisaab">
+  <meta property="og:site_name" content="Al Tariq Printers">
+  <meta property="og:description" content="Apna poora hisaab dekhein aur PDF download karein">
+  <meta property="og:image" content="https://aamirbashir05.github.io/aamir/assets/icon-512.png">
+  <meta property="og:type" content="website">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -89,6 +94,14 @@
       return (s || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
     }
 
+    function norm(d) {
+      if (d && d.v === 2) return {
+        shop: d.s, shopPhone: d.sp, logo: d.lg, name: d.n, phone: d.p, balance: d.b,
+        gen: d.g ? new Date(parseInt(d.g, 36) * 1000).toISOString() : new Date().toISOString(),
+        txns: (d.t || []).map(a => ({ a: a[0], y: a[1] === 'd' ? 'debit' : 'credit', n: a[2], d: new Date(parseInt(a[3], 36) * 1000).toISOString() }))
+      };
+      return { shop: d.shop, shopPhone: d.shopPhone, logo: d.logo, name: d.name, phone: d.phone, balance: d.balance, gen: d.gen, txns: (d.txns || []).map(t => ({ a: t.a, y: t.y, n: t.n, d: t.d })) };
+    }
     function render() {
       const sheet = document.getElementById('sheet');
       const hash = location.hash || '';
@@ -98,7 +111,7 @@
         return;
       }
       let data;
-      try { data = decodeData(decodeURIComponent(m[1])); }
+      try { data = norm(decodeData(decodeURIComponent(m[1]))); }
       catch (e) {
         sheet.innerHTML = '<div class="error"><div class="big">⚠️</div><p>Link kharab ho gaya lagta hai. Naya link mangwayein.</p></div>';
         return;
@@ -127,7 +140,7 @@
 
       sheet.innerHTML = `
         <div class="header">
-          ${data.logo ? `<img class="logo" src="${data.logo}" alt="logo">` : ''}
+          <img class="logo" src="${data.logo || 'assets/logo.png'}" alt="logo">
           <div class="htext">
             <div class="shop">${esc(data.shop || 'Al Tariq Printers')}</div>
             <div class="sub">${data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Hisaab / Ledger'}</div>
