@@ -24,15 +24,15 @@
         ⚠️ Aaj ka backup save nahi hua. <button id="bannerBackup">Backup Save</button>
       </div>
       <div class="summary">
-        <div class="sum-card lena"><div class="label">Total Lena (milna hai)</div><div class="val" id="ovLena">Rs 0</div></div>
-        <div class="sum-card dena"><div class="label">Total Dena (dena hai)</div><div class="val" id="ovDena">Rs 0</div></div>
+        <div class="sum-card lena"><div class="label">Total Lena</div><div class="val" id="ovLena">Rs 0</div></div>
+        <div class="sum-card dena"><div class="label">Total Dena</div><div class="val" id="ovDena">Rs 0</div></div>
       </div>
       <div class="mini-stats">
         <div class="mini"><div class="m-val" id="ovCustCount">0</div><div class="m-lbl">Customers</div></div>
         <div class="mini"><div class="m-val" id="ovTodayCount">0</div><div class="m-lbl">Aaj ki entries</div></div>
         <div class="mini"><div class="m-val" id="ovNet">Rs 0</div><div class="m-lbl">Net Baqaya</div></div>
       </div>
-      <button class="reminder-btn" id="btnReminders">🔔 Udhaar Reminders bhejein (Lena wale)</button>
+      <button class="reminder-btn" id="btnReminders">🔔 Udhaar Reminders bhejein</button>
       <div class="section-title">Haaliya Lein-Dein</div>
       <div class="list" id="ovRecent"></div>
     </div>
@@ -53,7 +53,7 @@
 
   <!-- ============ RATES / QUOTATIONS ============ -->
   <div class="view hidden" id="ratesView">
-    <div class="topbar light"><h1>Rates (Diye gaye)</h1></div>
+    <div class="topbar light"><h1>Rates</h1></div>
     <div class="wrap">
       <p class="hint">Customer ko jo rate diya wo yahan mehfooz — Abu ko yaad rakhne ke liye. Customer ke naam ya kaam se dhoondein.</p>
       <input class="search" id="rateSearch" placeholder="🔍 Customer ya kaam dhoondein...">
@@ -77,25 +77,25 @@
         </div>
         <div class="field"><label>Business ka Naam</label><input id="setShopName" placeholder="Al Tariq Printers"></div>
         <div class="field"><label>Aap ka Mobile Number</label><input id="setShopPhone" type="tel" placeholder="03XX-XXXXXXX"></div>
-        <div class="field"><label>Link ka Web Address (Viewer URL)</label><input id="setViewerBase" placeholder="https://username.github.io/aamir">
+        <div class="field"><label>Link ka Web Address</label><input id="setViewerBase" placeholder="https://username.github.io/aamir">
           <div class="settings-note">App ko isi address se kholenge to khud bhar jayega.</div></div>
       </div>
 
       <div class="card-block">
         <div class="section-title">WhatsApp Notification</div>
-        <label class="switch-row"><span>Har entry par WhatsApp khud khole (1-tap)</span><input type="checkbox" id="setAutoWa"></label>
+        <label class="switch-row"><span>Har entry par WhatsApp khud khole</span><input type="checkbox" id="setAutoWa"></label>
         <div class="settings-note">On: hisaab enter karte hi message + link tayyar, aap send dabayein.</div>
         <div class="field" style="margin-top:14px;"><label>Full-Auto Backend URL (optional)</label>
           <input id="setWaEndpoint" placeholder="https://aap-ka-server.com/send">
-          <div class="settings-note">Sirf WhatsApp Business API server ke liye (server/README). Bharne par message bina tap chala jaye.</div></div>
+          <div class="settings-note">Sirf WhatsApp Business API server ke liye. Bharne par message bina tap chala jaye.</div></div>
       </div>
 
       <div class="card-block">
-        <div class="section-title">☁️ Cloud Sync (Firebase) — data har device par safe</div>
+        <div class="section-title">☁️ Cloud Sync — data har device par safe</div>
         <label class="switch-row"><span>Cloud sync on karein</span><input type="checkbox" id="setCloudEnabled"></label>
-        <div class="field" style="margin-top:12px;"><label>Sync ID (koi mushkil, secret naam)</label>
+        <div class="field" style="margin-top:12px;"><label>Sync ID</label>
           <input id="setCloudSyncId" placeholder="misaal: altariq-9x7k2"></div>
-        <div class="field"><label>Firebase Config (JSON — Firebase project se)</label>
+        <div class="field"><label>Firebase Config</label>
           <textarea id="setCloudConfig" rows="6" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", "appId": "..." }'></textarea>
           <div class="settings-note">Setup guide: <b>CLOUD-SETUP.md</b>. Free Firebase project banayein, config yahan paste karein, Sync ID same rakhein har device par. Test karke Save.</div></div>
         <div class="modal-actions"><button class="cancel" id="btnCloudTest" style="flex:1;">🔌 Connection Test</button></div>
@@ -103,14 +103,14 @@
       </div>
 
       <div class="card-block">
-        <div class="section-title">Data Safety (Bahut Zaroori)</div>
-        <div class="settings-note" id="storageInfo">Aap ka data phone me mehfooz hai (IndexedDB + backup copy).</div>
+        <div class="section-title">Data Safety</div>
+        <div class="settings-note" id="storageInfo">Aap ka data phone me mehfooz hai.</div>
         <div class="modal-actions" style="margin-top:10px;">
           <button class="cancel" id="btnExport" style="flex:1;">⬇️ Backup Save</button>
           <button class="cancel" id="btnImport" style="flex:1;">⬆️ Backup Load</button>
         </div>
         <input type="file" id="importFile" accept="application/json" class="hidden">
-        <button class="cancel" id="btnSnapshots" style="width:100%; margin-top:10px;">🕘 Purani Backups (Restore)</button>
+        <button class="cancel" id="btnSnapshots" style="width:100%; margin-top:10px;">🕘 Purani Backups</button>
         <div class="settings-note" style="margin-top:10px;">Mashwara: hafte me ek dafa backup file Google Drive/WhatsApp par bhi rakh lein. Cloud sync chahiye to bata dein.</div>
       </div>
 
@@ -136,7 +136,7 @@
         <button class="btn btn-link" id="btnCopyLink">🔗 Link Copy</button>
       </div>
 
-      <input class="search" id="detailSearch" placeholder="🔍 Is account me dhoondein (cheez / rate / note)...">
+      <input class="search" id="detailSearch" placeholder="🔍 Is account me dhoondein...">
       <div class="tabs">
         <button class="tab active" data-tab="txns">Lein-Dein</button>
         <button class="tab" data-tab="quotes">Rates diye</button>
@@ -145,7 +145,7 @@
         <div class="txn-list" id="txnList"></div>
       </div>
       <div id="quotePane" class="hidden">
-        <button class="add-quote" id="btnAddQuote">+ Rate likhein (jo Abu ne diya)</button>
+        <button class="add-quote" id="btnAddQuote">+ Rate likhein</button>
         <div class="txn-list" id="quoteList"></div>
       </div>
     </div>
@@ -168,7 +168,7 @@
     <div class="modal">
       <h2 id="custModalTitle">Naya Customer</h2>
       <div class="field"><label>Naam</label><input id="custName" placeholder="Customer ka naam" autocomplete="off"></div>
-      <div class="field"><label>Mobile Number (WhatsApp ke liye zaroori)</label><input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off"></div>
+      <div class="field"><label>Mobile Number</label><input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off"></div>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveCust">Save</button></div>
       <div class="modal-actions" id="deleteCustRow" style="margin-top:10px;"><button class="save danger" id="deleteCust" style="flex:1;">🗑 Customer Delete</button></div>
     </div>
@@ -202,9 +202,9 @@
   <div class="modal-bg" id="quoteModal">
     <div class="modal">
       <h2 id="quoteModalTitle">Rate likhein</h2>
-      <div class="field"><label>Kaam / Job (kis cheez ka rate)</label><input id="quoteJob" placeholder="Misaal: 1000 Visiting Cards, matte" autocomplete="off"></div>
+      <div class="field"><label>Kaam / Job</label><input id="quoteJob" placeholder="Misaal: 1000 Visiting Cards, matte" autocomplete="off"></div>
       <div class="field"><label>Rate diya (Rs)</label><input id="quoteRate" class="amount-input" type="number" inputmode="decimal" placeholder="0"></div>
-      <div class="field"><label>Stage (kaam kahan tak pohancha)</label>
+      <div class="field"><label>Stage</label>
         <select id="quoteStatus">
           <option>Rate Diya</option>
           <option>Confirmed</option>
@@ -231,7 +231,7 @@
 
   <div class="modal-bg" id="snapModal">
     <div class="modal">
-      <h2>Purani Backups (auto)</h2>
+      <h2>Purani Backups</h2>
       <p class="hint">Galti se kuch delete/kharab ho jaye to yahan se purana version wapas laa sakte hain.</p>
       <div class="list" id="snapList"></div>
       <div class="modal-actions"><button class="cancel" data-close>Band karein</button></div>

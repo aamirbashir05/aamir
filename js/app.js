@@ -163,7 +163,7 @@ function renderOverview() {
   list.innerHTML = show.map(t => {
     const d = t.type === 'debit';
     const dl = t.kind === 'supplier' ? (d ? 'Maal Liya' : 'Paisa Diya') : (d ? 'Maal Diya' : 'Paisay Milay');
-    const badge = t.kind === 'supplier' ? ' <span style="font-size:10px;color:#6d28d9">(Supplier)</span>' : '';
+    const badge = t.kind === 'supplier' ? ' <span style="font-size:10px;color:#6d28d9">Supplier</span>' : '';
     return `<div class="recent ${t.type}" data-cust="${t.custId}" data-kind="${t.kind || 'customer'}">
       <div class="r-ic">${d ? '↑' : '↓'}</div>
       <div class="r-info"><div class="r-name">${esc(t.custName)}${badge}</div><div class="r-date">${esc(t.note) || dl} • ${fmtDate(t.date)}</div></div>
@@ -560,7 +560,7 @@ function loadSettings() {
   $('#cloudStatus').textContent = Cloud.isEnabled() ? '☁️ Cloud sync chal raha hai (connected).' : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
   $('#logoPreview').src = s.logo || 'assets/logo.png';
   const lb = Store.lastBackup();
-  $('#storageInfo').textContent = 'Data phone me mehfooz hai (IndexedDB + backup copy). ' + (lb ? 'Aakhri backup: ' + fmtDateTime(new Date(lb).toISOString()) : 'Abhi tak file-backup nahi hua.');
+  $('#storageInfo').textContent = 'Data phone me mehfooz hai. ' + (lb ? 'Aakhri backup: ' + fmtDateTime(new Date(lb).toISOString()) : 'Abhi tak file-backup nahi hua.');
 }
 $('#btnUploadLogo').addEventListener('click', () => $('#logoFile').click());
 $('#logoFile').addEventListener('change', async e => {
