@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16a34a">
+  <title>Aap ka Hisaab</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
+      background: #f1f5f9; color: #0f172a; margin: 0; padding: 0; line-height: 1.5;
+    }
+    .sheet { max-width: 720px; margin: 0 auto; background: #fff; min-height: 100vh; }
+    .header {
+      background: #16a34a; color: #fff; padding: 22px 24px;
+    }
+    .header .shop { font-size: 22px; font-weight: 800; }
+    .header .sub { font-size: 13px; opacity: .9; margin-top: 2px; }
+    .meta { padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; flex-wrap: wrap; gap: 6px 24px; }
+    .meta div { font-size: 14px; }
+    .meta .k { color: #64748b; }
+    .balance {
+      margin: 20px 24px; padding: 18px; border-radius: 14px; text-align: center;
+    }
+    .balance.pos { background: #dcfce7; }
+    .balance.neg { background: #fee2e2; }
+    .balance.zero { background: #f1f5f9; }
+    .balance .lbl { font-size: 14px; color: #475569; }
+    .balance .amt { font-size: 30px; font-weight: 800; margin-top: 4px; }
+    .pos-t { color: #16a34a; } .neg-t { color: #dc2626; } .zero-t { color: #64748b; }
+    h3 { margin: 8px 24px; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+    table { width: calc(100% - 48px); margin: 0 24px 20px; border-collapse: collapse; }
+    th { text-align: left; font-size: 12px; color: #64748b; padding: 8px 6px; border-bottom: 2px solid #e2e8f0; }
+    th.r, td.r { text-align: right; }
+    td { padding: 10px 6px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; }
+    .debit { color: #dc2626; font-weight: 700; }
+    .credit { color: #16a34a; font-weight: 700; }
+    tfoot td { font-weight: 800; border-top: 2px solid #e2e8f0; font-size: 15px; padding-top: 12px; }
+    .toolbar {
+      position: sticky; bottom: 0; background: #fff; border-top: 1px solid #e2e8f0;
+      padding: 12px 16px; display: flex; gap: 10px; max-width: 720px; margin: 0 auto;
+    }
+    .toolbar button {
+      flex: 1; border: none; border-radius: 12px; padding: 14px; font-size: 15px;
+      font-weight: 700; cursor: pointer;
+    }
+    .btn-pdf { background: #16a34a; color: #fff; }
+    .btn-print { background: #e2e8f0; color: #0f172a; }
+    .foot { text-align: center; color: #94a3b8; font-size: 12px; padding: 8px 24px 24px; }
+    .error { padding: 60px 24px; text-align: center; color: #64748b; }
+    .error .big { font-size: 48px; }
+
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none; }
+      .sheet { max-width: 100%; }
+      .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .balance, .debit, .credit { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @page { margin: 12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet" id="sheet"></div>
+
+  <script>
+    function decodeData(str) {
+      str = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (str.length % 4) str += '=';
+      const bin = atob(str);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+    function fmtMoney(n) {
+      const v = Math.abs(Math.round(n * 100) / 100);
+      return 'Rs ' + v.toLocaleString('en-PK', { maximumFractionDigits: 2 });
+    }
+    function fmtDate(iso) {
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function esc(s) {
+      return (s || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    }
+
+    function render() {
+      const sheet = document.getElementById('sheet');
+      const hash = location.hash || '';
+      const m = hash.match(/[#&]d=([^&]+)/);
+      if (!m) {
+        sheet.innerHTML = '<div class="error"><div class="big">📄</div><p>Hisaab ka data nahi mila.<br>Baraye meharbani sahi link kholein.</p></div>';
+        return;
+      }
+      let data;
+      try { data = decodeData(decodeURIComponent(m[1])); }
+      catch (e) {
+        sheet.innerHTML = '<div class="error"><div class="big">⚠️</div><p>Link kharab ho gaya lagta hai. Naya link mangwayein.</p></div>';
+        return;
+      }
+
+      const b = data.balance;
+      const balCls = b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero';
+      const balTxtCls = b > 0 ? 'pos-t' : b < 0 ? 'neg-t' : 'zero-t';
+      const balLbl = b > 0 ? 'Aap par baqi hai (Total Lena)'
+                    : b < 0 ? 'Dukan ke zimmay hai' : 'Hisaab barabar hai';
+
+      let running = 0;
+      const rows = (data.txns || []).map(t => {
+        const isDebit = t.y === 'debit';
+        running += isDebit ? t.a : -t.a;
+        return `<tr>
+          <td>${fmtDate(t.d)}</td>
+          <td>${esc(t.n) || (isDebit ? 'Udhaar Diya' : 'Paisay Milay')}</td>
+          <td class="r ${isDebit ? 'debit' : ''}">${isDebit ? fmtMoney(t.a) : ''}</td>
+          <td class="r ${!isDebit ? 'credit' : ''}">${!isDebit ? fmtMoney(t.a) : ''}</td>
+          <td class="r">${fmtMoney(running)}</td>
+        </tr>`;
+      }).join('');
+
+      document.title = 'Hisaab — ' + (data.name || '');
+
+      sheet.innerHTML = `
+        <div class="header">
+          <div class="shop">${esc(data.shop || 'Mera Khata')}</div>
+          <div class="sub">${data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Udhaar Book'}</div>
+        </div>
+        <div class="meta">
+          <div><span class="k">Customer:</span> <b>${esc(data.name)}</b></div>
+          ${data.phone ? `<div><span class="k">Number:</span> ${esc(data.phone)}</div>` : ''}
+          <div><span class="k">Tareekh:</span> ${fmtDate(data.gen || new Date().toISOString())}</div>
+        </div>
+        <div class="balance ${balCls}">
+          <div class="lbl">${balLbl}</div>
+          <div class="amt ${balTxtCls}">${fmtMoney(b)}</div>
+        </div>
+        <h3>Lein-Dein ki Tafseel</h3>
+        <table>
+          <thead>
+            <tr><th>Tareekh</th><th>Tafseel</th><th class="r">Udhaar</th><th class="r">Jama</th><th class="r">Baqaya</th></tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;">Koi lein-dein nahi</td></tr>'}</tbody>
+          <tfoot>
+            <tr><td colspan="4">Total Baqaya</td><td class="r ${balTxtCls}">${fmtMoney(b)}</td></tr>
+          </tfoot>
+        </table>
+        <div class="foot">Ye hisaab ${esc(data.shop || 'Mera Khata')} ne bheja hai • ${fmtDate(data.gen || new Date().toISOString())}</div>
+        <div class="toolbar">
+          <button class="btn-pdf" onclick="window.print()">📄 PDF Download</button>
+          <button class="btn-print" onclick="window.print()">🖨 Print</button>
+        </div>
+      `;
+    }
+
+    window.addEventListener('hashchange', render);
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Mera Khata — Udhaar Book",
+  "short_name": "Mera Khata",
+  "description": "Customers ka udhaar hisaab rakhein aur PDF link bhejein",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#16a34a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
