@@ -28,6 +28,7 @@ let editingQuoteId = null;
 let pendingTxnImg = null;    // dataURL staged for a new txn
 let pendingQuoteImg = null;  // dataURL staged for a new quote
 let activeNav = 'overview';
+let detailSearch = '';       // search within a customer/supplier account
 
 /* ---------- Toast ---------- */
 let toastTimer;
@@ -285,6 +286,7 @@ function openDetail(kind, id) {
   const L = kindLabels(currentKind);
   $('#btnGave').textContent = '− ' + L.debit;
   $('#btnGot').textContent = '+ ' + L.credit;
+  detailSearch = ''; $('#detailSearch').value = '';
   switchDetailTab('txns');
   renderDetail();
   $('#bottomnav').classList.add('hidden');
@@ -299,7 +301,12 @@ function switchDetailTab(tab) {
   $('#quotePane').classList.toggle('hidden', tab !== 'quotes');
   $('#detailActions').style.display = tab === 'txns' ? 'flex' : 'none';
 }
-$$('#detailView .tab').forEach(t => t.addEventListener('click', () => { switchDetailTab(t.dataset.tab); if (t.dataset.tab === 'quotes') renderQuotes(); }));
+$$('#detailView .tab').forEach(t => t.addEventListener('click', () => { switchDetailTab(t.dataset.tab); if (t.dataset.tab === 'quotes') renderQuotes(); else renderDetail(); }));
+$('#detailSearch').addEventListener('input', () => {
+  detailSearch = $('#detailSearch').value;
+  if (!$('#quotePane').classList.contains('hidden')) renderQuotes();
+  else renderDetail();
+});
 
 function renderDetail() {
   const c = curParty(); if (!c) return backFromDetail();
@@ -314,10 +321,13 @@ function renderDetail() {
   $('#dBalAmt').textContent = fmtMoney(b);
   $('#dBalAmt').className = 'b-amt ' + (b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero');
 
+  const q = detailSearch.trim().toLowerCase();
   const list = $('#txnList');
-  if (c.txns.length === 0) { list.innerHTML = `<div class="empty" style="padding:24px;">Abhi koi lein-dein nahi</div>`; }
+  let txns = c.txns.slice().reverse();
+  if (q) txns = txns.filter(t => (t.note || '').toLowerCase().includes(q) || String(t.amount).includes(q));
+  if (txns.length === 0) { list.innerHTML = `<div class="empty" style="padding:24px;">${q ? 'Koi lein-dein nahi mila' : 'Abhi koi lein-dein nahi'}</div>`; }
   else {
-    list.innerHTML = c.txns.slice().reverse().map(t => {
+    list.innerHTML = txns.map(t => {
       const d = t.type === 'debit';
       const thumb = t.img ? `<img class="t-thumb" data-img="${t.img}" alt="">` : '';
       return `<div class="txn ${t.type}" data-id="${t.id}">
@@ -338,8 +348,11 @@ function renderDetail() {
 function renderQuotes() {
   const c = Store.getCustomer(currentCustId); if (!c) return;
   const list = $('#quoteList');
-  if (!c.quotes || c.quotes.length === 0) { list.innerHTML = `<div class="empty" style="padding:20px;">Koi rate darj nahi.<br>Upar "+ Rate likhein".</div>`; return; }
-  list.innerHTML = c.quotes.map(x => quoteRowHtml(x, false)).join('');
+  const q = detailSearch.trim().toLowerCase();
+  let quotes = c.quotes || [];
+  if (q) quotes = quotes.filter(x => (x.job || '').toLowerCase().includes(q) || (x.note || '').toLowerCase().includes(q) || String(x.rate).includes(q));
+  if (quotes.length === 0) { list.innerHTML = `<div class="empty" style="padding:20px;">${q ? 'Koi rate nahi mila' : 'Koi rate darj nahi.<br>Upar "+ Rate likhein".'}</div>`; return; }
+  list.innerHTML = quotes.map(x => quoteRowHtml(x, false)).join('');
   $$('#quoteList .quote').forEach(el => el.addEventListener('click', e => {
     if (e.target.dataset.img) return openImage(e.target.dataset.img);
     openQuote(el.dataset.id);
