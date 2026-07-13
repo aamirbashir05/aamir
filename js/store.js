@@ -18,7 +18,8 @@ const Store = (() => {
         name: 'Al Tariq Printers',
         phone: '', viewerBase: '',
         autoWhatsApp: true, waEndpoint: '',
-        logo: '', logoSmall: ''
+        logo: '', logoSmall: '',
+        cloud: { enabled: false, config: '', syncId: '' }
       },
       customers: [],   // { id, name, phone, txns:[{id,amount,type,note,date,img}], quotes:[{id,job,rate,note,date,status,img}] }
       items: [],
@@ -70,6 +71,7 @@ const Store = (() => {
   function migrate(d) {
     const def = defaultData();
     d.shop = Object.assign({}, def.shop, d.shop || {});
+    if (!d.shop.cloud) d.shop.cloud = { enabled: false, config: '', syncId: '' };
     if (!d.shop.name) d.shop.name = 'Al Tariq Printers';
     if (!Array.isArray(d.customers)) d.customers = [];
     d.customers.forEach(c => {
@@ -109,7 +111,12 @@ const Store = (() => {
     idbPut(S_KV, clone(data), 'data');
     if (snapshot) maybeSnapshot();
   }
-  function save() { persist(true); }
+  const saveCbs = [];
+  function onSave(cb) { saveCbs.push(cb); }
+  function save() { persist(true); saveCbs.forEach(cb => { try { cb(); } catch (e) {} }); }
+
+  function getData() { return data; }
+  function replaceAll(d) { data = migrate(d); persist(false); }
 
   async function maybeSnapshot() {
     const now = Date.now();
@@ -174,7 +181,7 @@ const Store = (() => {
   /* ---------- Quotes / Rate memory ---------- */
   function addQuote(custId, { job, rate, note, date, status, img }) {
     const c = getCustomer(custId); if (!c) return null;
-    const q = { id: uid(), job: (job || '').trim(), rate: Number(rate) || 0, note: (note || '').trim(), date: date || new Date().toISOString(), status: status || 'Quoted', img: img || '' };
+    const q = { id: uid(), job: (job || '').trim(), rate: Number(rate) || 0, note: (note || '').trim(), date: date || new Date().toISOString(), status: status || 'Rate Diya', img: img || '' };
     c.quotes.push(q); c.quotes.sort((a, b) => new Date(b.date) - new Date(a.date)); save(); return q;
   }
   function updateQuote(custId, qId, patch) {
@@ -218,7 +225,7 @@ const Store = (() => {
   }
 
   return {
-    init, save,
+    init, save, onSave, getData, replaceAll,
     getShop, setShop,
     getCustomers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
     addTxn, deleteTxn,

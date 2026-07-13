@@ -4,6 +4,13 @@ Udhaar Book / Rupin jaisi ek **web app (PWA)** — customers ka hisaab rakhein, 
 **hisaab enter karte hi customer ko WhatsApp par message + link** bhejein jise khol
 kar wo apna poora hisaab **PDF** me dekh aur download kar sake (PC, laptop, mobile — kahin bhi).
 
+## Branding & Cloud
+
+- **🎨 Al Tariq Printers branding** — asli logo (background hata kar) app header aur customer PDF dono par. Colours **Orange + White + Black**. Settings se apna logo badal bhi sakte hain.
+- **☁️ Cloud Sync (Firebase, free)** — data online + har device par sync, phone toot/gum ho to bhi safe. Setup: **CLOUD-SETUP.md**.
+- **🔔 Udhaar Reminders** — Overview par ek button se un customers ki list jinse lena hai, har ek ko **1-tap WhatsApp reminder** (baqaya + hisaab link).
+- **🧾 Job workflow stages** — har rate/quote ka stage: Rate Diya → Confirmed → Design → File Aayi → Printing → Delivered.
+
 ## Naya (printing-press ke liye)
 
 - **🧾 Rate Memory** — customer ko jo rate diya (kaam + rate + status + note + tasveer) wo mehfooz. "Rates" tab me har customer/kaam se search — Abu ko yaad rakhne ke liye.

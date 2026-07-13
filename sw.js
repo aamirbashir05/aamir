@@ -1,14 +1,21 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v2';
+const CACHE = 'altariq-hisaab-v3';
 const ASSETS = [
   './',
   './index.html',
   './view.html',
   './manifest.json',
-  './icon.svg',
   './css/styles.css',
+  './js/logo.js',
   './js/store.js',
-  './js/app.js'
+  './js/cloud.js',
+  './js/app.js',
+  './assets/logo.png',
+  './assets/mark.png',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  './assets/favicon.png',
+  './assets/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', e => {

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, claude/udhaar-app-clone-slrw1q ]
   workflow_dispatch:
 
 permissions:

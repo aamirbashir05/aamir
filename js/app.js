@@ -41,8 +41,7 @@ function openImage(id) {
 function applyBranding() {
   const s = Store.getShop();
   $('#ovShopName').textContent = s.name || 'Al Tariq Printers';
-  const lg = $('#ovLogo');
-  if (s.logo) { lg.src = s.logo; lg.classList.add('show'); } else lg.classList.remove('show');
+  $('#ovLogo').src = s.logo || 'assets/mark.png';
 }
 
 /* ---------- Navigation ---------- */
@@ -95,6 +94,29 @@ function renderOverview() {
 $('#ovSettings').addEventListener('click', () => nav('settings'));
 $('#bannerBackup').addEventListener('click', doExport);
 
+/* ---------- Udhaar reminders ---------- */
+$('#btnReminders').addEventListener('click', () => {
+  const debtors = Store.getCustomers().filter(c => Store.balanceOf(c) > 0).sort((a, b) => Store.balanceOf(b) - Store.balanceOf(a));
+  const list = $('#reminderList');
+  if (debtors.length === 0) { list.innerHTML = `<div class="empty" style="padding:24px;">Kisi se lena baqi nahi 🎉</div>`; }
+  else {
+    list.innerHTML = debtors.map(c => `<div class="cust" data-id="${c.id}">
+      <div class="avatar" style="background:${avatarColor(c.id)}">${initials(c.name)}</div>
+      <div class="info"><div class="name">${esc(c.name)}</div><div class="phone">${fmtMoney(Store.balanceOf(c))} lena</div></div>
+      <button class="remind-one" data-id="${c.id}">🔔 Yaad dilayein</button></div>`).join('');
+    $$('#reminderList .remind-one').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); sendReminder(b.dataset.id); }));
+  }
+  openModal('reminderModal');
+});
+function sendReminder(custId) {
+  const c = Store.getCustomer(custId); if (!c) return;
+  const phone = intlPhone(c.phone);
+  if (!phone) { toast('Is customer ka number add karein'); return; }
+  const shop = Store.getShop(), link = buildViewerLink(c), b = Store.balanceOf(c);
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein. Shukriya.\n\nApna hisaab (PDF) yahan dekhein:\n${link}`;
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
 /* ---------- Accounts ---------- */
 function renderAccounts() {
   const q = $('#searchBox').value.trim().toLowerCase();
@@ -138,12 +160,26 @@ function renderRates() {
 }
 $('#rateSearch').addEventListener('input', renderRates);
 
+const STATUS_COLORS = {
+  'Rate Diya': ['#dbeafe', '#1e40af'],
+  'Confirmed': ['#fef3c7', '#92400e'],
+  'Design': ['#ede9fe', '#6d28d9'],
+  'File Aayi': ['#cffafe', '#155e75'],
+  'Printing': ['#ffedd5', '#9a3412'],
+  'Delivered': ['#dcfce7', '#166534'],
+  'Cancelled': ['#fee2e2', '#991b1b']
+};
+function badgeHtml(status) {
+  const s = status || 'Rate Diya';
+  const [bg, fg] = STATUS_COLORS[s] || ['#e2e8f0', '#334155'];
+  return `<span class="badge" style="background:${bg};color:${fg}">${esc(s)}</span>`;
+}
 function quoteRowHtml(x, showCust) {
   const thumb = x.img ? `<img class="q-thumb" data-img="${x.img}" alt="">` : '';
   return `<div class="quote" data-cust="${x.custId || ''}" data-id="${x.id}">
     ${thumb}
     <div class="q-main">
-      <div class="q-job">${esc(x.job) || 'Kaam'}<span class="badge ${x.status || 'Quoted'}">${x.status || 'Quoted'}</span></div>
+      <div class="q-job">${esc(x.job) || 'Kaam'}${badgeHtml(x.status)}</div>
       <div class="q-meta">${showCust ? esc(x.custName) + ' • ' : ''}${fmtDate(x.date)}${x.note ? ' • ' + esc(x.note) : ''}</div>
     </div>
     <div class="q-rate">${fmtMoney(x.rate)}</div>
@@ -285,7 +321,7 @@ $('#btnAddQuote').addEventListener('click', () => {
   editingQuoteId = null;
   $('#quoteModalTitle').textContent = 'Rate likhein';
   $('#quoteJob').value = ''; $('#quoteRate').value = ''; $('#quoteNote').value = '';
-  $('#quoteStatus').value = 'Quoted';
+  $('#quoteStatus').value = 'Rate Diya';
   $('#quoteDate').value = new Date().toISOString().slice(0, 10);
   $('#quoteImage').value = ''; pendingQuoteImg = null; $('#quoteImgPreview').classList.add('hidden');
   $('#deleteQuoteRow').style.display = 'none';
@@ -336,7 +372,7 @@ $('#deleteQuote').addEventListener('click', () => {
 function buildViewerLink(c) {
   const shop = Store.getShop();
   const payload = {
-    v: 1, shop: shop.name || 'Al Tariq Printers', shopPhone: shop.phone || '', logo: shop.logoSmall || '',
+    v: 1, shop: shop.name || 'Al Tariq Printers', shopPhone: shop.phone || '', logo: shop.logoSmall || (typeof DEFAULT_LOGO_SMALL !== 'undefined' ? DEFAULT_LOGO_SMALL : ''),
     name: c.name, phone: c.phone || '', balance: Store.balanceOf(c),
     txns: c.txns.map(t => ({ a: t.amount, y: t.type, n: t.note, d: t.date })),
     gen: new Date().toISOString()
@@ -391,8 +427,12 @@ function loadSettings() {
   $('#setViewerBase').value = s.viewerBase || '';
   $('#setAutoWa').checked = s.autoWhatsApp !== false;
   $('#setWaEndpoint').value = s.waEndpoint || '';
-  const lp = $('#logoPreview');
-  if (s.logo) { lp.src = s.logo; lp.style.display = 'block'; } else { lp.removeAttribute('src'); }
+  const cl = s.cloud || {};
+  $('#setCloudEnabled').checked = !!cl.enabled;
+  $('#setCloudSyncId').value = cl.syncId || '';
+  $('#setCloudConfig').value = cl.config || '';
+  $('#cloudStatus').textContent = Cloud.isEnabled() ? '☁️ Cloud sync chal raha hai (connected).' : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
+  $('#logoPreview').src = s.logo || 'assets/logo.png';
   const lb = Store.lastBackup();
   $('#storageInfo').textContent = 'Data phone me mehfooz hai (IndexedDB + backup copy). ' + (lb ? 'Aakhri backup: ' + fmtDateTime(new Date(lb).toISOString()) : 'Abhi tak file-backup nahi hua.');
 }
@@ -407,18 +447,41 @@ $('#logoFile').addEventListener('change', async e => {
     applyBranding(); toast('Logo save ho gaya ✅');
   } catch (err) { toast('Logo load na hua'); }
 });
-$('#btnRemoveLogo').addEventListener('click', () => { Store.setShop({ logo: '', logoSmall: '' }); $('#logoPreview').removeAttribute('src'); applyBranding(); toast('Logo hata diya'); });
+$('#btnRemoveLogo').addEventListener('click', () => { Store.setShop({ logo: '', logoSmall: '' }); $('#logoPreview').src = 'assets/logo.png'; applyBranding(); toast('Default logo laga diya'); });
 
-$('#saveSettings').addEventListener('click', () => {
+$('#saveSettings').addEventListener('click', async () => {
+  const cloud = {
+    enabled: $('#setCloudEnabled').checked,
+    config: $('#setCloudConfig').value.trim(),
+    syncId: $('#setCloudSyncId').value.trim()
+  };
   Store.setShop({
     name: $('#setShopName').value.trim() || 'Al Tariq Printers',
     phone: $('#setShopPhone').value.trim(),
     viewerBase: $('#setViewerBase').value.trim(),
     autoWhatsApp: $('#setAutoWa').checked,
-    waEndpoint: $('#setWaEndpoint').value.trim()
+    waEndpoint: $('#setWaEndpoint').value.trim(),
+    cloud
   });
   applyBranding(); toast('Settings save ho gayi ✅');
+  if (cloud.enabled && !Cloud.isEnabled()) {
+    const r = await Cloud.init(onCloudRemote);
+    $('#cloudStatus').textContent = r.ok ? '☁️ Cloud sync connect ho gaya ✅' : ('Cloud connect fail: ' + (r.error || ''));
+  }
 });
+$('#btnCloudTest').addEventListener('click', async () => {
+  $('#cloudStatus').textContent = 'Test ho raha hai...';
+  const r = await Cloud.testConnect($('#setCloudConfig').value.trim(), $('#setCloudSyncId').value.trim());
+  $('#cloudStatus').textContent = r.ok ? '✅ Connection theek hai. Ab Save karein.' : ('❌ Fail: ' + (r.error || ''));
+});
+function onCloudRemote() {
+  // remote data adopted — refresh whatever is on screen
+  if (activeNav === 'overview') renderOverview();
+  else if (activeNav === 'accounts') renderAccounts();
+  else if (activeNav === 'rates') renderRates();
+  if (currentCustId && !$('#detailView').classList.contains('hidden')) renderDetail();
+  toast('☁️ Doosre device se data update hua');
+}
 
 function doExport() {
   const blob = new Blob([Store.exportJSON()], { type: 'application/json' });
@@ -465,4 +528,6 @@ $('#btnSnapshots').addEventListener('click', async () => {
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   applyBranding();
   nav('overview');
+  // start cloud sync if configured (non-blocking)
+  Cloud.init(onCloudRemote).then(r => { if (r && r.ok) { renderOverview(); } }).catch(() => {});
 })();
