@@ -10,13 +10,21 @@
   --red: #dc2626;
   --red-soft: #fee2e2;
   --green-soft: #dcfce7;
-  --bg: #f1f5f9;
+  --bg: #eef2f7;
   --card: #ffffff;
   --text: #0f172a;
   --muted: #64748b;
-  --border: #e2e8f0;
-  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-  --radius: 14px;
+  --border: #e6ebf1;
+  --shadow: 0 1px 2px rgba(15,16,20,.06), 0 6px 16px rgba(15,16,20,.07);
+  --radius: 16px;
+
+  /* 3D gradients */
+  --grad-orange: linear-gradient(180deg, #f2b76a 0%, #e7a24c 52%, #d68f34 100%);
+  --grad-green:  linear-gradient(180deg, #24c968 0%, #16a34a 100%);
+  --grad-red:    linear-gradient(180deg, #f05252 0%, #dc2626 100%);
+  --grad-wa:     linear-gradient(180deg, #34e37e 0%, #22c55e 55%, #17b34f 100%);
+  --grad-dark:   linear-gradient(180deg, #2c2e37 0%, #17181d 100%);
+  --grad-card:   linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -254,3 +262,81 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 /* txn image thumb inline */
 .txn .t-thumb { margin-right: 4px; }
+
+/* ============================================================
+   3D / PROFESSIONAL POLISH
+   ============================================================ */
+
+/* Header: subtle dark gradient with depth */
+.topbar.light { background: var(--grad-dark); border-bottom: none; box-shadow: 0 2px 12px rgba(0,0,0,.20); }
+.topbar .back, .icon-btn.dark { box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+
+/* Cards: soft elevation + faint top sheen */
+.sum-card, .mini, .card-block, .detail-head,
+.cust, .txn, .recent, .quote {
+  background: var(--grad-card);
+  border: 1px solid rgba(226,232,240,.9);
+}
+
+/* Avatars: glossy 3D chip */
+.avatar {
+  background-image: linear-gradient(160deg, rgba(255,255,255,.30), rgba(0,0,0,.10));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 3px 7px rgba(15,16,20,.20);
+  text-shadow: 0 1px 1px rgba(0,0,0,.2);
+}
+
+/* Inputs: gentle inset */
+.search, .field input, .field select, .field textarea { box-shadow: inset 0 1px 2px rgba(15,16,20,.05); }
+
+/* --- Tactile buttons: press down on tap --- */
+.btn, .save, .add-contact, .reminder-btn, .img-btn, .calc-pad button,
+.tab, .type-toggle button, .remind-one, .modal-actions .cancel, .snap button, .banner button {
+  transition: transform .07s ease, box-shadow .14s ease, filter .14s ease;
+}
+.btn:active, .save:active, .add-contact:active, .reminder-btn:active, .img-btn:active,
+.calc-pad button:active, .tab:active, .type-toggle button:active, .remind-one:active,
+.modal-actions .cancel:active, .snap button:active { transform: translateY(2px); }
+
+/* Money / action buttons */
+.act-debit  { background: var(--grad-red);   box-shadow: 0 3px 0 #b1201f, 0 9px 18px rgba(220,38,38,.34), inset 0 1px 0 rgba(255,255,255,.28); }
+.act-credit { background: var(--grad-green); box-shadow: 0 3px 0 #12813b, 0 9px 18px rgba(22,163,74,.32), inset 0 1px 0 rgba(255,255,255,.30); }
+.act-debit:active  { box-shadow: 0 1px 0 #b1201f, 0 4px 10px rgba(220,38,38,.30), inset 0 1px 0 rgba(255,255,255,.22); }
+.act-credit:active { box-shadow: 0 1px 0 #12813b, 0 4px 10px rgba(22,163,74,.28), inset 0 1px 0 rgba(255,255,255,.22); }
+
+.btn-wa { background: var(--grad-wa); box-shadow: 0 3px 0 #149447, 0 9px 18px rgba(37,197,94,.30), inset 0 1px 0 rgba(255,255,255,.35); }
+.btn-wa:active { box-shadow: 0 1px 0 #149447, 0 4px 10px rgba(37,197,94,.26); }
+.btn-link { background: linear-gradient(180deg,#ffffff,#eef2f7); border:1px solid var(--border); box-shadow: 0 2px 0 #d7dee7, 0 4px 10px rgba(15,16,20,.06); }
+.btn-link:active { box-shadow: 0 1px 0 #d7dee7; }
+
+/* Primary orange */
+.save, .add-contact { background: var(--grad-orange); }
+.save { box-shadow: 0 3px 0 #c07d27, 0 9px 18px rgba(231,162,76,.42), inset 0 1px 0 rgba(255,255,255,.45); }
+.save:active { box-shadow: 0 1px 0 #c07d27, 0 4px 10px rgba(231,162,76,.36); }
+.save.danger { background: var(--grad-red); box-shadow: 0 3px 0 #b1201f, 0 9px 18px rgba(220,38,38,.34), inset 0 1px 0 rgba(255,255,255,.28); }
+.add-contact { box-shadow: 0 2px 0 #c07d27, 0 5px 12px rgba(231,162,76,.42), inset 0 1px 0 rgba(255,255,255,.45); }
+.add-contact:active { box-shadow: 0 1px 0 #c07d27; }
+
+/* Dark reminder button */
+.reminder-btn { background: var(--grad-dark); box-shadow: 0 3px 0 #050506, 0 9px 18px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.08); }
+.reminder-btn:active { box-shadow: 0 1px 0 #050506, 0 4px 10px rgba(0,0,0,.24); }
+
+/* Calculator keys */
+.calc-pad button { background: linear-gradient(180deg,#ffffff,#eef2f7); border:1px solid #e6ebf1; box-shadow: 0 2px 0 #d7dee7, 0 3px 6px rgba(15,16,20,.06); }
+.calc-pad button:active { box-shadow: 0 1px 0 #d7dee7; }
+.calc-pad button.op  { background: linear-gradient(180deg,#f4efff,#e7e0fb); color:#6d28d9; box-shadow: 0 2px 0 #c9bff0, 0 3px 6px rgba(109,40,217,.12); }
+.calc-pad button.del { background: linear-gradient(180deg,#ffe9e9,#ffd7d7); color:var(--red); box-shadow: 0 2px 0 #f3b4b4, 0 3px 6px rgba(220,38,38,.12); }
+.calc-pad button.eq  { background: var(--grad-orange); color:#17181d; box-shadow: 0 2px 0 #c07d27, 0 4px 8px rgba(231,162,76,.42), inset 0 1px 0 rgba(255,255,255,.45); }
+
+/* Image + segmented + tabs */
+.img-btn { background: linear-gradient(180deg,#ffffff,#f1f5f9); box-shadow: 0 2px 0 #dbe2ea, 0 3px 8px rgba(15,16,20,.05); }
+.img-btn:active { box-shadow: 0 1px 0 #dbe2ea; }
+.seg { background:#e3e9f0; box-shadow: inset 0 1px 3px rgba(15,16,20,.12); }
+.seg button.active { box-shadow: 0 1px 0 #cdd6e0, 0 2px 6px rgba(15,16,20,.12); }
+.tab.active { background: var(--grad-orange); box-shadow: 0 2px 0 #c07d27, 0 4px 10px rgba(231,162,76,.35), inset 0 1px 0 rgba(255,255,255,.45); }
+
+/* Bottom nav lift */
+.bottomnav { box-shadow: 0 -2px 14px rgba(15,16,20,.07); }
+.bottomnav button.active span { transform: translateY(-1px); filter: drop-shadow(0 2px 3px rgba(214,143,52,.4)); }
+
+/* Balance box sheen */
+.balance-box { box-shadow: inset 0 1px 0 rgba(255,255,255,.6); }
