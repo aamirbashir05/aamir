@@ -1,7 +1,7 @@
 {
-  "name": "Mera Khata — Udhaar Book",
-  "short_name": "Mera Khata",
-  "description": "Customers ka udhaar hisaab rakhein aur PDF link bhejein",
+  "name": "Al Tariq Printers — Hisaab",
+  "short_name": "Al Tariq Hisaab",
+  "description": "Customers ka udhaar hisaab, rate memory aur WhatsApp PDF link",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

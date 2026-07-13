@@ -1,8 +1,15 @@
-# Mera Khata — Udhaar Book 📒
+# Al Tariq Printers — Hisaab 📒
 
 Udhaar Book / Rupin jaisi ek **web app (PWA)** — customers ka hisaab rakhein, aur
 **hisaab enter karte hi customer ko WhatsApp par message + link** bhejein jise khol
 kar wo apna poora hisaab **PDF** me dekh aur download kar sake (PC, laptop, mobile — kahin bhi).
+
+## Naya (printing-press ke liye)
+
+- **🧾 Rate Memory** — customer ko jo rate diya (kaam + rate + status + note + tasveer) wo mehfooz. "Rates" tab me har customer/kaam se search — Abu ko yaad rakhne ke liye.
+- **🖼️ Entry me tasveer** — har lein-dein/quote ke sath design ya parchi ki photo laga sakte hain (phone me mehfooz, thumbnail + full view).
+- **🛡️ Data Safety** — data ab **IndexedDB + localStorage** dono me, aur **auto version-history** (galti se delete/kharab ho to Settings → "Purani Backups" se restore). Backup reminder + one-tap backup file bhi.
+- **🎨 Branding** — Business naam **Al Tariq Printers**, Settings me apna **logo upload** karein — app header aur customer ke PDF dono par lagta hai.
 
 ## Features
 

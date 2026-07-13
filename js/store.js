@@ -1,132 +1,205 @@
-/* store.js — data model, persistence, and shared helpers (Roman Urdu app) */
+/* store.js — data model, DURABLE persistence (IndexedDB + localStorage mirror),
+   auto version-history snapshots, image blobs, and shared helpers. */
 
 const Store = (() => {
-  const KEY = 'meraKhata_v1';
+  const LS_KEY = 'meraKhata_v1';
+  const DB_NAME = 'meraKhataDB';
+  const S_KV = 'kv';            // main data (out-of-line key 'data')
+  const S_IMG = 'images';       // image dataURLs keyed by imageId
+  const S_SNAP = 'snapshots';   // auto version history keyed by ts
 
-  const defaultData = () => ({
-    shop: {
-      name: '',
-      phone: '',
-      viewerBase: '',
-      autoWhatsApp: true,   // har entry par WhatsApp khud khole (1-tap)
-      waEndpoint: ''        // optional backend URL for FULL-AUTO sending
-    },
-    customers: [],
-    items: []
-  });
+  let db = null;
+  let data = defaultData();
+  let lastSnapTs = 0;
 
-  let data = load();
+  function defaultData() {
+    return {
+      shop: {
+        name: 'Al Tariq Printers',
+        phone: '', viewerBase: '',
+        autoWhatsApp: true, waEndpoint: '',
+        logo: '', logoSmall: ''
+      },
+      customers: [],   // { id, name, phone, txns:[{id,amount,type,note,date,img}], quotes:[{id,job,rate,note,date,status,img}] }
+      items: [],
+      updatedAt: new Date().toISOString(),
+      lastBackup: 0
+    };
+  }
 
-  function load() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (!raw) return defaultData();
-      const d = JSON.parse(raw);
-      const def = defaultData();
-      d.shop = Object.assign(def.shop, d.shop || {});
-      if (!Array.isArray(d.customers)) d.customers = [];
-      if (!Array.isArray(d.items)) d.items = [];
-      return d;
-    } catch (e) {
-      return defaultData();
+  /* ---------- IndexedDB helpers ---------- */
+  function openDB() {
+    return new Promise(resolve => {
+      let req;
+      try { req = indexedDB.open(DB_NAME, 1); }
+      catch (e) { return resolve(null); }
+      req.onupgradeneeded = e => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains(S_KV)) d.createObjectStore(S_KV);
+        if (!d.objectStoreNames.contains(S_IMG)) d.createObjectStore(S_IMG);
+        if (!d.objectStoreNames.contains(S_SNAP)) d.createObjectStore(S_SNAP);
+      };
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror = () => resolve(null);
+    });
+  }
+  function idbReq(request) {
+    return new Promise((res, rej) => { request.onsuccess = () => res(request.result); request.onerror = () => rej(request.error); });
+  }
+  async function idbGet(store, key) {
+    if (!db) return null;
+    try { return await idbReq(db.transaction(store, 'readonly').objectStore(store).get(key)); }
+    catch (e) { return null; }
+  }
+  async function idbPut(store, val, key) {
+    if (!db) return;
+    try { await idbReq(db.transaction(store, 'readwrite').objectStore(store).put(val, key)); } catch (e) {}
+  }
+  async function idbDel(store, key) {
+    if (!db) return;
+    try { await idbReq(db.transaction(store, 'readwrite').objectStore(store).delete(key)); } catch (e) {}
+  }
+  async function idbKeys(store) {
+    if (!db) return [];
+    try { return await idbReq(db.transaction(store, 'readonly').objectStore(store).getAllKeys()); }
+    catch (e) { return []; }
+  }
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function migrate(d) {
+    const def = defaultData();
+    d.shop = Object.assign({}, def.shop, d.shop || {});
+    if (!d.shop.name) d.shop.name = 'Al Tariq Printers';
+    if (!Array.isArray(d.customers)) d.customers = [];
+    d.customers.forEach(c => {
+      if (!Array.isArray(c.txns)) c.txns = [];
+      if (!Array.isArray(c.quotes)) c.quotes = [];
+    });
+    if (!Array.isArray(d.items)) d.items = [];
+    if (!d.updatedAt) d.updatedAt = new Date().toISOString();
+    if (!d.lastBackup) d.lastBackup = 0;
+    return d;
+  }
+
+  /* ---------- init / load ---------- */
+  async function init() {
+    db = await openDB();
+    let idbData = await idbGet(S_KV, 'data');
+    let lsData = null;
+    try { const raw = localStorage.getItem(LS_KEY); if (raw) lsData = JSON.parse(raw); } catch (e) {}
+
+    // pick the newer of the two durable copies
+    let chosen = null;
+    if (idbData && lsData) {
+      chosen = (new Date(idbData.updatedAt || 0) >= new Date(lsData.updatedAt || 0)) ? idbData : lsData;
+    } else {
+      chosen = idbData || lsData;
     }
+    if (chosen) data = migrate(chosen);
+    // make sure both stores are in sync with chosen copy
+    persist(false);
+    return data;
   }
 
-  function save() {
-    localStorage.setItem(KEY, JSON.stringify(data));
+  /* ---------- save / persist ---------- */
+  function persist(snapshot = true) {
+    data.updatedAt = new Date().toISOString();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) { /* quota */ }
+    idbPut(S_KV, clone(data), 'data');
+    if (snapshot) maybeSnapshot();
+  }
+  function save() { persist(true); }
+
+  async function maybeSnapshot() {
+    const now = Date.now();
+    if (now - lastSnapTs < 45000) return; // throttle: at most ~1/45s
+    lastSnapTs = now;
+    await idbPut(S_SNAP, { ts: now, at: new Date(now).toISOString(), data: clone(data) }, now);
+    // prune to newest 60
+    const keys = (await idbKeys(S_SNAP)).sort((a, b) => a - b);
+    while (keys.length > 60) { await idbDel(S_SNAP, keys.shift()); }
   }
 
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  async function listSnapshots() {
+    const keys = (await idbKeys(S_SNAP)).sort((a, b) => b - a);
+    const out = [];
+    for (const k of keys.slice(0, 60)) {
+      const s = await idbGet(S_SNAP, k);
+      if (s) out.push({ ts: s.ts, at: s.at, customers: (s.data.customers || []).length });
+    }
+    return out;
+  }
+  async function restoreSnapshot(ts) {
+    const s = await idbGet(S_SNAP, ts);
+    if (!s) return false;
+    data = migrate(s.data);
+    persist(false);
+    return true;
   }
 
-  /* ---- Shop ---- */
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  /* ---------- Images ---------- */
+  async function putImage(dataUrl) { const id = 'img_' + uid(); await idbPut(S_IMG, dataUrl, id); return id; }
+  async function getImage(id) { if (!id) return null; return await idbGet(S_IMG, id); }
+  async function delImage(id) { if (id) await idbDel(S_IMG, id); }
+
+  /* ---------- Shop / branding ---------- */
   function getShop() { return data.shop; }
   function setShop(patch) { Object.assign(data.shop, patch); save(); }
 
-  /* ---- Customers ---- */
+  /* ---------- Customers ---------- */
   function getCustomers() { return data.customers; }
   function getCustomer(id) { return data.customers.find(c => c.id === id); }
-
   function addCustomer({ name, phone }) {
-    const c = { id: uid(), name: name.trim(), phone: (phone || '').trim(), txns: [] };
-    data.customers.push(c);
-    save();
-    return c;
+    const c = { id: uid(), name: name.trim(), phone: (phone || '').trim(), txns: [], quotes: [] };
+    data.customers.push(c); save(); return c;
   }
+  function updateCustomer(id, patch) { const c = getCustomer(id); if (c) { Object.assign(c, patch); save(); } }
+  function deleteCustomer(id) { data.customers = data.customers.filter(c => c.id !== id); save(); }
 
-  function updateCustomer(id, patch) {
-    const c = getCustomer(id);
-    if (!c) return;
-    Object.assign(c, patch);
-    save();
+  /* ---------- Transactions ---------- */
+  function addTxn(custId, { amount, type, note, date, img }) {
+    const c = getCustomer(custId); if (!c) return null;
+    const t = { id: uid(), amount: Math.round(Number(amount) * 100) / 100, type, note: (note || '').trim(), date: date || new Date().toISOString(), img: img || '' };
+    c.txns.push(t); c.txns.sort((a, b) => new Date(a.date) - new Date(b.date)); save(); return t;
   }
-
-  function deleteCustomer(id) {
-    data.customers = data.customers.filter(c => c.id !== id);
-    save();
-  }
-
-  /* ---- Transactions ---- */
-  // type: 'debit'  = Udhaar Diya (customer par baqi barhta hai)
-  //       'credit' = Paisay Milay (customer par baqi kam hota hai)
-  function addTxn(custId, { amount, type, note, date }) {
-    const c = getCustomer(custId);
-    if (!c) return null;
-    const t = {
-      id: uid(),
-      amount: Math.round(Number(amount) * 100) / 100,
-      type,
-      note: (note || '').trim(),
-      date: date || new Date().toISOString()
-    };
-    c.txns.push(t);
-    c.txns.sort((a, b) => new Date(a.date) - new Date(b.date));
-    save();
-    return t;
-  }
-
   function deleteTxn(custId, txnId) {
-    const c = getCustomer(custId);
-    if (!c) return;
-    c.txns = c.txns.filter(t => t.id !== txnId);
-    save();
+    const c = getCustomer(custId); if (!c) return;
+    const t = c.txns.find(x => x.id === txnId); if (t && t.img) delImage(t.img);
+    c.txns = c.txns.filter(x => x.id !== txnId); save();
   }
 
-  /* ---- Items / Stock ---- */
-  function getItems() { return data.items; }
-  function addItem({ name, rate, unit }) {
-    const it = { id: uid(), name: name.trim(), rate: Number(rate) || 0, unit: (unit || '').trim() };
-    data.items.push(it);
-    save();
-    return it;
+  /* ---------- Quotes / Rate memory ---------- */
+  function addQuote(custId, { job, rate, note, date, status, img }) {
+    const c = getCustomer(custId); if (!c) return null;
+    const q = { id: uid(), job: (job || '').trim(), rate: Number(rate) || 0, note: (note || '').trim(), date: date || new Date().toISOString(), status: status || 'Quoted', img: img || '' };
+    c.quotes.push(q); c.quotes.sort((a, b) => new Date(b.date) - new Date(a.date)); save(); return q;
   }
-  function updateItem(id, patch) {
-    const it = data.items.find(i => i.id === id);
-    if (it) { Object.assign(it, patch); save(); }
+  function updateQuote(custId, qId, patch) {
+    const c = getCustomer(custId); if (!c) return;
+    const q = c.quotes.find(x => x.id === qId); if (q) { Object.assign(q, patch); save(); }
   }
-  function deleteItem(id) {
-    data.items = data.items.filter(i => i.id !== id);
-    save();
+  function deleteQuote(custId, qId) {
+    const c = getCustomer(custId); if (!c) return;
+    const q = c.quotes.find(x => x.id === qId); if (q && q.img) delImage(q.img);
+    c.quotes = c.quotes.filter(x => x.id !== qId); save();
   }
-
-  /* ---- Calculations ---- */
-  // balance = sum(debit) - sum(credit)
-  //   > 0 => customer se lena hai ; < 0 => customer ko dena hai
-  function balanceOf(c) {
-    return c.txns.reduce((s, t) => s + (t.type === 'debit' ? t.amount : -t.amount), 0);
+  function allQuotes() {
+    const out = [];
+    data.customers.forEach(c => (c.quotes || []).forEach(q => out.push({ ...q, custId: c.id, custName: c.name, custPhone: c.phone })));
+    out.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return out;
   }
 
+  /* ---------- Calculations ---------- */
+  function balanceOf(c) { return c.txns.reduce((s, t) => s + (t.type === 'debit' ? t.amount : -t.amount), 0); }
   function totals() {
     let lena = 0, dena = 0;
-    data.customers.forEach(c => {
-      const b = balanceOf(c);
-      if (b > 0) lena += b;
-      else if (b < 0) dena += -b;
-    });
+    data.customers.forEach(c => { const b = balanceOf(c); if (b > 0) lena += b; else if (b < 0) dena += -b; });
     return { lena, dena, customers: data.customers.length };
   }
-
   function recentTxns(limit = 12) {
     const all = [];
     data.customers.forEach(c => c.txns.forEach(t => all.push({ ...t, custId: c.id, custName: c.name })));
@@ -134,59 +207,47 @@ const Store = (() => {
     return all.slice(0, limit);
   }
 
-  /* ---- Backup ---- */
+  /* ---------- Backup ---------- */
+  function markBackup() { data.lastBackup = Date.now(); save(); }
+  function lastBackup() { return data.lastBackup || 0; }
   function exportJSON() { return JSON.stringify(data, null, 2); }
   function importJSON(json) {
     const d = JSON.parse(json);
     if (!d.customers) throw new Error('Ghalat file');
-    const def = defaultData();
-    data = d;
-    data.shop = Object.assign(def.shop, d.shop || {});
-    if (!Array.isArray(data.items)) data.items = [];
-    save();
+    data = migrate(d); persist(false);
   }
 
   return {
+    init, save,
     getShop, setShop,
     getCustomers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
     addTxn, deleteTxn,
-    getItems, addItem, updateItem, deleteItem,
+    addQuote, updateQuote, deleteQuote, allQuotes,
+    putImage, getImage,
     balanceOf, totals, recentTxns,
-    exportJSON, importJSON
+    listSnapshots, restoreSnapshot,
+    markBackup, lastBackup, exportJSON, importJSON
   };
 })();
 
-/* ---------- Shared formatting & encoding helpers ---------- */
-
+/* ---------- Shared helpers ---------- */
 function fmtMoney(n) {
   const v = Math.abs(Math.round(n * 100) / 100);
   return 'Rs ' + v.toLocaleString('en-PK', { maximumFractionDigits: 2 });
 }
-
-function fmtDate(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
 function fmtDateTime(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
-    ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+    d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
-
 function initials(name) {
-  const parts = (name || '?').trim().split(/\s+/);
-  return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || '?';
+  const p = (name || '?').trim().split(/\s+/);
+  return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || '?';
 }
-
 const AVATAR_COLORS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#ef4444', '#10b981', '#ec4899', '#6366f1', '#14b8a6'];
-function avatarColor(id) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
+function avatarColor(id) { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff; return AVATAR_COLORS[h % AVATAR_COLORS.length]; }
 
-/* Pakistan number -> intl (03xx -> 923xx) */
 function intlPhone(phone) {
   const p = (phone || '').replace(/[^\d]/g, '');
   if (!p) return '';
@@ -195,15 +256,34 @@ function intlPhone(phone) {
   return p;
 }
 
-/* URL-safe UTF-8 base64 (handles Urdu/Unicode in notes) */
-function encodeData(obj) {
-  const json = JSON.stringify(obj);
-  const bytes = new TextEncoder().encode(json);
-  let bin = '';
-  bytes.forEach(b => bin += String.fromCharCode(b));
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+/* image resize -> dataURL (jpeg) */
+function fileToDataURL(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const rd = new FileReader();
+    rd.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/jpeg', quality || 0.7));
+      };
+      img.onerror = reject;
+      img.src = rd.result;
+    };
+    rd.onerror = reject;
+    rd.readAsDataURL(file);
+  });
 }
 
+/* URL-safe UTF-8 base64 */
+function encodeData(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 function decodeData(str) {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';

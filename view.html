@@ -14,8 +14,11 @@
     }
     .sheet { max-width: 720px; margin: 0 auto; background: #fff; min-height: 100vh; }
     .header {
-      background: #16a34a; color: #fff; padding: 22px 24px;
+      background: #0f172a; color: #fff; padding: 22px 24px;
+      display: flex; align-items: center; gap: 14px;
     }
+    .header img.logo { height: 46px; width: auto; max-width: 70px; border-radius: 8px; background: #fff; object-fit: contain; }
+    .header .htext { min-width: 0; }
     .header .shop { font-size: 22px; font-weight: 800; }
     .header .sub { font-size: 13px; opacity: .9; margin-top: 2px; }
     .meta { padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; flex-wrap: wrap; gap: 6px 24px; }
@@ -124,8 +127,11 @@
 
       sheet.innerHTML = `
         <div class="header">
-          <div class="shop">${esc(data.shop || 'Mera Khata')}</div>
-          <div class="sub">${data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Udhaar Book'}</div>
+          ${data.logo ? `<img class="logo" src="${data.logo}" alt="logo">` : ''}
+          <div class="htext">
+            <div class="shop">${esc(data.shop || 'Al Tariq Printers')}</div>
+            <div class="sub">${data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Hisaab / Ledger'}</div>
+          </div>
         </div>
         <div class="meta">
           <div><span class="k">Customer:</span> <b>${esc(data.name)}</b></div>
@@ -146,7 +152,7 @@
             <tr><td colspan="4">Total Baqaya</td><td class="r ${balTxtCls}">${fmtMoney(b)}</td></tr>
           </tfoot>
         </table>
-        <div class="foot">Ye hisaab ${esc(data.shop || 'Mera Khata')} ne bheja hai • ${fmtDate(data.gen || new Date().toISOString())}</div>
+        <div class="foot">Ye hisaab ${esc(data.shop || 'Al Tariq Printers')} ne bheja hai • ${fmtDate(data.gen || new Date().toISOString())}</div>
         <div class="toolbar">
           <button class="btn-pdf" onclick="window.print()">📄 PDF Download</button>
           <button class="btn-print" onclick="window.print()">🖨 Print</button>
