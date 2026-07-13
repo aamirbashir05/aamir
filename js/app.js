@@ -4,8 +4,26 @@ const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 
 let currentCustId = null;
+let currentKind = 'customer';   // 'customer' | 'supplier'
+let accountsKind = 'customer';
 let txnType = 'debit';
 let editingCust = false;
+
+function kindLabels(kind) {
+  if (kind === 'supplier') return {
+    debit: 'Maal Liya', credit: 'Paisa Diya',
+    addTitle: 'Naya Supplier', editTitle: 'Supplier Edit', delText: 'Supplier Delete',
+    balPos: 'Supplier ko dena hai', balNeg: 'Supplier se lena hai',
+    addBtn: '+ Naya Supplier', search: '🔍 Supplier dhoondein...'
+  };
+  return {
+    debit: 'Udhaar Diya', credit: 'Paisay Milay',
+    addTitle: 'Naya Customer', editTitle: 'Customer Edit', delText: 'Customer Delete',
+    balPos: 'Customer se lena hai', balNeg: 'Customer ko dena hai',
+    addBtn: '+ Naya Customer', search: '🔍 Customer dhoondein...'
+  };
+}
+function curParty() { return Store.getParty(currentKind, currentCustId); }
 let editingQuoteId = null;
 let pendingTxnImg = null;    // dataURL staged for a new txn
 let pendingQuoteImg = null;  // dataURL staged for a new quote
@@ -24,6 +42,65 @@ function openModal(id) { $('#' + id).classList.add('open'); }
 function closeModal(id) { $('#' + id).classList.remove('open'); }
 $$('[data-close]').forEach(b => b.addEventListener('click', e => e.target.closest('.modal-bg').classList.remove('open')));
 $$('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); }));
+
+/* ---------- Calculator ---------- */
+function evalExpr(expr) {
+  if (!expr) return 0;
+  let s = expr.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+  s = s.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+  s = s.replace(/[+\-*/.]+$/, '');
+  if (!/^[-0-9+*/().\s]*$/.test(s)) return null;
+  if (!s) return 0;
+  try {
+    const out = [], ops = [], prec = { '+': 1, '-': 1, '*': 2, '/': 2 };
+    const tokens = s.match(/\d+\.?\d*|[+\-*/()]/g) || [];
+    let prev = null;
+    tokens.forEach(tk => {
+      if (/\d/.test(tk)) out.push(parseFloat(tk));
+      else if (tk === '(') ops.push(tk);
+      else if (tk === ')') { while (ops.length && ops[ops.length - 1] !== '(') out.push(ops.pop()); ops.pop(); }
+      else {
+        if ((tk === '-' || tk === '+') && (prev === null || prev === '(' || prev === 'op')) out.push(0);
+        while (ops.length && ops[ops.length - 1] !== '(' && prec[ops[ops.length - 1]] >= prec[tk]) out.push(ops.pop());
+        ops.push(tk);
+      }
+      prev = /\d/.test(tk) ? 'num' : (tk === ')' ? 'num' : (tk === '(' ? '(' : 'op'));
+    });
+    while (ops.length) out.push(ops.pop());
+    const st = [];
+    out.forEach(t => {
+      if (typeof t === 'number') st.push(t);
+      else { const b = st.pop(), a = st.pop(); st.push(t === '+' ? a + b : t === '-' ? a - b : t === '*' ? a * b : a / b); }
+    });
+    const v = st.length ? st[st.length - 1] : 0;
+    return isFinite(v) ? Math.round(v * 100) / 100 : null;
+  } catch (e) { return null; }
+}
+function makeCalc(padEl, dispEl, eqEl) {
+  let expr = '';
+  const keys = [['C', 'op'], ['÷', 'op'], ['×', 'op'], ['⌫', 'del'],
+    ['7', ''], ['8', ''], ['9', ''], ['−', 'op'],
+    ['4', ''], ['5', ''], ['6', ''], ['+', 'op'],
+    ['1', ''], ['2', ''], ['3', ''], ['%', 'op'],
+    ['00', ''], ['0', ''], ['.', ''], ['=', 'eq']];
+  padEl.innerHTML = keys.map(([k, c]) => `<button type="button" class="${c}" data-k="${k}">${k}</button>`).join('');
+  function refresh() {
+    dispEl.value = expr || '0';
+    const v = evalExpr(expr);
+    const hasOp = /[+\-×÷*/%]/.test(expr.replace(/^[−-]/, ''));
+    eqEl.textContent = (hasOp && v != null) ? '= ' + fmtMoney(v) : '';
+  }
+  padEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.k;
+    if (k === 'C') expr = '';
+    else if (k === '⌫') expr = expr.slice(0, -1);
+    else if (k === '=') { const v = evalExpr(expr); if (v != null) expr = String(v); }
+    else expr += k;
+    refresh();
+  }));
+  return { get value() { return evalExpr(expr) || 0; }, reset() { expr = ''; refresh(); } };
+}
+const txnCalc = makeCalc(document.getElementById('txnPad'), document.getElementById('txnAmount'), document.getElementById('txnEq'));
 
 /* Load stored images into any <img data-img="id"> in the DOM */
 async function hydrateImages(root = document) {
@@ -84,12 +161,14 @@ function renderOverview() {
   }
   list.innerHTML = show.map(t => {
     const d = t.type === 'debit';
-    return `<div class="recent ${t.type}" data-cust="${t.custId}">
+    const dl = t.kind === 'supplier' ? (d ? 'Maal Liya' : 'Paisa Diya') : (d ? 'Udhaar Diya' : 'Paisay Milay');
+    const badge = t.kind === 'supplier' ? ' <span style="font-size:10px;color:#6d28d9">(Supplier)</span>' : '';
+    return `<div class="recent ${t.type}" data-cust="${t.custId}" data-kind="${t.kind || 'customer'}">
       <div class="r-ic">${d ? '↑' : '↓'}</div>
-      <div class="r-info"><div class="r-name">${esc(t.custName)}</div><div class="r-date">${esc(t.note) || (d ? 'Udhaar Diya' : 'Paisay Milay')} • ${fmtDate(t.date)}</div></div>
+      <div class="r-info"><div class="r-name">${esc(t.custName)}${badge}</div><div class="r-date">${esc(t.note) || dl} • ${fmtDate(t.date)}</div></div>
       <div class="r-amt ${d ? 'neg' : 'pos'}">${d ? '−' : '+'}${fmtMoney(t.amount)}</div></div>`;
   }).join('');
-  $$('#ovRecent .recent').forEach(el => el.addEventListener('click', () => openDetail(el.dataset.cust)));
+  $$('#ovRecent .recent').forEach(el => el.addEventListener('click', () => openDetail(el.dataset.kind, el.dataset.cust)));
 }
 $('#ovSettings').addEventListener('click', () => nav('settings'));
 $('#bannerBackup').addEventListener('click', doExport);
@@ -119,27 +198,36 @@ function sendReminder(custId) {
 
 /* ---------- Accounts ---------- */
 function renderAccounts() {
+  const L = kindLabels(accountsKind);
+  $('#btnAddCust').textContent = L.addBtn;
+  $('#searchBox').placeholder = L.search;
+  $$('#partySeg button').forEach(b => b.classList.toggle('active', b.dataset.kind === accountsKind));
+
   const q = $('#searchBox').value.trim().toLowerCase();
-  let custs = Store.getCustomers().slice();
+  let custs = Store.getParties(accountsKind).slice();
   if (q) custs = custs.filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').includes(q));
   custs.sort((a, b) => Math.abs(Store.balanceOf(b)) - Math.abs(Store.balanceOf(a)));
   const list = $('#custList');
   if (custs.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="big">📒</div>${q ? 'Koi customer nahi mila' : 'Abhi koi customer nahi.<br>Upar "+ Naya Customer".'}</div>`;
+    const none = accountsKind === 'supplier' ? 'Abhi koi supplier nahi.<br>Upar "+ Naya Supplier".' : 'Abhi koi customer nahi.<br>Upar "+ Naya Customer".';
+    list.innerHTML = `<div class="empty"><div class="big">📒</div>${q ? 'Koi nahi mila' : none}</div>`;
     return;
   }
   list.innerHTML = custs.map(c => {
     const b = Store.balanceOf(c);
     const cls = b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero';
-    const tag = b > 0 ? 'Lena hai' : b < 0 ? 'Dena hai' : 'Barabar';
+    let tag;
+    if (accountsKind === 'supplier') tag = b > 0 ? 'Dena hai' : b < 0 ? 'Lena hai' : 'Barabar';
+    else tag = b > 0 ? 'Lena hai' : b < 0 ? 'Dena hai' : 'Barabar';
     return `<div class="cust" data-id="${c.id}">
       <div class="avatar" style="background:${avatarColor(c.id)}">${initials(c.name)}</div>
       <div class="info"><div class="name">${esc(c.name)}</div><div class="phone">${esc(c.phone) || '—'}</div></div>
       <div class="bal"><div class="amt ${cls}">${fmtMoney(b)}</div><div class="tag">${tag}</div></div></div>`;
   }).join('');
-  $$('#custList .cust').forEach(el => el.addEventListener('click', () => openDetail(el.dataset.id)));
+  $$('#custList .cust').forEach(el => el.addEventListener('click', () => openDetail(accountsKind, el.dataset.id)));
 }
 $('#searchBox').addEventListener('input', renderAccounts);
+$$('#partySeg button').forEach(b => b.addEventListener('click', () => { accountsKind = b.dataset.kind; $('#searchBox').value = ''; renderAccounts(); }));
 
 /* ---------- Rates (global quote memory) ---------- */
 function renderRates() {
@@ -154,7 +242,7 @@ function renderRates() {
   list.innerHTML = quotes.map(x => quoteRowHtml(x, true)).join('');
   $$('#rateList .quote').forEach(el => el.addEventListener('click', e => {
     if (e.target.dataset.img) return openImage(e.target.dataset.img);
-    openDetail(el.dataset.cust);
+    openDetail('customer', el.dataset.cust);
   }));
   hydrateImages(list);
 }
@@ -187,8 +275,16 @@ function quoteRowHtml(x, showCust) {
 }
 
 /* ---------- Detail ---------- */
-function openDetail(id) {
+function openDetail(kind, id) {
+  currentKind = kind || 'customer';
   currentCustId = id;
+  const isCust = currentKind === 'customer';
+  // suppliers: no share link, no rates tab
+  $('#detailView .share-row').style.display = isCust ? 'flex' : 'none';
+  $('#detailView .tabs').style.display = isCust ? 'flex' : 'none';
+  const L = kindLabels(currentKind);
+  $('#btnGave').textContent = '− ' + L.debit;
+  $('#btnGot').textContent = '+ ' + L.credit;
   switchDetailTab('txns');
   renderDetail();
   $('#bottomnav').classList.add('hidden');
@@ -206,14 +302,15 @@ function switchDetailTab(tab) {
 $$('#detailView .tab').forEach(t => t.addEventListener('click', () => { switchDetailTab(t.dataset.tab); if (t.dataset.tab === 'quotes') renderQuotes(); }));
 
 function renderDetail() {
-  const c = Store.getCustomer(currentCustId); if (!c) return backFromDetail();
+  const c = curParty(); if (!c) return backFromDetail();
+  const L = kindLabels(currentKind);
   $('#detailTitle').textContent = c.name;
   $('#dName').textContent = c.name;
   $('#dPhone').textContent = c.phone || '—';
   const b = Store.balanceOf(c);
   const box = $('#dBalanceBox');
   box.className = 'balance-box ' + (b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero');
-  $('#dBalLabel').textContent = b > 0 ? 'Customer se lena hai' : b < 0 ? 'Customer ko dena hai' : 'Hisaab barabar hai';
+  $('#dBalLabel').textContent = b > 0 ? L.balPos : b < 0 ? L.balNeg : 'Hisaab barabar hai';
   $('#dBalAmt').textContent = fmtMoney(b);
   $('#dBalAmt').className = 'b-amt ' + (b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero');
 
@@ -225,17 +322,17 @@ function renderDetail() {
       const thumb = t.img ? `<img class="t-thumb" data-img="${t.img}" alt="">` : '';
       return `<div class="txn ${t.type}" data-id="${t.id}">
         <div class="t-icon">${d ? '↑' : '↓'}</div>${thumb}
-        <div class="t-info"><div class="t-note">${esc(t.note) || (d ? 'Udhaar Diya' : 'Paisay Milay')}</div><div class="t-date">${fmtDateTime(t.date)}</div></div>
+        <div class="t-info"><div class="t-note">${esc(t.note) || (d ? L.debit : L.credit)}</div><div class="t-date">${fmtDateTime(t.date)}</div></div>
         <div class="t-amt">${d ? '−' : '+'}${fmtMoney(t.amount)}</div>
         <button class="t-del" title="Delete">🗑</button></div>`;
     }).join('');
     $$('#txnList .txn').forEach(el => {
-      el.querySelector('.t-del').addEventListener('click', e => { e.stopPropagation(); if (confirm('Ye lein-dein delete karein?')) { Store.deleteTxn(currentCustId, el.dataset.id); renderDetail(); } });
+      el.querySelector('.t-del').addEventListener('click', e => { e.stopPropagation(); if (confirm('Ye lein-dein delete karein?')) { Store.deletePartyTxn(currentKind, currentCustId, el.dataset.id); renderDetail(); } });
       const th = el.querySelector('.t-thumb'); if (th) th.addEventListener('click', () => openImage(th.dataset.img));
     });
     hydrateImages(list);
   }
-  renderQuotes();
+  if (currentKind === 'customer') renderQuotes();
 }
 
 function renderQuotes() {
@@ -253,44 +350,52 @@ function renderQuotes() {
 /* ---------- Customer add/edit ---------- */
 $('#btnAddCust').addEventListener('click', () => {
   editingCust = false;
-  $('#custModalTitle').textContent = 'Naya Customer';
+  currentKind = accountsKind;
+  $('#custModalTitle').textContent = kindLabels(accountsKind).addTitle;
   $('#custName').value = ''; $('#custPhone').value = '';
   $('#deleteCustRow').style.display = 'none';
   openModal('custModal'); setTimeout(() => $('#custName').focus(), 200);
 });
 $('#btnEditCust').addEventListener('click', () => {
-  const c = Store.getCustomer(currentCustId); if (!c) return;
+  const c = curParty(); if (!c) return;
   editingCust = true;
-  $('#custModalTitle').textContent = 'Customer Edit';
+  $('#custModalTitle').textContent = kindLabels(currentKind).editTitle;
   $('#custName').value = c.name; $('#custPhone').value = c.phone || '';
+  $('#deleteCust').textContent = '🗑 ' + kindLabels(currentKind).delText;
   $('#deleteCustRow').style.display = 'flex';
   openModal('custModal');
 });
 $('#saveCust').addEventListener('click', () => {
   const name = $('#custName').value.trim(), phone = $('#custPhone').value.trim();
   if (!name) { toast('Naam likhna zaroori hai'); return; }
-  if (editingCust) { Store.updateCustomer(currentCustId, { name, phone }); renderDetail(); closeModal('custModal'); }
-  else { const c = Store.addCustomer({ name, phone }); closeModal('custModal'); openDetail(c.id); }
+  if (editingCust) { Store.updateParty(currentKind, currentCustId, { name, phone }); renderDetail(); closeModal('custModal'); }
+  else { const c = Store.addParty(currentKind, { name, phone }); closeModal('custModal'); openDetail(currentKind, c.id); }
 });
 $('#deleteCust').addEventListener('click', () => {
-  if (confirm('Ye customer aur uska poora hisaab delete ho jayega. Yaqeen hai?')) { Store.deleteCustomer(currentCustId); closeModal('custModal'); backFromDetail(); }
+  if (confirm('Ye account aur iska poora hisaab delete ho jayega. Yaqeen hai?')) { Store.deleteParty(currentKind, currentCustId); closeModal('custModal'); backFromDetail(); }
 });
 
 /* ---------- Transactions + image + auto WhatsApp ---------- */
 function openTxn(type) {
   txnType = type;
-  $('#txnModalTitle').textContent = type === 'debit' ? 'Udhaar Diya' : 'Paisay Milay';
+  const L = kindLabels(currentKind);
+  $('#typeDebit').textContent = '− ' + L.debit;
+  $('#typeCredit').textContent = '+ ' + L.credit;
+  $('#txnModalTitle').textContent = type === 'debit' ? L.debit : L.credit;
   updateTypeToggle();
-  $('#txnAmount').value = ''; $('#txnNote').value = '';
+  txnCalc.reset(); $('#txnNote').value = '';
   $('#txnDate').value = new Date().toISOString().slice(0, 10);
-  $('#txnNotify').checked = Store.getShop().autoWhatsApp !== false;
+  // WhatsApp notify only for customers
+  const notifyRow = $('#txnNotify').closest('.switch-row');
+  if (currentKind === 'customer') { notifyRow.style.display = 'flex'; $('#txnNotify').checked = Store.getShop().autoWhatsApp !== false; }
+  else { notifyRow.style.display = 'none'; $('#txnNotify').checked = false; }
   $('#txnImage').value = ''; pendingTxnImg = null;
   $('#txnImgPreview').classList.add('hidden');
-  openModal('txnModal'); setTimeout(() => $('#txnAmount').focus(), 200);
+  openModal('txnModal');
 }
 function updateTypeToggle() {
-  $('#typeDebit').className = txnType === 'debit' ? 'act-debit' : '';
-  $('#typeCredit').className = txnType === 'credit' ? 'act-credit' : '';
+  $('#typeDebit').classList.toggle('act-debit', txnType === 'debit');
+  $('#typeCredit').classList.toggle('act-credit', txnType === 'credit');
 }
 $('#btnGave').addEventListener('click', () => openTxn('debit'));
 $('#btnGot').addEventListener('click', () => openTxn('credit'));
@@ -303,14 +408,14 @@ $('#txnImage').addEventListener('change', async e => {
 });
 
 $('#saveTxn').addEventListener('click', async () => {
-  const amt = parseFloat($('#txnAmount').value);
+  const amt = txnCalc.value;
   if (!amt || amt <= 0) { toast('Sahi raqam likhein'); return; }
   const dateStr = $('#txnDate').value;
   const date = dateStr ? new Date(dateStr + 'T' + new Date().toTimeString().slice(0, 8)).toISOString() : new Date().toISOString();
   let imgId = '';
   if (pendingTxnImg) imgId = await Store.putImage(pendingTxnImg);
-  Store.addTxn(currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value, date, img: imgId });
-  const notify = $('#txnNotify').checked;
+  Store.addPartyTxn(currentKind, currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value, date, img: imgId });
+  const notify = currentKind === 'customer' && $('#txnNotify').checked;
   closeModal('txnModal'); renderDetail();
   if (notify) sendEntryNotification(currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value });
   else toast('Entry save ho gayi');
@@ -408,14 +513,14 @@ async function sendEntryNotification(custId, entry) {
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 $('#btnWhatsApp').addEventListener('click', () => {
-  const c = Store.getCustomer(currentCustId);
+  const c = curParty();
   const phone = intlPhone(c.phone), shop = Store.getShop(), link = buildViewerLink(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 });
 $('#btnCopyLink').addEventListener('click', async () => {
-  const link = buildViewerLink(Store.getCustomer(currentCustId));
+  const link = buildViewerLink(curParty());
   try { await navigator.clipboard.writeText(link); toast('Link copy ho gaya ✅'); } catch (e) { prompt('Link copy karein:', link); }
 });
 

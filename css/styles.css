@@ -196,6 +196,20 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
 
+/* Segmented control (Customers / Suppliers) */
+.seg { display: flex; background: #e2e8f0; border-radius: 12px; padding: 4px; margin-bottom: 12px; }
+.seg button { flex: 1; border: none; background: none; padding: 10px; border-radius: 9px; font-weight: 700; font-size: 14px; color: var(--muted); }
+.seg button.active { background: #fff; color: var(--black); box-shadow: var(--shadow); }
+
+/* Calculator keypad */
+.calc-eq { text-align: right; color: var(--muted); font-size: 14px; min-height: 20px; margin-top: 4px; font-weight: 600; }
+.calc-pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.calc-pad button { padding: 16px 0; border-radius: 12px; border: none; background: #f1f5f9; font-size: 19px; font-weight: 700; color: var(--black); }
+.calc-pad button.op { background: #ede9fe; color: #6d28d9; }
+.calc-pad button.eq { background: var(--orange); color: #17181d; }
+.calc-pad button.del { background: #fee2e2; color: var(--red); }
+.calc-pad button:active { transform: scale(.96); }
+
 .reminder-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: var(--black); color: #fff; font-weight: 700; font-size: 14px; margin-bottom: 4px; }
 .remind-one { background: #25D366; color: #fff; border: none; border-radius: 9px; padding: 9px 12px; font-weight: 700; font-size: 12px; white-space: nowrap; }
 .field textarea { resize: vertical; min-height: 90px; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; }

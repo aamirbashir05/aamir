@@ -22,6 +22,7 @@ const Store = (() => {
         cloud: { enabled: false, config: '', syncId: '' }
       },
       customers: [],   // { id, name, phone, txns:[{id,amount,type,note,date,img}], quotes:[{id,job,rate,note,date,status,img}] }
+      suppliers: [],   // jinse maal lena/dena hai — same shape as customers
       items: [],
       updatedAt: new Date().toISOString(),
       lastBackup: 0
@@ -77,6 +78,11 @@ const Store = (() => {
     d.customers.forEach(c => {
       if (!Array.isArray(c.txns)) c.txns = [];
       if (!Array.isArray(c.quotes)) c.quotes = [];
+    });
+    if (!Array.isArray(d.suppliers)) d.suppliers = [];
+    d.suppliers.forEach(s => {
+      if (!Array.isArray(s.txns)) s.txns = [];
+      if (!Array.isArray(s.quotes)) s.quotes = [];
     });
     if (!Array.isArray(d.items)) d.items = [];
     if (!d.updatedAt) d.updatedAt = new Date().toISOString();
@@ -156,27 +162,41 @@ const Store = (() => {
   function getShop() { return data.shop; }
   function setShop(patch) { Object.assign(data.shop, patch); save(); }
 
-  /* ---------- Customers ---------- */
-  function getCustomers() { return data.customers; }
-  function getCustomer(id) { return data.customers.find(c => c.id === id); }
-  function addCustomer({ name, phone }) {
-    const c = { id: uid(), name: name.trim(), phone: (phone || '').trim(), txns: [], quotes: [] };
-    data.customers.push(c); save(); return c;
+  /* ---------- Parties (customers + suppliers, same shape) ---------- */
+  function listOf(kind) { return kind === 'supplier' ? data.suppliers : data.customers; }
+  function getParties(kind) { return listOf(kind); }
+  function getParty(kind, id) { return listOf(kind).find(p => p.id === id); }
+  function addParty(kind, { name, phone }) {
+    const p = { id: uid(), name: name.trim(), phone: (phone || '').trim(), txns: [], quotes: [] };
+    listOf(kind).push(p); save(); return p;
   }
-  function updateCustomer(id, patch) { const c = getCustomer(id); if (c) { Object.assign(c, patch); save(); } }
-  function deleteCustomer(id) { data.customers = data.customers.filter(c => c.id !== id); save(); }
-
-  /* ---------- Transactions ---------- */
-  function addTxn(custId, { amount, type, note, date, img }) {
-    const c = getCustomer(custId); if (!c) return null;
+  function updateParty(kind, id, patch) { const p = getParty(kind, id); if (p) { Object.assign(p, patch); save(); } }
+  function deleteParty(kind, id) {
+    const p = getParty(kind, id);
+    if (p) { p.txns.forEach(t => t.img && delImage(t.img)); (p.quotes || []).forEach(q => q.img && delImage(q.img)); }
+    const l = listOf(kind); const i = l.findIndex(x => x.id === id);
+    if (i >= 0) { l.splice(i, 1); save(); }
+  }
+  function addPartyTxn(kind, id, { amount, type, note, date, img }) {
+    const p = getParty(kind, id); if (!p) return null;
     const t = { id: uid(), amount: Math.round(Number(amount) * 100) / 100, type, note: (note || '').trim(), date: date || new Date().toISOString(), img: img || '' };
-    c.txns.push(t); c.txns.sort((a, b) => new Date(a.date) - new Date(b.date)); save(); return t;
+    p.txns.push(t); p.txns.sort((a, b) => new Date(a.date) - new Date(b.date)); save(); return t;
   }
-  function deleteTxn(custId, txnId) {
-    const c = getCustomer(custId); if (!c) return;
-    const t = c.txns.find(x => x.id === txnId); if (t && t.img) delImage(t.img);
-    c.txns = c.txns.filter(x => x.id !== txnId); save();
+  function deletePartyTxn(kind, id, txnId) {
+    const p = getParty(kind, id); if (!p) return;
+    const t = p.txns.find(x => x.id === txnId); if (t && t.img) delImage(t.img);
+    p.txns = p.txns.filter(x => x.id !== txnId); save();
   }
+
+  /* ---------- Customer wrappers (backward compatible) ---------- */
+  function getCustomers() { return data.customers; }
+  function getSuppliers() { return data.suppliers; }
+  function getCustomer(id) { return getParty('customer', id); }
+  function addCustomer(o) { return addParty('customer', o); }
+  function updateCustomer(id, patch) { return updateParty('customer', id, patch); }
+  function deleteCustomer(id) { return deleteParty('customer', id); }
+  function addTxn(custId, t) { return addPartyTxn('customer', custId, t); }
+  function deleteTxn(custId, txnId) { return deletePartyTxn('customer', custId, txnId); }
 
   /* ---------- Quotes / Rate memory ---------- */
   function addQuote(custId, { job, rate, note, date, status, img }) {
@@ -204,12 +224,16 @@ const Store = (() => {
   function balanceOf(c) { return c.txns.reduce((s, t) => s + (t.type === 'debit' ? t.amount : -t.amount), 0); }
   function totals() {
     let lena = 0, dena = 0;
+    // customers: +balance = they owe you (lena) ; -balance = you owe them (dena)
     data.customers.forEach(c => { const b = balanceOf(c); if (b > 0) lena += b; else if (b < 0) dena += -b; });
-    return { lena, dena, customers: data.customers.length };
+    // suppliers: +balance = you owe supplier (dena) ; -balance = supplier owes you (lena)
+    data.suppliers.forEach(s => { const b = balanceOf(s); if (b > 0) dena += b; else if (b < 0) lena += -b; });
+    return { lena, dena, customers: data.customers.length, suppliers: data.suppliers.length };
   }
   function recentTxns(limit = 12) {
     const all = [];
-    data.customers.forEach(c => c.txns.forEach(t => all.push({ ...t, custId: c.id, custName: c.name })));
+    data.customers.forEach(c => c.txns.forEach(t => all.push({ ...t, kind: 'customer', custId: c.id, custName: c.name })));
+    data.suppliers.forEach(s => s.txns.forEach(t => all.push({ ...t, kind: 'supplier', custId: s.id, custName: s.name })));
     all.sort((a, b) => new Date(b.date) - new Date(a.date));
     return all.slice(0, limit);
   }
@@ -227,7 +251,8 @@ const Store = (() => {
   return {
     init, save, onSave, getData, replaceAll,
     getShop, setShop,
-    getCustomers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
+    getParties, getParty, addParty, updateParty, deleteParty, addPartyTxn, deletePartyTxn,
+    getCustomers, getSuppliers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
     addTxn, deleteTxn,
     addQuote, updateQuote, deleteQuote, allQuotes,
     putImage, getImage,
