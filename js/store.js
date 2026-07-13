@@ -4,8 +4,15 @@ const Store = (() => {
   const KEY = 'meraKhata_v1';
 
   const defaultData = () => ({
-    shop: { name: '', phone: '', viewerBase: '' },
-    customers: []
+    shop: {
+      name: '',
+      phone: '',
+      viewerBase: '',
+      autoWhatsApp: true,   // har entry par WhatsApp khud khole (1-tap)
+      waEndpoint: ''        // optional backend URL for FULL-AUTO sending
+    },
+    customers: [],
+    items: []
   });
 
   let data = load();
@@ -15,8 +22,10 @@ const Store = (() => {
       const raw = localStorage.getItem(KEY);
       if (!raw) return defaultData();
       const d = JSON.parse(raw);
-      if (!d.shop) d.shop = defaultData().shop;
+      const def = defaultData();
+      d.shop = Object.assign(def.shop, d.shop || {});
       if (!Array.isArray(d.customers)) d.customers = [];
+      if (!Array.isArray(d.items)) d.items = [];
       return d;
     } catch (e) {
       return defaultData();
@@ -63,16 +72,18 @@ const Store = (() => {
   //       'credit' = Paisay Milay (customer par baqi kam hota hai)
   function addTxn(custId, { amount, type, note, date }) {
     const c = getCustomer(custId);
-    if (!c) return;
-    c.txns.push({
+    if (!c) return null;
+    const t = {
       id: uid(),
       amount: Math.round(Number(amount) * 100) / 100,
       type,
       note: (note || '').trim(),
       date: date || new Date().toISOString()
-    });
+    };
+    c.txns.push(t);
     c.txns.sort((a, b) => new Date(a.date) - new Date(b.date));
     save();
+    return t;
   }
 
   function deleteTxn(custId, txnId) {
@@ -82,22 +93,45 @@ const Store = (() => {
     save();
   }
 
+  /* ---- Items / Stock ---- */
+  function getItems() { return data.items; }
+  function addItem({ name, rate, unit }) {
+    const it = { id: uid(), name: name.trim(), rate: Number(rate) || 0, unit: (unit || '').trim() };
+    data.items.push(it);
+    save();
+    return it;
+  }
+  function updateItem(id, patch) {
+    const it = data.items.find(i => i.id === id);
+    if (it) { Object.assign(it, patch); save(); }
+  }
+  function deleteItem(id) {
+    data.items = data.items.filter(i => i.id !== id);
+    save();
+  }
+
   /* ---- Calculations ---- */
-  // Positive balance => customer aap se lena/dena? Convention:
   // balance = sum(debit) - sum(credit)
-  //   > 0  => customer ne aap se lena hai? NO — customer aap ko dena hai (aap ka "Lena")
+  //   > 0 => customer se lena hai ; < 0 => customer ko dena hai
   function balanceOf(c) {
     return c.txns.reduce((s, t) => s + (t.type === 'debit' ? t.amount : -t.amount), 0);
   }
 
   function totals() {
-    let lena = 0, dena = 0; // lena = aap ko milna hai, dena = aap ne dena hai
+    let lena = 0, dena = 0;
     data.customers.forEach(c => {
       const b = balanceOf(c);
       if (b > 0) lena += b;
       else if (b < 0) dena += -b;
     });
-    return { lena, dena };
+    return { lena, dena, customers: data.customers.length };
+  }
+
+  function recentTxns(limit = 12) {
+    const all = [];
+    data.customers.forEach(c => c.txns.forEach(t => all.push({ ...t, custId: c.id, custName: c.name })));
+    all.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return all.slice(0, limit);
   }
 
   /* ---- Backup ---- */
@@ -105,8 +139,10 @@ const Store = (() => {
   function importJSON(json) {
     const d = JSON.parse(json);
     if (!d.customers) throw new Error('Ghalat file');
+    const def = defaultData();
     data = d;
-    if (!data.shop) data.shop = defaultData().shop;
+    data.shop = Object.assign(def.shop, d.shop || {});
+    if (!Array.isArray(data.items)) data.items = [];
     save();
   }
 
@@ -114,7 +150,8 @@ const Store = (() => {
     getShop, setShop,
     getCustomers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
     addTxn, deleteTxn,
-    balanceOf, totals,
+    getItems, addItem, updateItem, deleteItem,
+    balanceOf, totals, recentTxns,
     exportJSON, importJSON
   };
 })();
@@ -147,6 +184,15 @@ function avatarColor(id) {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+/* Pakistan number -> intl (03xx -> 923xx) */
+function intlPhone(phone) {
+  const p = (phone || '').replace(/[^\d]/g, '');
+  if (!p) return '';
+  if (p.startsWith('0')) return '92' + p.slice(1);
+  if (p.startsWith('92')) return p;
+  return p;
 }
 
 /* URL-safe UTF-8 base64 (handles Urdu/Unicode in notes) */

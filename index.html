@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#16a34a">
+  <meta name="theme-color" content="#0f172a">
   <title>Mera Khata — Udhaar Book</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -11,35 +11,101 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- HOME / LIST VIEW -->
-  <div id="homeView">
-    <div class="topbar">
-      <h1 id="shopTitle">Mera Khata</h1>
-      <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
+
+  <!-- ============ OVERVIEW ============ -->
+  <div class="view" id="overviewView">
+    <div class="topbar light">
+      <h1 id="ovShopName">Mera Khata</h1>
+      <button class="icon-btn dark" id="ovSettings" title="Settings">⚙️</button>
     </div>
     <div class="wrap">
       <div class="summary">
         <div class="sum-card lena">
-          <div class="label">Total Lena (Milna hai)</div>
-          <div class="val" id="totalLena">Rs 0</div>
+          <div class="label">Total Lena (milna hai)</div>
+          <div class="val" id="ovLena">Rs 0</div>
         </div>
         <div class="sum-card dena">
-          <div class="label">Total Dena (Dena hai)</div>
-          <div class="val" id="totalDena">Rs 0</div>
+          <div class="label">Total Dena (dena hai)</div>
+          <div class="val" id="ovDena">Rs 0</div>
         </div>
       </div>
+      <div class="mini-stats">
+        <div class="mini"><div class="m-val" id="ovCustCount">0</div><div class="m-lbl">Customers</div></div>
+        <div class="mini"><div class="m-val" id="ovTodayCount">0</div><div class="m-lbl">Aaj ki entries</div></div>
+        <div class="mini"><div class="m-val" id="ovNet">Rs 0</div><div class="m-lbl">Net Baqaya</div></div>
+      </div>
+      <div class="section-title">Haaliya Lein-Dein</div>
+      <div class="list" id="ovRecent"></div>
+    </div>
+  </div>
+
+  <!-- ============ ACCOUNTS (customer list) ============ -->
+  <div class="view hidden" id="accountsView">
+    <div class="topbar light">
+      <h1>Accounts</h1>
+      <button class="add-contact" id="btnAddCust">+ Naya Customer</button>
+    </div>
+    <div class="wrap">
       <input class="search" id="searchBox" placeholder="🔍 Customer dhoondein...">
       <div class="list" id="custList"></div>
     </div>
-    <button class="fab" id="btnAddCust"><span class="plus">+</span> Naya Customer</button>
   </div>
 
-  <!-- DETAIL VIEW -->
-  <div id="detailView" class="hidden">
-    <div class="topbar">
-      <button class="back" id="btnBack" style="display:flex">‹</button>
+  <!-- ============ ITEMS ============ -->
+  <div class="view hidden" id="itemsView">
+    <div class="topbar light">
+      <h1>Items / Stock</h1>
+      <button class="add-contact" id="btnAddItem">+ Naya Item</button>
+    </div>
+    <div class="wrap">
+      <div class="list" id="itemList"></div>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="view hidden" id="settingsView">
+    <div class="topbar light"><h1>Settings</h1></div>
+    <div class="wrap">
+      <div class="card-block">
+        <div class="section-title">Business</div>
+        <div class="field"><label>Dukan / Business ka Naam</label><input id="setShopName" placeholder="Misaal: Aamir Traders"></div>
+        <div class="field"><label>Aap ka Mobile Number</label><input id="setShopPhone" type="tel" placeholder="03XX-XXXXXXX"></div>
+        <div class="field"><label>Link ka Web Address (Viewer URL)</label><input id="setViewerBase" placeholder="https://username.github.io/aamir">
+          <div class="settings-note">App ko isi address se kholenge to khud bhar jayega. Customer ke link isi par bante hain.</div></div>
+      </div>
+
+      <div class="card-block">
+        <div class="section-title">WhatsApp Notification</div>
+        <label class="switch-row">
+          <span>Har entry par WhatsApp khud khole (1-tap send)</span>
+          <input type="checkbox" id="setAutoWa">
+        </label>
+        <div class="settings-note">On rakhein: hisaab enter karte hi WhatsApp message + link tayyar mil jayega, aap sirf send dabayein. (Aap ke apne WhatsApp se, free.)</div>
+        <div class="field" style="margin-top:14px;"><label>Full-Auto Backend URL (optional)</label>
+          <input id="setWaEndpoint" placeholder="https://aap-ka-server.com/send">
+          <div class="settings-note">Sirf tab bharein jab aap ne WhatsApp Business API wala server chalaya ho (dekhein server/README). Bharne par message BINA tap ke khud chala jayega.</div>
+        </div>
+      </div>
+
+      <div class="card-block">
+        <div class="section-title">Backup</div>
+        <div class="modal-actions">
+          <button class="cancel" id="btnExport" style="flex:1;">⬇️ Backup Save</button>
+          <button class="cancel" id="btnImport" style="flex:1;">⬆️ Backup Load</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" class="hidden">
+      </div>
+
+      <button class="save" id="saveSettings" style="width:100%; padding:15px; margin-top:6px;">Settings Save Karein</button>
+    </div>
+  </div>
+
+  <!-- ============ DETAIL ============ -->
+  <div class="view hidden" id="detailView">
+    <div class="topbar light">
+      <button class="back" id="btnBack">‹</button>
       <h1 id="detailTitle">Customer</h1>
-      <button class="icon-btn" id="btnEditCust" title="Edit">✏️</button>
+      <button class="icon-btn dark" id="btnEditCust" title="Edit">✏️</button>
     </div>
     <div class="wrap">
       <div class="detail-head">
@@ -51,41 +117,42 @@
         </div>
       </div>
       <div class="share-row">
-        <button class="btn btn-wa" id="btnWhatsApp">💬 WhatsApp par bhejein</button>
+        <button class="btn btn-wa" id="btnWhatsApp">💬 Hisaab bhejein</button>
         <button class="btn btn-link" id="btnCopyLink">🔗 Link Copy</button>
       </div>
       <div class="section-title">Lein-Dein (Transactions)</div>
       <div class="txn-list" id="txnList"></div>
     </div>
-    <div style="position:fixed; bottom:22px; left:0; right:0; display:flex; gap:12px; padding:0 22px; max-width:640px; margin:0 auto;">
-      <button class="btn" style="background:var(--red); color:#fff; box-shadow:0 6px 16px rgba(220,38,38,.35);" id="btnGave">− Udhaar Diya</button>
-      <button class="btn" style="background:var(--green); color:#fff; box-shadow:0 6px 16px rgba(22,163,74,.35);" id="btnGot">+ Paisay Milay</button>
+    <div class="detail-actions">
+      <button class="btn act-debit" id="btnGave">− Udhaar Diya</button>
+      <button class="btn act-credit" id="btnGot">+ Paisay Milay</button>
     </div>
   </div>
 
-  <!-- CUSTOMER MODAL -->
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav class="bottomnav" id="bottomnav">
+    <button data-nav="overview" class="active"><span>📊</span>Overview</button>
+    <button data-nav="accounts"><span>📒</span>Accounts</button>
+    <button data-nav="items"><span>🏷️</span>Items</button>
+    <button data-nav="settings"><span>⚙️</span>Settings</button>
+  </nav>
+
+  <!-- ============ MODALS ============ -->
   <div class="modal-bg" id="custModal">
     <div class="modal">
       <h2 id="custModalTitle">Naya Customer</h2>
-      <div class="field">
-        <label>Naam</label>
-        <input id="custName" placeholder="Customer ka naam" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>Mobile Number (optional)</label>
-        <input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off">
-      </div>
+      <div class="field"><label>Naam</label><input id="custName" placeholder="Customer ka naam" autocomplete="off"></div>
+      <div class="field"><label>Mobile Number (WhatsApp ke liye zaroori)</label><input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off"></div>
       <div class="modal-actions">
         <button class="cancel" data-close>Cancel</button>
         <button class="save" id="saveCust">Save</button>
       </div>
       <div class="modal-actions" id="deleteCustRow" style="margin-top:10px;">
-        <button class="save danger" id="deleteCust" style="flex:1;">🗑 Customer Delete Karein</button>
+        <button class="save danger" id="deleteCust" style="flex:1;">🗑 Customer Delete</button>
       </div>
     </div>
   </div>
 
-  <!-- TXN MODAL -->
   <div class="modal-bg" id="txnModal">
     <div class="modal">
       <h2 id="txnModalTitle">Lein-Dein</h2>
@@ -93,51 +160,33 @@
         <button id="typeDebit">− Udhaar Diya</button>
         <button id="typeCredit">+ Paisay Milay</button>
       </div>
-      <div class="field">
-        <label>Raqam (Rs)</label>
-        <input id="txnAmount" class="amount-input" type="number" inputmode="decimal" placeholder="0" step="0.01">
+      <div class="field" id="itemPickRow">
+        <label>Item (optional)</label>
+        <select id="txnItem"><option value="">— Item chunein —</option></select>
       </div>
-      <div class="field">
-        <label>Tafseel / Note (optional)</label>
-        <input id="txnNote" placeholder="Misaal: Cement 2 bori" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>Tareekh</label>
-        <input id="txnDate" type="date">
-      </div>
+      <div class="field"><label>Raqam (Rs)</label><input id="txnAmount" class="amount-input" type="number" inputmode="decimal" placeholder="0" step="0.01"></div>
+      <div class="field"><label>Tafseel / Note (optional)</label><input id="txnNote" placeholder="Misaal: Cement 2 bori" autocomplete="off"></div>
+      <div class="field"><label>Tareekh</label><input id="txnDate" type="date"></div>
+      <label class="switch-row"><span>💬 Entry ke baad WhatsApp bhejein</span><input type="checkbox" id="txnNotify" checked></label>
       <div class="modal-actions">
         <button class="cancel" data-close>Cancel</button>
-        <button class="save" id="saveTxn">Save</button>
+        <button class="save" id="saveTxn">Save & Bhejein</button>
       </div>
     </div>
   </div>
 
-  <!-- SETTINGS MODAL -->
-  <div class="modal-bg" id="settingsModal">
+  <div class="modal-bg" id="itemModal">
     <div class="modal">
-      <h2>Settings</h2>
-      <div class="field">
-        <label>Dukan / Business ka Naam</label>
-        <input id="setShopName" placeholder="Misaal: Aamir Traders">
-      </div>
-      <div class="field">
-        <label>Aap ka Mobile Number</label>
-        <input id="setShopPhone" type="tel" placeholder="03XX-XXXXXXX">
-      </div>
-      <div class="field">
-        <label>Link ka Web Address (Viewer URL)</label>
-        <input id="setViewerBase" placeholder="https://username.github.io/aamir">
-        <div class="settings-note">Jab aap ye app apni website (GitHub Pages) se kholenge to ye khud bhar jayega. Customer ke link isi address par bante hain.</div>
-      </div>
-      <div class="section-title">Backup</div>
-      <div class="modal-actions" style="margin-bottom:10px;">
-        <button class="cancel" id="btnExport" style="flex:1;">⬇️ Backup Save</button>
-        <button class="cancel" id="btnImport" style="flex:1;">⬆️ Backup Load</button>
-      </div>
-      <input type="file" id="importFile" accept="application/json" class="hidden">
+      <h2 id="itemModalTitle">Naya Item</h2>
+      <div class="field"><label>Item ka Naam</label><input id="itemName" placeholder="Misaal: Cement bori" autocomplete="off"></div>
+      <div class="field"><label>Rate (Rs)</label><input id="itemRate" type="number" inputmode="decimal" placeholder="0"></div>
+      <div class="field"><label>Unit (optional)</label><input id="itemUnit" placeholder="bori / kg / piece"></div>
       <div class="modal-actions">
-        <button class="cancel" data-close>Band karein</button>
-        <button class="save" id="saveSettings">Save</button>
+        <button class="cancel" data-close>Cancel</button>
+        <button class="save" id="saveItem">Save</button>
+      </div>
+      <div class="modal-actions" id="deleteItemRow" style="margin-top:10px;">
+        <button class="save danger" id="deleteItem" style="flex:1;">🗑 Item Delete</button>
       </div>
     </div>
   </div>
