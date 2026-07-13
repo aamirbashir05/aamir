@@ -17,7 +17,7 @@ function kindLabels(kind) {
     addBtn: '+ Naya Supplier', search: '🔍 Supplier dhoondein...'
   };
   return {
-    debit: 'Udhaar Diya', credit: 'Paisay Milay',
+    debit: 'Maal Diya', credit: 'Paisay Milay',
     addTitle: 'Naya Customer', editTitle: 'Customer Edit', delText: 'Customer Delete',
     balPos: 'Customer se lena hai', balNeg: 'Customer ko dena hai',
     addBtn: '+ Naya Customer', search: '🔍 Customer dhoondein...'
@@ -161,7 +161,7 @@ function renderOverview() {
   }
   list.innerHTML = show.map(t => {
     const d = t.type === 'debit';
-    const dl = t.kind === 'supplier' ? (d ? 'Maal Liya' : 'Paisa Diya') : (d ? 'Udhaar Diya' : 'Paisay Milay');
+    const dl = t.kind === 'supplier' ? (d ? 'Maal Liya' : 'Paisa Diya') : (d ? 'Maal Diya' : 'Paisay Milay');
     const badge = t.kind === 'supplier' ? ' <span style="font-size:10px;color:#6d28d9">(Supplier)</span>' : '';
     return `<div class="recent ${t.type}" data-cust="${t.custId}" data-kind="${t.kind || 'customer'}">
       <div class="r-ic">${d ? '↑' : '↓'}</div>
@@ -492,7 +492,7 @@ function entryMessage(c, entry) {
   const shop = Store.getShop();
   const link = buildViewerLink(c);
   const b = Store.balanceOf(c);
-  const kind = entry.type === 'debit' ? 'Udhaar (aap ne liya)' : 'Jama (aap ne diya)';
+  const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Ab aap par baqi: *${fmtMoney(b)}*` : b < 0 ? `Ab hamare zimmay: *${fmtMoney(b)}*` : `Ab hisaab barabar hai.`;
   return `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\nAap ke khaate me nayi entry hui hai:\n\n${kind}: *${fmtMoney(entry.amount)}*\n` +
     (entry.note ? `Tafseel: ${entry.note}\n` : '') + `${balLine}\n\nPoora hisaab (PDF) yahan dekhein:\n${link}`;

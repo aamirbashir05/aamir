@@ -24,7 +24,7 @@ kar wo apna poora hisaab **PDF** me dekh aur download kar sake (PC, laptop, mobi
 
 **📒 Accounts (Khata)**
 - Customers add/edit/delete (naam + WhatsApp number)
-- **Udhaar Diya / Paisay Milay** har lein-dein, running balance
+- **Maal Diya / Paisay Milay** har lein-dein, running balance
 - Search, har customer ka Baqaya
 
 **💬 Auto WhatsApp (aap ki main requirement)**
@@ -86,6 +86,6 @@ Ye PWA phone par **"Add to Home Screen"** se app ki tarah install ho jati hai (i
 | `sw.js`, `manifest.json`, `icon.svg` | PWA (offline + install) |
 
 ## Hisaab ka usool
-- **Udhaar Diya** = customer par baqi barhta hai (aap ka *Lena*)
+- **Maal Diya** = customer par baqi barhta hai (aap ka *Lena*)
 - **Paisay Milay** = customer par baqi kam hota hai
 - **Baqaya = kul Udhaar − kul Jama** → musbat (+) customer se lena, manfi (−) customer ko dena
