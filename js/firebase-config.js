@@ -1,20 +1,12 @@
 /*
- * firebase-config.js — permanent LIVE customer links ke liye.
- *
- * Jab tak ye khaali (null) hai, app SNAPSHOT link use karti hai (bhejte waqt ka hisaab).
- * Firebase project banane ke baad (dekhein CLOUD-SETUP.md) apna web config yahan daalein,
- * phir har customer ka ek PAKKA link banega jo hamesha taaza hisaab dikhayega.
- *
- * Misaal:
- * window.FIREBASE_CONFIG = {
- *   apiKey: "AIza........",
- *   authDomain: "altariq-hisaab.firebaseapp.com",
- *   projectId: "altariq-hisaab",
- *   storageBucket: "altariq-hisaab.appspot.com",
- *   messagingSenderId: "1234567890",
- *   appId: "1:1234567890:web:abcdef123456"
- * };
- *
- * (Ye config public hota hai — isay commit karna theek hai; hifazat Firestore rules se hoti hai.)
+ * firebase-config.js — Al Tariq Printers ka Firebase config (LIVE customer links).
+ * Ye config public hota hai; hifazat Firestore rules se hoti hai.
  */
-window.FIREBASE_CONFIG = null;
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAknUuqCB3q3DnoD9BILBjHQCrD67WVXLk",
+  authDomain: "altariq-hisaab.firebaseapp.com",
+  projectId: "altariq-hisaab",
+  storageBucket: "altariq-hisaab.firebasestorage.app",
+  messagingSenderId: "189434885975",
+  appId: "1:189434885975:web:a5d398897200514da13012"
+};
