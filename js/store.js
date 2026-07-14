@@ -20,7 +20,7 @@ const Store = (() => {
         autoWhatsApp: true, waEndpoint: '',
         logo: '', logoSmall: '',
         bizLink: 'https://share.google/CufoPI1IgMa5h0rgc',
-        paymentInfo: 'Payment ke liye:\nRaast ID = Aamir Bashir\n03135202228\nEasypaisa 1 = Bashir Muhammad\n03455084099\nEasypaisa 2 = Aamir Bashir\n03480956097\n\nPayment Send karne k baad 03135202228 par Raseed lazmi send karain. Shukriya.',
+        paymentInfo: 'Payment ke liye:\nRaast ID = Aamir Bashir 03135202228\nEasypaisa 1 = Bashir Muhammad 03455084099\nEasypaisa 2 = Aamir Bashir 03480956097\n\nPayment Send karne k baad 03135202228 par Raseed lazmi send karain. Shukriya.',
         cloud: { enabled: false, config: '', syncId: '' }
       },
       customers: [],   // { id, name, phone, txns:[{id,amount,type,note,date,img}], quotes:[{id,job,rate,note,date,status,img}] }
@@ -76,6 +76,9 @@ const Store = (() => {
     d.shop = Object.assign({}, def.shop, d.shop || {});
     if (!d.shop.cloud) d.shop.cloud = { enabled: false, config: '', syncId: '' };
     if (!d.shop.name) d.shop.name = 'Al Tariq Printers';
+    // upgrade older multi-line payment default to the new same-line format
+    const OLD_PAY = 'Payment ke liye:\nRaast ID = Aamir Bashir\n03135202228\nEasypaisa 1 = Bashir Muhammad\n03455084099\nEasypaisa 2 = Aamir Bashir\n03480956097\n\nPayment Send karne k baad 03135202228 par Raseed lazmi send karain. Shukriya.';
+    if (d.shop.paymentInfo === OLD_PAY) d.shop.paymentInfo = def.shop.paymentInfo;
     if (!Array.isArray(d.customers)) d.customers = [];
     d.customers.forEach(c => {
       if (!Array.isArray(c.txns)) c.txns = [];

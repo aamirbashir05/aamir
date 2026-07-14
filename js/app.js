@@ -193,7 +193,7 @@ function sendReminder(custId) {
   const phone = intlPhone(c.phone);
   if (!phone) { toast('Is customer ka number add karein'); return; }
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
-  const msg = `*${shop.name || 'Al Tariq Printers'}*${bizLine()}\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
@@ -500,7 +500,7 @@ $('#deleteQuote').addEventListener('click', () => {
 function sharePayload(c) {
   const shop = Store.getShop();
   return {
-    v: 2, s: shop.name || 'Al Tariq Printers', sp: shop.phone || '', lg: shop.logoSmall || '',
+    v: 2, s: shop.name || 'Al Tariq Printers', sp: shop.phone || '', lg: shop.logoSmall || '', bl: shop.bizLink || '',
     n: c.name, p: c.phone || '', b: Store.balanceOf(c),
     t: c.txns.map(t => [t.amount, t.type === 'debit' ? 'd' : 'c', t.note || '', Math.floor(new Date(t.date).getTime() / 1000).toString(36)]),
     g: Math.floor(Date.now() / 1000).toString(36)
@@ -536,7 +536,7 @@ function entryMessage(c, entry) {
   const b = Store.balanceOf(c);
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Ab aap par baqi: *${fmtMoney(b)}*` : b < 0 ? `Ab hamare zimmay: *${fmtMoney(b)}*` : `Ab hisaab barabar hai.`;
-  return `*${shop.name || 'Al Tariq Printers'}*${bizLine()}\nAssalam-o-Alaikum ${c.name},\nAap ke khaate me nayi entry hui hai:\n\n${kind}: *${fmtMoney(entry.amount)}*\n` +
+  return `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\nAap ke khaate me nayi entry hui hai:\n\n${kind}: *${fmtMoney(entry.amount)}*\n` +
     (entry.note ? `Tafseel: ${entry.note}\n` : '') + `${balLine}\n\nPoora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
 }
 async function sendEntryNotification(custId, entry) {
@@ -558,7 +558,7 @@ $('#btnWhatsApp').addEventListener('click', () => {
   const c = curParty();
   const phone = intlPhone(c.phone), shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
-  const msg = `*${shop.name || 'Al Tariq Printers'}*${bizLine()}\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 });
 $('#btnCopyLink').addEventListener('click', async () => {

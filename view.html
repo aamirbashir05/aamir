@@ -97,11 +97,11 @@
 
     function norm(d) {
       if (d && d.v === 2) return {
-        shop: d.s, shopPhone: d.sp, logo: d.lg, name: d.n, phone: d.p, balance: d.b,
+        shop: d.s, shopPhone: d.sp, logo: d.lg, bl: d.bl, name: d.n, phone: d.p, balance: d.b,
         gen: d.g ? new Date(parseInt(d.g, 36) * 1000).toISOString() : new Date().toISOString(),
         txns: (d.t || []).map(a => ({ a: a[0], y: a[1] === 'd' ? 'debit' : 'credit', n: a[2], d: new Date(parseInt(a[3], 36) * 1000).toISOString() }))
       };
-      return { shop: d.shop, shopPhone: d.shopPhone, logo: d.logo, name: d.name, phone: d.phone, balance: d.balance, gen: d.gen, txns: (d.txns || []).map(t => ({ a: t.a, y: t.y, n: t.n, d: t.d })) };
+      return { shop: d.shop, shopPhone: d.shopPhone, logo: d.logo, bl: d.bl, name: d.name, phone: d.phone, balance: d.balance, gen: d.gen, txns: (d.txns || []).map(t => ({ a: t.a, y: t.y, n: t.n, d: t.d })) };
     }
     const sheet = document.getElementById('sheet');
     function showErr(msg, ic) {
@@ -160,14 +160,11 @@
 
       document.title = 'Hisaab — ' + (data.name || '');
 
+      const _hi = '<img class="logo" src="' + (data.logo || 'assets/logo.png') + '" alt="logo"><div class="htext"><div class="shop">' + esc(data.shop || 'Al Tariq Printers') + '</div><div class="sub">' + (data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Hisaab / Ledger') + '</div></div>';
+      const headerHtml = '<div class="header">' + (data.bl ? '<a href="' + esc(data.bl) + '" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;color:inherit;text-decoration:none">' + _hi + '</a>' : _hi) + '</div>';
+
       sheet.innerHTML = `
-        <div class="header">
-          <img class="logo" src="${data.logo || 'assets/logo.png'}" alt="logo">
-          <div class="htext">
-            <div class="shop">${esc(data.shop || 'Al Tariq Printers')}</div>
-            <div class="sub">${data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Hisaab / Ledger'}</div>
-          </div>
-        </div>
+        ${headerHtml}
         <div class="meta">
           <div><span class="k">Customer:</span> <b>${esc(data.name)}</b></div>
           ${data.phone ? `<div><span class="k">Number:</span> ${esc(data.phone)}</div>` : ''}
