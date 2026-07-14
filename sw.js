@@ -32,13 +32,18 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(cached =>
-      cached || fetch(e.request).then(res => {
+  const url = new URL(e.request.url);
+  // Our own files: network-first (always latest when online, cache offline fallback)
+  if (url.origin === location.origin) {
+    e.respondWith(
+      fetch(e.request).then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
         return res;
-      }).catch(() => cached)
-    )
-  );
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+  // Everything else: cache-first
+  e.respondWith(caches.match(e.request).then(c => c || fetch(e.request)));
 });

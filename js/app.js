@@ -193,7 +193,7 @@ function sendReminder(custId) {
   const phone = intlPhone(c.phone);
   if (!phone) { toast('Is customer ka number add karein'); return; }
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
-  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein. Shukriya.\n\nApna hisaab (PDF) yahan dekhein:\n${link}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*${bizLine()}\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
@@ -528,14 +528,16 @@ function shareLinkFor(party) {
 function republishIfShared(party) {
   if (party && party.shareId && Cloud.isReady()) Cloud.publishShare(party.shareId, sharePayload(party));
 }
+function bizLine() { const l = (Store.getShop().bizLink || '').trim(); return l ? '\n' + l : ''; }
+function payFooter() { const p = (Store.getShop().paymentInfo || '').trim(); return p ? '\n\n' + p : ''; }
 function entryMessage(c, entry) {
   const shop = Store.getShop();
   const link = shareLinkFor(c);
   const b = Store.balanceOf(c);
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Ab aap par baqi: *${fmtMoney(b)}*` : b < 0 ? `Ab hamare zimmay: *${fmtMoney(b)}*` : `Ab hisaab barabar hai.`;
-  return `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\nAap ke khaate me nayi entry hui hai:\n\n${kind}: *${fmtMoney(entry.amount)}*\n` +
-    (entry.note ? `Tafseel: ${entry.note}\n` : '') + `${balLine}\n\nPoora hisaab (PDF) yahan dekhein:\n${link}`;
+  return `*${shop.name || 'Al Tariq Printers'}*${bizLine()}\nAssalam-o-Alaikum ${c.name},\nAap ke khaate me nayi entry hui hai:\n\n${kind}: *${fmtMoney(entry.amount)}*\n` +
+    (entry.note ? `Tafseel: ${entry.note}\n` : '') + `${balLine}\n\nPoora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
 }
 async function sendEntryNotification(custId, entry) {
   const c = Store.getCustomer(custId); if (!c) return;
@@ -556,7 +558,7 @@ $('#btnWhatsApp').addEventListener('click', () => {
   const c = curParty();
   const phone = intlPhone(c.phone), shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
-  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*${bizLine()}\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 });
 $('#btnCopyLink').addEventListener('click', async () => {
@@ -570,13 +572,15 @@ function loadSettings() {
   $('#setShopName').value = s.name || '';
   $('#setShopPhone').value = s.phone || '';
   $('#setViewerBase').value = s.viewerBase || '';
+  $('#setBizLink').value = s.bizLink || '';
+  $('#setPaymentInfo').value = s.paymentInfo || '';
   $('#setAutoWa').checked = s.autoWhatsApp !== false;
   $('#setWaEndpoint').value = s.waEndpoint || '';
   const cl = s.cloud || {};
   $('#setCloudEnabled').checked = !!cl.enabled;
   $('#setCloudSyncId').value = cl.syncId || '';
   $('#setCloudConfig').value = cl.config || '';
-  $('#cloudStatus').textContent = Cloud.isEnabled() ? '☁️ Cloud sync chal raha hai (connected).' : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
+  $('#cloudStatus').textContent = Cloud.isReady() ? (Cloud.isSyncOn() ? '☁️ Cloud connected + sync on.' : '☁️ Cloud connected (live links on).') : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
   $('#logoPreview').src = s.logo || 'assets/logo.png';
   const lb = Store.lastBackup();
   $('#storageInfo').textContent = 'Data phone me mehfooz hai. ' + (lb ? 'Aakhri backup: ' + fmtDateTime(new Date(lb).toISOString()) : 'Abhi tak file-backup nahi hua.');
@@ -604,14 +608,17 @@ $('#saveSettings').addEventListener('click', async () => {
     name: $('#setShopName').value.trim() || 'Al Tariq Printers',
     phone: $('#setShopPhone').value.trim(),
     viewerBase: $('#setViewerBase').value.trim(),
+    bizLink: $('#setBizLink').value.trim(),
+    paymentInfo: $('#setPaymentInfo').value.trim(),
     autoWhatsApp: $('#setAutoWa').checked,
     waEndpoint: $('#setWaEndpoint').value.trim(),
     cloud
   });
   applyBranding(); toast('Settings save ho gayi ✅');
-  if (cloud.enabled && !Cloud.isEnabled()) {
+  if (!Cloud.isReady()) {
     const r = await Cloud.init(onCloudRemote);
-    $('#cloudStatus').textContent = r.ok ? '☁️ Cloud sync connect ho gaya ✅' : ('Cloud connect fail: ' + (r.error || ''));
+    if (r && r.ok) $('#cloudStatus').textContent = '☁️ Cloud connect ho gaya ✅';
+    else if (cloud.enabled) $('#cloudStatus').textContent = 'Cloud connect fail: ' + ((r && r.error) || '');
   }
 });
 $('#btnCloudTest').addEventListener('click', async () => {

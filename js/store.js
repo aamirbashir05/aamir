@@ -19,6 +19,8 @@ const Store = (() => {
         phone: '', viewerBase: '',
         autoWhatsApp: true, waEndpoint: '',
         logo: '', logoSmall: '',
+        bizLink: 'https://share.google/CufoPI1IgMa5h0rgc',
+        paymentInfo: 'Payment ke liye:\nRaast ID = Aamir Bashir\n03135202228\nEasypaisa 1 = Bashir Muhammad\n03455084099\nEasypaisa 2 = Aamir Bashir\n03480956097\n\nPayment Send karne k baad 03135202228 par Raseed lazmi send karain. Shukriya.',
         cloud: { enabled: false, config: '', syncId: '' }
       },
       customers: [],   // { id, name, phone, txns:[{id,amount,type,note,date,img}], quotes:[{id,job,rate,note,date,status,img}] }
