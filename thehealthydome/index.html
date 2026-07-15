@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f2b22">
+<title>The Healthy Dome — Natural Handmade Soaps, Perfumes & Wellness</title>
+<meta name="description" content="The Healthy Dome (THD) — cold-processed, all-natural handmade soaps, all-natural-oil perfumes and wellness rubs. No artificial colors, fragrances or alcohols. Handcrafted in Worcester, MA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ================= ANNOUNCEMENT ================= -->
+<div class="announce" id="announce">
+  <div class="announce-track">
+    <span>🌿 Free shipping on orders over $50</span><span>•</span>
+    <span>100% Natural · No Artificial Fragrances</span><span>•</span>
+    <span>Cold-Processed &amp; Handmade in Worcester, MA</span><span>•</span>
+    <span>🌿 Free shipping on orders over $50</span><span>•</span>
+    <span>100% Natural · No Artificial Fragrances</span><span>•</span>
+    <span>Cold-Processed &amp; Handmade in Worcester, MA</span><span>•</span>
+  </div>
+</div>
+
+<!-- ================= NAV ================= -->
+<header class="nav" id="nav">
+  <a class="brand" href="#home" aria-label="The Healthy Dome home">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" width="34" height="34">
+        <defs>
+          <linearGradient id="lgMark" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f3d18a"/><stop offset="1" stop-color="#c98b2f"/>
+          </linearGradient>
+        </defs>
+        <path d="M8 30a16 16 0 0 1 32 0" fill="none" stroke="url(#lgMark)" stroke-width="3.4" stroke-linecap="round"/>
+        <path d="M14 30a10 10 0 0 1 20 0" fill="none" stroke="url(#lgMark)" stroke-width="3" stroke-linecap="round" opacity=".65"/>
+        <path d="M24 8c2.6 3 4 5.4 4 8a4 4 0 1 1-8 0c0-2.6 1.4-5 4-8z" fill="url(#lgMark)"/>
+        <line x1="8" y1="34" x2="40" y2="34" stroke="url(#lgMark)" stroke-width="3.4" stroke-linecap="round"/>
+      </svg>
+    </span>
+    <span class="brand-text">
+      <strong>The Healthy Dome</strong>
+      <small>THD · Natural Products</small>
+    </span>
+  </a>
+
+  <nav class="nav-links" id="navLinks">
+    <a href="#shop">Shop</a>
+    <a href="#benefits">Why Natural</a>
+    <a href="#about">About</a>
+    <a href="#ingredients">Ingredients</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <div class="nav-actions">
+    <button class="cart-btn" id="cartBtn" aria-label="Open cart">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.2l2.2 12.2a1.5 1.5 0 0 0 1.5 1.3h8.9a1.5 1.5 0 0 0 1.5-1.2L21.5 7H6"/></svg>
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+    <a href="#shop" class="btn btn-primary nav-shop">Shop Now</a>
+    <button class="hamburger" id="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" id="home">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-glow"></div>
+  <div class="hero-inner">
+    <span class="eyebrow reveal">🌱 Cold-Processed · Small-Batch · Handmade</span>
+    <h1 class="reveal">Nature's care,<br><em>handcrafted</em> for your skin.</h1>
+    <p class="hero-sub reveal">All-natural soaps, botanical perfumes and wellness rubs — made with real essential oils and zero artificial colors, fragrances or alcohols.</p>
+    <div class="hero-cta reveal">
+      <a href="#shop" class="btn btn-primary btn-lg">Shop the Collection</a>
+      <a href="#about" class="btn btn-ghost btn-lg">Our Story</a>
+    </div>
+    <div class="hero-trust reveal">
+      <div><strong>100%</strong><span>Natural</span></div>
+      <div><strong>0</strong><span>Artificial Fragrance</span></div>
+      <div><strong>Cold</strong><span>Processed</span></div>
+      <div><strong>Vegan</strong><span>Friendly</span></div>
+    </div>
+  </div>
+  <a href="#shop" class="scroll-hint" aria-label="Scroll down">
+    <span></span>
+  </a>
+</section>
+
+<!-- ================= MARQUEE BADGES ================= -->
+<section class="badge-strip">
+  <div class="badge-track" id="badgeTrack">
+    <span>No Artificial Colors</span><i>✦</i>
+    <span>Real Essential Oils</span><i>✦</i>
+    <span>No Alcohols</span><i>✦</i>
+    <span>Cruelty Free</span><i>✦</i>
+    <span>Skin Loving</span><i>✦</i>
+    <span>Small Batch</span><i>✦</i>
+    <span>No Artificial Colors</span><i>✦</i>
+    <span>Real Essential Oils</span><i>✦</i>
+    <span>No Alcohols</span><i>✦</i>
+    <span>Cruelty Free</span><i>✦</i>
+    <span>Skin Loving</span><i>✦</i>
+    <span>Small Batch</span><i>✦</i>
+  </div>
+</section>
+
+<!-- ================= SHOP ================= -->
+<section class="section shop" id="shop">
+  <div class="section-head reveal">
+    <span class="kicker">The Collection</span>
+    <h2>Handmade, honestly good</h2>
+    <p>Each bar and bottle is made in small batches with saponified plant oils and real botanicals — nothing synthetic.</p>
+  </div>
+
+  <div class="filters reveal" id="filters">
+    <button class="chip active" data-filter="all">All</button>
+    <button class="chip" data-filter="soap">Soaps</button>
+    <button class="chip" data-filter="perfume">Perfumes</button>
+    <button class="chip" data-filter="wellness">Wellness</button>
+    <button class="chip" data-filter="box">Gift Boxes</button>
+  </div>
+
+  <div class="grid" id="productGrid"><!-- products injected by JS --></div>
+</section>
+
+<!-- ================= BENEFITS ================= -->
+<section class="section benefits" id="benefits">
+  <div class="section-head reveal">
+    <span class="kicker">Why Natural</span>
+    <h2>Kind to skin. Kind to the planet.</h2>
+  </div>
+  <div class="benefit-grid">
+    <article class="benefit reveal">
+      <div class="b-ic">🌿</div>
+      <h3>Real botanicals</h3>
+      <p>Green tea, lemongrass, oats, cinnamon — skin food you can actually pronounce.</p>
+    </article>
+    <article class="benefit reveal">
+      <div class="b-ic">🚫</div>
+      <h3>Nothing synthetic</h3>
+      <p>No artificial colors, no synthetic fragrance, no drying alcohols. Ever.</p>
+    </article>
+    <article class="benefit reveal">
+      <div class="b-ic">❄️</div>
+      <h3>Cold-processed</h3>
+      <p>Slow-cured the traditional way to keep natural glycerin and nutrients intact.</p>
+    </article>
+    <article class="benefit reveal">
+      <div class="b-ic">✋</div>
+      <h3>Handmade in MA</h3>
+      <p>Poured, cut and cured by hand in small batches in Worcester, Massachusetts.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ================= ABOUT ================= -->
+<section class="section about" id="about">
+  <div class="about-grid">
+    <div class="about-visual reveal" aria-hidden="true">
+      <div class="dome-card">
+        <div class="dome-shape"></div>
+        <div class="leaf leaf-1">🌿</div>
+        <div class="leaf leaf-2">🍃</div>
+        <div class="leaf leaf-3">🌸</div>
+        <div class="dome-tag">Est. 2022 · Worcester, MA</div>
+      </div>
+    </div>
+    <div class="about-copy reveal">
+      <span class="kicker">Our Story</span>
+      <h2>Wellness, wrapped in a bar of soap</h2>
+      <p>The Healthy Dome began with a simple belief: your skin deserves ingredients as honest as the food you eat. What started in a home kitchen is now a growing line of cold-processed soaps, all-natural-oil perfumes and soothing wellness rubs.</p>
+      <p>Every product is handcrafted in small batches — no artificial colors, no synthetic fragrances, no harsh alcohols. Just plant oils, essential oils and real botanicals doing what nature intended.</p>
+      <div class="about-stats">
+        <div><strong>2022</strong><span>Founded</span></div>
+        <div><strong>20+</strong><span>Handmade recipes</span></div>
+        <div><strong>100%</strong><span>Natural ingredients</span></div>
+      </div>
+      <a href="#shop" class="btn btn-primary">Explore products</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= INGREDIENTS ================= -->
+<section class="section ingredients" id="ingredients">
+  <div class="section-head reveal">
+    <span class="kicker">What's Inside</span>
+    <h2>Ingredients you can trust</h2>
+    <p>A peek at the plant-powered goodness that goes into every batch.</p>
+  </div>
+  <div class="ing-grid">
+    <div class="ing reveal"><span>🍵</span><h4>Green Tea</h4><p>Antioxidant-rich, calms and refreshes tired skin.</p></div>
+    <div class="ing reveal"><span>🌾</span><h4>Oats</h4><p>Gently exfoliates and soothes sensitive skin.</p></div>
+    <div class="ing reveal"><span>🥥</span><h4>Coconut Oil</h4><p>Deeply nourishing, creates a rich natural lather.</p></div>
+    <div class="ing reveal"><span>🌿</span><h4>Lemongrass</h4><p>Naturally clarifying with a fresh, uplifting note.</p></div>
+    <div class="ing reveal"><span>🌸</span><h4>Essential Oils</h4><p>Real botanical scent — never synthetic fragrance.</p></div>
+    <div class="ing reveal"><span>🍯</span><h4>Cinnamon</h4><p>Warming, comforting and gently antibacterial.</p></div>
+  </div>
+</section>
+
+<!-- ================= REVIEWS ================= -->
+<section class="section reviews" id="reviews">
+  <div class="section-head reveal">
+    <span class="kicker">Loved by locals</span>
+    <h2>What customers say</h2>
+  </div>
+  <div class="review-grid">
+    <blockquote class="review reveal">
+      <div class="stars">★★★★★</div>
+      <p>"The Lemony Green Tea bar completely cleared up my breakouts. My skin has never felt this smooth."</p>
+      <cite>— Ayesha R.</cite>
+    </blockquote>
+    <blockquote class="review reveal">
+      <div class="stars">★★★★★</div>
+      <p>"Finally a perfume that doesn't give me a headache. The Sea Breeze scent is so clean and natural."</p>
+      <cite>— Daniel M.</cite>
+    </blockquote>
+    <blockquote class="review reveal">
+      <div class="stars">★★★★★</div>
+      <p>"The Relax Box was the perfect gift. Beautiful packaging and everything smells incredible."</p>
+      <cite>— Sofia K.</cite>
+    </blockquote>
+  </div>
+</section>
+
+<!-- ================= NEWSLETTER ================= -->
+<section class="section newsletter reveal">
+  <div class="news-card">
+    <div>
+      <h2>Join the Dome</h2>
+      <p>Get 10% off your first order plus early access to new batches and seasonal scents.</p>
+    </div>
+    <form class="news-form" id="newsForm">
+      <input type="email" required placeholder="you@email.com" aria-label="Email address">
+      <button type="submit" class="btn btn-primary">Subscribe</button>
+    </form>
+  </div>
+</section>
+
+<!-- ================= CONTACT ================= -->
+<section class="section contact" id="contact">
+  <div class="contact-grid">
+    <div class="contact-info reveal">
+      <span class="kicker">Get in touch</span>
+      <h2>Questions? Custom orders?</h2>
+      <p>We'd love to hear from you. Reach out and we'll get back within a day.</p>
+      <ul class="contact-list">
+        <li><span>📍</span><div><strong>Location</strong><a href="https://maps.google.com/?q=Worcester,MA" target="_blank" rel="noopener">Worcester, MA</a></div></li>
+        <li><span>✉️</span><div><strong>Email</strong><a href="mailto:thehealthydome@gmail.com">thehealthydome@gmail.com</a></div></li>
+        <li><span>📞</span><div><strong>Phone</strong><a href="tel:+17743037734">1-774-303-7734</a></div></li>
+        <li><span>📸</span><div><strong>Instagram</strong><a href="https://instagram.com/thdnaturalproducts" target="_blank" rel="noopener">@thdnaturalproducts</a></div></li>
+      </ul>
+    </div>
+    <form class="contact-form reveal" id="contactForm">
+      <div class="row">
+        <label>Name <input type="text" name="name" required placeholder="Your name"></label>
+        <label>Email <input type="email" name="email" required placeholder="you@email.com"></label>
+      </div>
+      <label>Subject <input type="text" name="subject" placeholder="How can we help?"></label>
+      <label>Message <textarea name="message" rows="4" required placeholder="Type your message…"></textarea></label>
+      <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+      <p class="form-note" id="contactNote"></p>
+    </form>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="foot-grid">
+    <div class="foot-brand">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="30" height="30">
+            <path d="M8 30a16 16 0 0 1 32 0" fill="none" stroke="#e9c37e" stroke-width="3.4" stroke-linecap="round"/>
+            <path d="M24 8c2.6 3 4 5.4 4 8a4 4 0 1 1-8 0c0-2.6 1.4-5 4-8z" fill="#e9c37e"/>
+            <line x1="8" y1="34" x2="40" y2="34" stroke="#e9c37e" stroke-width="3.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="brand-text"><strong>The Healthy Dome</strong><small>THD · Natural Products</small></span>
+      </div>
+      <p>Cold-processed, all-natural handmade soaps, perfumes &amp; wellness — crafted with love in Worcester, MA.</p>
+    </div>
+    <div class="foot-col">
+      <h5>Shop</h5>
+      <a href="#shop">All Products</a>
+      <a href="#shop">Soaps</a>
+      <a href="#shop">Perfumes</a>
+      <a href="#shop">Gift Boxes</a>
+    </div>
+    <div class="foot-col">
+      <h5>Company</h5>
+      <a href="#about">About Us</a>
+      <a href="#benefits">Why Natural</a>
+      <a href="#contact">Contact</a>
+      <a href="#reviews">Reviews</a>
+    </div>
+    <div class="foot-col">
+      <h5>Support</h5>
+      <a href="mailto:thehealthydome@gmail.com">Help &amp; FAQ</a>
+      <a href="#">Store Policies</a>
+      <a href="#">Shipping</a>
+      <a href="#">Returns</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© <span id="year"></span> The Healthy Dome (THD Soaps). All rights reserved.</span>
+    <span class="foot-made">Handmade with 🌿 &amp; natural oils</span>
+  </div>
+</footer>
+
+<!-- ================= CART DRAWER ================= -->
+<div class="cart-overlay" id="cartOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart">
+  <div class="cart-head">
+    <h3>Your Cart</h3>
+    <button class="cart-close" id="cartClose" aria-label="Close cart">✕</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-foot">
+    <div class="cart-ship" id="cartShip"></div>
+    <div class="cart-total"><span>Subtotal</span><strong id="cartTotal">$0.00</strong></div>
+    <button class="btn btn-primary btn-lg cart-checkout" id="checkoutBtn">Checkout via WhatsApp</button>
+    <a class="cart-email" id="checkoutEmail" href="#">or checkout by email</a>
+  </div>
+</aside>
+
+<!-- ================= TOAST ================= -->
+<div class="toast" id="toast"></div>
+
+<!-- Three.js (WebGL 3D hero) — self-hosted so it always works offline -->
+<script src="vendor/three.min.js" defer></script>
+<script src="main.js" defer></script>
+</body>
+</html>
