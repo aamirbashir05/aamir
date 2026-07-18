@@ -578,6 +578,11 @@ function loadSettings() {
   $('#setWaEndpoint').value = s.waEndpoint || '';
   const cl = s.cloud || {};
   $('#setCloudEnabled').checked = !!cl.enabled;
+  // Agar sync pehle se ON hai magar ID khaali hai, to khud bana do (aur save kar do).
+  if (cl.enabled && !cl.syncId) {
+    cl.syncId = genSyncId();
+    Store.setShop({ cloud: Object.assign({}, cl) });
+  }
   $('#setCloudSyncId').value = cl.syncId || '';
   $('#setCloudConfig').value = cl.config || '';
   $('#cloudStatus').textContent = Cloud.isReady() ? (Cloud.isSyncOn() ? '☁️ Cloud connected + sync on.' : '☁️ Cloud connected (live links on).') : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
