@@ -598,7 +598,25 @@ $('#logoFile').addEventListener('change', async e => {
 });
 $('#btnRemoveLogo').addEventListener('click', () => { Store.setShop({ logo: '', logoSmall: '' }); $('#logoPreview').src = 'assets/logo.png'; applyBranding(); toast('Default logo laga diya'); });
 
+function genSyncId() {
+  const a = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < 10; i++) s += a[Math.floor(Math.random() * a.length)];
+  return 'altariq-' + s;
+}
+// Jaise hi Cloud Sync ON karo, agar Sync ID khaali hai to khud ban jaye.
+$('#setCloudEnabled').addEventListener('change', () => {
+  if ($('#setCloudEnabled').checked && !$('#setCloudSyncId').value.trim()) {
+    $('#setCloudSyncId').value = genSyncId();
+    $('#cloudStatus').textContent = '🔑 Sync ID ban gayi. Ye ID Abu ke phone par bhi wahi daalein. Ab Test → Save.';
+  }
+});
+
 $('#saveSettings').addEventListener('click', async () => {
+  // Sync on hai magar ID khaali → khud bana do (taake kabhi blank na rahe)
+  if ($('#setCloudEnabled').checked && !$('#setCloudSyncId').value.trim()) {
+    $('#setCloudSyncId').value = genSyncId();
+  }
   const cloud = {
     enabled: $('#setCloudEnabled').checked,
     config: $('#setCloudConfig').value.trim(),
@@ -615,10 +633,12 @@ $('#saveSettings').addEventListener('click', async () => {
     cloud
   });
   applyBranding(); toast('Settings save ho gayi ✅');
-  if (!Cloud.isReady()) {
-    const r = await Cloud.init(onCloudRemote);
-    if (r && r.ok) $('#cloudStatus').textContent = '☁️ Cloud connect ho gaya ✅';
-    else if (cloud.enabled) $('#cloudStatus').textContent = 'Cloud connect fail: ' + ((r && r.error) || '');
+  const r = Cloud.isReady() ? { ok: true } : await Cloud.init(onCloudRemote);
+  if (cloud.enabled && cloud.syncId) {
+    if (r && r.ok) $('#cloudStatus').textContent = '☁️ Sync ON ✅  Aapki Sync ID: ' + cloud.syncId + '  — yehi ID Abu ke phone par daalein.';
+    else $('#cloudStatus').textContent = 'Cloud connect fail: ' + ((r && r.error) || '');
+  } else if (r && r.ok) {
+    $('#cloudStatus').textContent = '☁️ Cloud connect ho gaya ✅';
   }
 });
 $('#btnCloudTest').addEventListener('click', async () => {
