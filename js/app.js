@@ -188,10 +188,11 @@ $('#btnReminders').addEventListener('click', () => {
   }
   openModal('reminderModal');
 });
-function sendReminder(custId) {
+async function sendReminder(custId) {
   const c = Store.getCustomer(custId); if (!c) return;
   const phone = intlPhone(c.phone);
   if (!phone) { toast('Is customer ka number add karein'); return; }
+  await ensurePublished(c);
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
@@ -516,14 +517,23 @@ function shareBase() {
 function buildViewerLink(c) { return shareBase() + '/view.html#d=' + encodeData(sharePayload(c)); }
 
 // PERMANENT live link if Firebase is active (customer sees current hisaab anytime),
-// else falls back to the snapshot link.
+// else falls back to the snapshot link. NOTE: link banana aur publish karna alag hai —
+// publish ko hamesha AWAIT karo (ensurePublished) warna WhatsApp khulte hi write mar jati hai.
 function shareLinkFor(party) {
   if (Cloud.isReady()) {
     const token = Store.ensureShareId(currentKind, party.id);
-    Cloud.publishShare(token, sharePayload(party));
     return shareBase() + '/view.html?id=' + token;
   }
   return buildViewerLink(party);
+}
+// Customer ko link dene se PEHLE data cloud par likh do, aur likhne ka intezaar karo.
+// Agar internet slow/off ho to zyada se zyada 5s ruko, phir bhi WhatsApp khol do.
+async function ensurePublished(party) {
+  if (!party || !Cloud.isReady()) return;
+  const token = Store.ensureShareId(currentKind, party.id);
+  const timeout = new Promise(res => setTimeout(res, 5000));
+  try { await Promise.race([Cloud.publishShare(token, sharePayload(party)), timeout]); }
+  catch (e) { console.warn('publish', e); }
 }
 function republishIfShared(party) {
   if (party && party.shareId && Cloud.isReady()) Cloud.publishShare(party.shareId, sharePayload(party));
@@ -543,6 +553,7 @@ async function sendEntryNotification(custId, entry) {
   const c = Store.getCustomer(custId); if (!c) return;
   const phone = intlPhone(c.phone);
   if (!phone) { toast('WhatsApp ke liye customer ka number add karein'); return; }
+  await ensurePublished(c);
   const msg = entryMessage(c, entry);
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
@@ -554,14 +565,17 @@ async function sendEntryNotification(custId, entry) {
   }
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
-$('#btnWhatsApp').addEventListener('click', () => {
+$('#btnWhatsApp').addEventListener('click', async () => {
   const c = curParty();
-  const phone = intlPhone(c.phone), shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
+  const phone = intlPhone(c.phone);
+  await ensurePublished(c);
+  const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 });
 $('#btnCopyLink').addEventListener('click', async () => {
+  await ensurePublished(curParty());
   const link = shareLinkFor(curParty());
   try { await navigator.clipboard.writeText(link); toast('Link copy ho gaya ✅'); } catch (e) { prompt('Link copy karein:', link); }
 });
