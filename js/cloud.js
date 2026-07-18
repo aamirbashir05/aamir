@@ -47,12 +47,16 @@ const Cloud = (() => {
   }
 
   /* ---- dataset sync (optional) ---- */
-  function localNewer(remote) { return new Date(Store.getData().updatedAt || 0) >= new Date(remote.updatedAt || 0); }
+  // Union-merge remote into local so NO entry is ever lost from either device.
+  // If the merge added anything, push the combined result back up so the other
+  // device also converges to the union.
   async function pull(sd) {
     if (!sd || !sd.payload) return false;
     let rd; try { rd = JSON.parse(sd.payload); } catch (e) { return false; }
-    if (localNewer(rd)) return false;
-    Store.replaceAll(rd); if (onRemote) onRemote(); return true;
+    let changed = false;
+    try { changed = Store.mergeRemote(rd); } catch (e) { console.warn('merge', e); return false; }
+    if (changed) { if (onRemote) onRemote(); schedulePush(); }
+    return changed;
   }
   async function push() {
     if (!docRef) return;

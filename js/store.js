@@ -129,6 +129,44 @@ const Store = (() => {
   function getData() { return data; }
   function replaceAll(d) { data = migrate(d); persist(false); }
 
+  /* ---- Safe MERGE for multi-device sync (never lose entries) ---- */
+  function mergeById(a, b) {
+    a = a || []; b = b || [];
+    const m = new Map();
+    a.forEach(t => m.set(t.id, t));
+    b.forEach(t => { if (!m.has(t.id)) m.set(t.id, t); });
+    return [...m.values()];
+  }
+  function mergeParties(a, b) {
+    a = a || []; b = b || [];
+    const m = new Map();
+    a.forEach(p => m.set(p.id, p));
+    b.forEach(p => {
+      if (!m.has(p.id)) { m.set(p.id, p); return; }
+      const x = m.get(p.id);
+      x.txns = mergeById(x.txns, p.txns).sort((u, v) => new Date(u.date) - new Date(v.date));
+      x.quotes = mergeById(x.quotes, p.quotes).sort((u, v) => new Date(v.date) - new Date(u.date));
+      if (!x.name && p.name) x.name = p.name;
+      if (!x.phone && p.phone) x.phone = p.phone;
+      if (!x.shareId && p.shareId) x.shareId = p.shareId;
+    });
+    return [...m.values()];
+  }
+  // Union-merge a remote copy into local; returns true if anything changed.
+  function mergeRemote(remote) {
+    try { remote = migrate(remote); } catch (e) { return false; }
+    const before = JSON.stringify(data);
+    data.customers = mergeParties(data.customers, remote.customers);
+    data.suppliers = mergeParties(data.suppliers, remote.suppliers);
+    data.items = mergeById(data.items, remote.items);
+    if (new Date(remote.updatedAt || 0) > new Date(data.updatedAt || 0)) {
+      data.shop = Object.assign({}, data.shop, remote.shop || {});
+    }
+    const changed = JSON.stringify(data) !== before;
+    if (changed) persist(false);
+    return changed;
+  }
+
   async function maybeSnapshot() {
     const now = Date.now();
     if (now - lastSnapTs < 45000) return; // throttle: at most ~1/45s
@@ -268,7 +306,7 @@ const Store = (() => {
   }
 
   return {
-    init, save, onSave, getData, replaceAll,
+    init, save, onSave, getData, replaceAll, mergeRemote,
     getShop, setShop,
     getParties, getParty, addParty, updateParty, deleteParty, addPartyTxn, deletePartyTxn,
     ensureShareId,
