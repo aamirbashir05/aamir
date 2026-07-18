@@ -1,5 +1,5 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v9';
+const CACHE = 'altariq-hisaab-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -33,14 +33,18 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Our own files: network-first (always latest when online, cache offline fallback)
+  // Our own files: stale-while-revalidate — cache se FORAN do (app turant khule),
+  // background me network se taza kar lo (agli dafa nayi code mil jaye).
   if (url.origin === location.origin) {
     e.respondWith(
-      fetch(e.request).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
-        return res;
-      }).catch(() => caches.match(e.request))
+      caches.match(e.request).then(cached => {
+        const network = fetch(e.request).then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+          return res;
+        }).catch(() => cached);
+        return cached || network;
+      })
     );
     return;
   }
