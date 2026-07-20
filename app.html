@@ -104,6 +104,15 @@
       </div>
 
       <div class="card-block">
+        <div class="section-title">🔒 App Lock (PIN)</div>
+        <div class="settings-note" id="lockStatus">App par PIN lagayein — sirf aap aur Abu (jinke paas PIN ho) khol sakein.</div>
+        <div class="modal-actions" style="margin-top:10px;">
+          <button class="cancel" id="btnSetPin" style="flex:1;">🔑 PIN set / badlein</button>
+          <button class="cancel" id="btnRemovePin" style="flex:1;">❌ PIN hataayein</button>
+        </div>
+      </div>
+
+      <div class="card-block">
         <div class="section-title">Data Safety</div>
         <div class="settings-note" id="storageInfo">Aap ka data phone me mehfooz hai.</div>
         <div class="modal-actions" style="margin-top:10px;">
@@ -258,6 +267,16 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <div id="lockScreen" class="lock hidden">
+    <div class="lock-box">
+      <img src="assets/mark.png" class="lock-logo" alt="logo">
+      <div class="lock-title">Al Tariq Printers</div>
+      <div class="lock-sub" id="lockSub">PIN daalein</div>
+      <div class="lock-dots" id="lockDots"></div>
+      <div class="lock-pad" id="lockPad"></div>
+    </div>
+  </div>
 
   <script src="js/firebase-config.js"></script>
   <script src="js/logo.js"></script>

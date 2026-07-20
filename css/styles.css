@@ -267,3 +267,20 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 
 /* Card tilt/press */
 .cust, .txn, .quote, .recent, .mini, .sum-card { transition: transform .12s ease, border-color .2s ease, box-shadow .2s ease; }
+
+/* ---------- App Lock (PIN) ---------- */
+.lock{position:fixed;inset:0;z-index:1000;background:var(--bg,#0b0c10);display:flex;align-items:center;justify-content:center;padding:24px}
+.lock.hidden{display:none}
+.lock-box{text-align:center;width:100%;max-width:320px}
+.lock-logo{width:76px;height:76px;object-fit:contain;margin-bottom:14px;filter:drop-shadow(0 6px 18px rgba(231,162,76,.35))}
+.lock-title{font-size:21px;font-weight:800;color:var(--gold,#e7a24c);letter-spacing:.5px}
+.lock-sub{color:var(--muted,#9a9488);margin:8px 0 26px;font-size:14px}
+.lock-err{color:#e05656;font-weight:700}
+.lock-dots{display:flex;gap:16px;justify-content:center;margin-bottom:30px}
+.lock-dots i{width:15px;height:15px;border-radius:50%;border:2px solid var(--gold,#e7a24c);display:inline-block}
+.lock-dots i.on{background:var(--gold,#e7a24c)}
+.lock-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lock-pad button{padding:18px 0;font-size:24px;font-weight:800;border-radius:16px;border:1px solid var(--border,#211d12);
+  background:#0e0f14;color:var(--text,#f4f2ee);cursor:pointer;transition:.12s}
+.lock-pad button:active{background:rgba(231,162,76,.25);transform:scale(.96)}
+.lock-pad .lk-empty{visibility:hidden}

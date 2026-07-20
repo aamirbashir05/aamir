@@ -606,6 +606,9 @@ function loadSettings() {
   $('#logoPreview').src = s.logo || 'assets/logo.png';
   const lb = Store.lastBackup();
   $('#storageInfo').textContent = 'Data phone me mehfooz hai. ' + (lb ? 'Aakhri backup: ' + fmtDateTime(new Date(lb).toISOString()) : 'Abhi tak file-backup nahi hua.');
+  $('#lockStatus').textContent = Store.getShop().pinHash
+    ? '🔒 App Lock ON hai — har baar kholne par PIN maanga jayega. (Ye PIN Abu ke phone par bhi lag jayega.)'
+    : 'App par PIN lagayein — sirf aap aur Abu (jinke paas PIN ho) khol sakein.';
 }
 $('#btnUploadLogo').addEventListener('click', () => $('#logoFile').click());
 $('#logoFile').addEventListener('change', async e => {
@@ -668,13 +671,58 @@ $('#btnCloudTest').addEventListener('click', async () => {
   const r = await Cloud.testConnect($('#setCloudConfig').value.trim(), $('#setCloudSyncId').value.trim());
   $('#cloudStatus').textContent = r.ok ? '✅ Connection theek hai. Ab Save karein.' : ('❌ Fail: ' + (r.error || ''));
 });
+$('#btnSetPin').addEventListener('click', () => showLock('set1'));
+$('#btnRemovePin').addEventListener('click', () => {
+  if (!Store.getShop().pinHash) { toast('Koi PIN set nahi hai'); return; }
+  const p = prompt('Tasdeeq ke liye mojooda PIN daalein:');
+  if (p == null) return;
+  if (hashPin(p.trim()) === Store.getShop().pinHash) { Store.setShop({ pinHash: '' }); toast('🔓 App Lock hata diya'); loadSettings(); }
+  else toast('Ghalat PIN');
+});
 function onCloudRemote() {
   // remote data adopted — refresh whatever is on screen
   if (activeNav === 'overview') renderOverview();
   else if (activeNav === 'accounts') renderAccounts();
   else if (activeNav === 'rates') renderRates();
   if (currentCustId && !$('#detailView').classList.contains('hidden')) renderDetail();
+  maybeLock(); // agar doosre device se PIN aaya to lock laga do
   toast('☁️ Doosre device se data update hua');
+}
+
+/* ---------- App Lock (PIN) — sirf owner + Abu khol sakein ---------- */
+function hashPin(p) { let h = 5381; for (let i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) >>> 0; return 'p' + h.toString(36); }
+let lockEntry = '', lockMode = 'unlock', lockSet1 = '';
+function renderLockDots() { const n = lockEntry.length; $('#lockDots').innerHTML = [0, 1, 2, 3].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join(''); }
+function buildLockPad() {
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
+  $('#lockPad').innerHTML = keys.map(k => k ? `<button data-k="${k}">${k}</button>` : '<span class="lk-empty"></span>').join('');
+  $$('#lockPad button').forEach(b => b.addEventListener('click', () => lockKey(b.dataset.k)));
+}
+function lockKey(k) {
+  if (k === '⌫') { lockEntry = lockEntry.slice(0, -1); renderLockDots(); return; }
+  if (lockEntry.length >= 4) return;
+  lockEntry += k; renderLockDots();
+  if (lockEntry.length === 4) setTimeout(lockSubmit, 130);
+}
+function lockSubmit() {
+  const pin = lockEntry; lockEntry = '';
+  if (lockMode === 'unlock') {
+    if (hashPin(pin) === Store.getShop().pinHash) { sessionStorage.setItem('altariq_unlocked', '1'); $('#lockScreen').classList.add('hidden'); }
+    else { $('#lockSub').innerHTML = '<span class="lock-err">Ghalat PIN — dobara koshish karein</span>'; renderLockDots(); }
+  } else if (lockMode === 'set1') {
+    lockSet1 = pin; lockMode = 'set2'; $('#lockSub').textContent = 'Tasdeeq ke liye PIN dobara daalein'; renderLockDots();
+  } else if (lockMode === 'set2') {
+    if (pin === lockSet1) { Store.setShop({ pinHash: hashPin(pin) }); sessionStorage.setItem('altariq_unlocked', '1'); $('#lockScreen').classList.add('hidden'); toast('🔒 App Lock ON — ab PIN ke bagair nahi khulega'); }
+    else { lockMode = 'set1'; lockSet1 = ''; $('#lockSub').innerHTML = '<span class="lock-err">PIN match nahi — naya PIN set karein</span>'; renderLockDots(); }
+  }
+}
+function showLock(mode) {
+  buildLockPad(); lockMode = mode; lockEntry = ''; lockSet1 = '';
+  $('#lockSub').textContent = mode === 'unlock' ? 'PIN daalein' : 'Naya 4-digit PIN set karein';
+  renderLockDots(); $('#lockScreen').classList.remove('hidden');
+}
+function maybeLock() {
+  if (Store.getShop().pinHash && sessionStorage.getItem('altariq_unlocked') !== '1') showLock('unlock');
 }
 
 function doExport() {
@@ -715,6 +763,7 @@ $('#btnSnapshots').addEventListener('click', async () => {
 /* ---------- Boot ---------- */
 (async function boot() {
   await Store.init();
+  maybeLock(); // PIN lock (agar set hai) — sab se pehle
   const s = Store.getShop();
   if (!s.viewerBase && location.protocol.startsWith('http')) {
     Store.setShop({ viewerBase: location.origin + location.pathname.replace(/\/[^\/]*\.html.*$/, "").replace(/\/$/, '') });
