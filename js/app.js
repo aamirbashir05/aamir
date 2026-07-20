@@ -153,23 +153,6 @@ function renderOverview() {
   // backup reminder banner (if no backup in last 24h and there is data)
   const stale = (Date.now() - Store.lastBackup()) > 86400000;
   $('#backupBanner').classList.toggle('hidden', !(stale && customers > 0));
-
-  const list = $('#ovRecent');
-  const show = recent.slice(0, 12);
-  if (show.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="big">📊</div>Abhi koi lein-dein nahi.<br>"Accounts" me customer add karke shuru karein.</div>`;
-    return;
-  }
-  list.innerHTML = show.map(t => {
-    const d = t.type === 'debit';
-    const dl = t.kind === 'supplier' ? (d ? 'Maal Liya' : 'Paisa Diya') : (d ? 'Maal Diya' : 'Paisay Milay');
-    const badge = t.kind === 'supplier' ? ' <span style="font-size:10px;color:#6d28d9">Supplier</span>' : '';
-    return `<div class="recent ${t.type}" data-cust="${t.custId}" data-kind="${t.kind || 'customer'}">
-      <div class="r-ic">${d ? '↑' : '↓'}</div>
-      <div class="r-info"><div class="r-name">${esc(t.custName)}${badge}</div><div class="r-date">${esc(t.note) || dl} • ${fmtDate(t.date)}</div></div>
-      <div class="r-amt ${d ? 'neg' : 'pos'}">${d ? '−' : '+'}${fmtMoney(t.amount)}</div></div>`;
-  }).join('');
-  $$('#ovRecent .recent').forEach(el => el.addEventListener('click', () => openDetail(el.dataset.kind, el.dataset.cust)));
 }
 $('#ovSettings').addEventListener('click', () => nav('settings'));
 $('#bannerBackup').addEventListener('click', doExport);
