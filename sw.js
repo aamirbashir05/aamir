@@ -1,8 +1,7 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v13';
+const CACHE = 'altariq-hisaab-v14';
 const ASSETS = [
-  './',
-  './index.html',
+  './app.html',
   './view.html',
   './manifest.json',
   './css/styles.css',
@@ -33,9 +32,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // view.html (customer ka hisaab page): NETWORK-FIRST — hamesha taza, taake purani
-  // cache ki wajah se customer ko ghalat/NaN data na dikhe. Offline par cache fallback.
-  if (url.origin === location.origin && url.pathname.endsWith('view.html')) {
+  // Customer page (view.html) aur marketing website (index.html/root): NETWORK-FIRST —
+  // hamesha taza. Offline par cache fallback.
+  const p = url.pathname;
+  if (url.origin === location.origin &&
+      (p.endsWith('view.html') || p.endsWith('index.html') || p === '/' || p.endsWith('/'))) {
     e.respondWith(
       fetch(e.request).then(res => {
         const copy = res.clone();

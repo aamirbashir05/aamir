@@ -530,7 +530,7 @@ function sharePayload(c) {
 function shareBase() {
   const shop = Store.getShop();
   let base = (shop.viewerBase || '').trim();
-  if (!base) base = location.origin + location.pathname.replace(/\/index\.html.*$/, '').replace(/\/$/, '');
+  if (!base) base = location.origin + location.pathname.replace(/\/[^\/]*\.html.*$/, "").replace(/\/$/, '');
   return base.replace(/\/+$/, '');
 }
 // SNAPSHOT link (data baked into URL) — used when cloud is off
@@ -734,7 +734,7 @@ $('#btnSnapshots').addEventListener('click', async () => {
   await Store.init();
   const s = Store.getShop();
   if (!s.viewerBase && location.protocol.startsWith('http')) {
-    Store.setShop({ viewerBase: location.origin + location.pathname.replace(/\/index\.html.*$/, '').replace(/\/$/, '') });
+    Store.setShop({ viewerBase: location.origin + location.pathname.replace(/\/[^\/]*\.html.*$/, "").replace(/\/$/, '') });
   }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   applyBranding();

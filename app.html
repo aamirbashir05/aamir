@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17181d">
+  <title>Al Tariq Printers — Hisaab</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ============ OVERVIEW ============ -->
+  <div class="view" id="overviewView">
+    <div class="topbar light">
+      <img class="brand-logo" id="ovLogo" alt="logo">
+      <h1 id="ovShopName">Al Tariq Printers</h1>
+      <button class="icon-btn dark" id="ovSettings" title="Settings">⚙️</button>
+    </div>
+    <div class="wrap">
+      <div id="backupBanner" class="banner hidden">
+        ⚠️ Aaj ka backup save nahi hua. <button id="bannerBackup">Backup Save</button>
+      </div>
+      <div class="summary">
+        <div class="sum-card lena"><div class="label">Total Lena</div><div class="val" id="ovLena">Rs 0</div></div>
+        <div class="sum-card dena"><div class="label">Total Dena</div><div class="val" id="ovDena">Rs 0</div></div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini"><div class="m-val" id="ovCustCount">0</div><div class="m-lbl">Customers</div></div>
+        <div class="mini"><div class="m-val" id="ovTodayCount">0</div><div class="m-lbl">Aaj ki entries</div></div>
+        <div class="mini"><div class="m-val" id="ovNet">Rs 0</div><div class="m-lbl">Net Baqaya</div></div>
+      </div>
+      <button class="reminder-btn" id="btnReminders">🔔 Udhaar Reminders bhejein</button>
+      <div class="section-title">Haaliya Lein-Dein</div>
+      <div class="list" id="ovRecent"></div>
+    </div>
+  </div>
+
+  <!-- ============ ACCOUNTS ============ -->
+  <div class="view hidden" id="accountsView">
+    <div class="topbar light"><h1>Accounts</h1><button class="add-contact" id="btnAddCust">+ Naya Customer</button></div>
+    <div class="wrap">
+      <div class="seg" id="partySeg">
+        <button data-kind="customer" class="active">Customers</button>
+        <button data-kind="supplier">Suppliers</button>
+      </div>
+      <input class="search" id="searchBox" placeholder="🔍 Customer dhoondein...">
+      <div class="list" id="custList"></div>
+    </div>
+  </div>
+
+  <!-- ============ RATES / QUOTATIONS ============ -->
+  <div class="view hidden" id="ratesView">
+    <div class="topbar light"><h1>Rates</h1></div>
+    <div class="wrap">
+      <p class="hint">Customer ko jo rate diya wo yahan mehfooz — Abu ko yaad rakhne ke liye. Customer ke naam ya kaam se dhoondein.</p>
+      <input class="search" id="rateSearch" placeholder="🔍 Customer ya kaam dhoondein...">
+      <div class="list" id="rateList"></div>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="view hidden" id="settingsView">
+    <div class="topbar light"><h1>Settings</h1></div>
+    <div class="wrap">
+      <div class="card-block">
+        <div class="section-title">Business & Branding</div>
+        <div class="logo-row">
+          <img class="logo-preview" id="logoPreview" alt="logo">
+          <div>
+            <button class="cancel" id="btnUploadLogo">Logo Upload</button>
+            <button class="cancel" id="btnRemoveLogo" style="margin-top:6px;">Logo Hatayein</button>
+            <input type="file" id="logoFile" accept="image/*" class="hidden">
+          </div>
+        </div>
+        <div class="field"><label>Business ka Naam</label><input id="setShopName" placeholder="Al Tariq Printers"></div>
+        <div class="field"><label>Aap ka Mobile Number</label><input id="setShopPhone" type="tel" placeholder="03XX-XXXXXXX"></div>
+        <div class="field"><label>Link ka Web Address</label><input id="setViewerBase" placeholder="https://username.github.io/aamir">
+          <div class="settings-note">App ko isi address se kholenge to khud bhar jayega.</div></div>
+        <div class="field"><label>Business Link (message me naam ke sath jayega)</label><input id="setBizLink" placeholder="https://share.google/..."></div>
+        <div class="field"><label>Payment / Account Details (message me niche aayega)</label>
+          <textarea id="setPaymentInfo" rows="8" placeholder="Raast ID = ...&#10;Easypaisa = ..."></textarea></div>
+      </div>
+
+      <div class="card-block">
+        <div class="section-title">WhatsApp Notification</div>
+        <label class="switch-row"><span>Har entry par WhatsApp khud khole</span><input type="checkbox" id="setAutoWa"></label>
+        <div class="settings-note">On: hisaab enter karte hi message + link tayyar, aap send dabayein.</div>
+        <div class="field" style="margin-top:14px;"><label>Full-Auto Backend URL (optional)</label>
+          <input id="setWaEndpoint" placeholder="https://aap-ka-server.com/send">
+          <div class="settings-note">Sirf WhatsApp Business API server ke liye. Bharne par message bina tap chala jaye.</div></div>
+      </div>
+
+      <div class="card-block">
+        <div class="section-title">☁️ Cloud Sync — data har device par safe</div>
+        <label class="switch-row"><span>Cloud sync on karein</span><input type="checkbox" id="setCloudEnabled"></label>
+        <div class="field" style="margin-top:12px;"><label>Sync ID</label>
+          <input id="setCloudSyncId" placeholder="misaal: altariq-9x7k2"></div>
+        <div class="field"><label>Firebase Config</label>
+          <textarea id="setCloudConfig" rows="6" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", "appId": "..." }'></textarea>
+          <div class="settings-note">Setup guide: <b>CLOUD-SETUP.md</b>. Free Firebase project banayein, config yahan paste karein, Sync ID same rakhein har device par. Test karke Save.</div></div>
+        <div class="modal-actions"><button class="cancel" id="btnCloudTest" style="flex:1;">🔌 Connection Test</button></div>
+        <div class="settings-note" id="cloudStatus"></div>
+      </div>
+
+      <div class="card-block">
+        <div class="section-title">Data Safety</div>
+        <div class="settings-note" id="storageInfo">Aap ka data phone me mehfooz hai.</div>
+        <div class="modal-actions" style="margin-top:10px;">
+          <button class="cancel" id="btnExport" style="flex:1;">⬇️ Backup Save</button>
+          <button class="cancel" id="btnImport" style="flex:1;">⬆️ Backup Load</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" class="hidden">
+        <button class="cancel" id="btnSnapshots" style="width:100%; margin-top:10px;">🕘 Purani Backups</button>
+        <div class="settings-note" style="margin-top:10px;">Mashwara: hafte me ek dafa backup file Google Drive/WhatsApp par bhi rakh lein. Cloud sync chahiye to bata dein.</div>
+      </div>
+
+      <button class="save" id="saveSettings" style="width:100%; padding:15px; margin-top:6px;">Settings Save Karein</button>
+    </div>
+  </div>
+
+  <!-- ============ DETAIL ============ -->
+  <div class="view hidden" id="detailView">
+    <div class="topbar light">
+      <button class="back" id="btnBack">‹</button>
+      <h1 id="detailTitle">Customer</h1>
+      <button class="icon-btn dark" id="btnEditCust" title="Edit">✏️</button>
+    </div>
+    <div class="wrap">
+      <div class="detail-head">
+        <div class="name" id="dName"></div>
+        <div class="phone" id="dPhone"></div>
+        <div class="balance-box" id="dBalanceBox"><div class="b-label" id="dBalLabel"></div><div class="b-amt" id="dBalAmt"></div></div>
+      </div>
+      <div class="share-row">
+        <button class="btn btn-wa" id="btnWhatsApp">💬 Hisaab bhejein</button>
+        <button class="btn btn-link" id="btnCopyLink">🔗 Link Copy</button>
+      </div>
+
+      <input class="search" id="detailSearch" placeholder="🔍 Is account me dhoondein...">
+      <div class="tabs">
+        <button class="tab active" data-tab="txns">Lein-Dein</button>
+        <button class="tab" data-tab="quotes">Rates diye</button>
+      </div>
+      <div id="txnPane">
+        <div class="txn-list" id="txnList"></div>
+      </div>
+      <div id="quotePane" class="hidden">
+        <button class="add-quote" id="btnAddQuote">+ Rate likhein</button>
+        <div class="txn-list" id="quoteList"></div>
+      </div>
+    </div>
+    <div class="detail-actions" id="detailActions">
+      <button class="btn act-debit" id="btnGave">− Maal Diya</button>
+      <button class="btn act-credit" id="btnGot">+ Paisay Milay</button>
+    </div>
+  </div>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav class="bottomnav" id="bottomnav">
+    <button data-nav="overview" class="active"><span>📊</span>Overview</button>
+    <button data-nav="accounts"><span>📒</span>Accounts</button>
+    <button data-nav="rates"><span>🧾</span>Rates</button>
+    <button data-nav="settings"><span>⚙️</span>Settings</button>
+  </nav>
+
+  <!-- ============ MODALS ============ -->
+  <div class="modal-bg" id="custModal">
+    <div class="modal">
+      <h2 id="custModalTitle">Naya Customer</h2>
+      <div class="field"><label>Naam</label><input id="custName" placeholder="Customer ka naam" autocomplete="off"></div>
+      <div class="field"><label>Mobile Number</label>
+        <div class="phone-row">
+          <input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off">
+          <button type="button" id="custPickContact" class="pick-contact" title="Contacts se number chuno">👤 Contacts</button>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveCust">Save</button></div>
+      <div class="modal-actions" id="deleteCustRow" style="margin-top:10px;"><button class="save danger" id="deleteCust" style="flex:1;">🗑 Customer Delete</button></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="txnModal">
+    <div class="modal">
+      <h2 id="txnModalTitle">Lein-Dein</h2>
+      <div class="type-toggle"><button id="typeDebit">− Maal Diya</button><button id="typeCredit">+ Paisay Milay</button></div>
+      <div class="field"><label>Raqam (Rs) — calculator use karein</label>
+        <input id="txnAmount" class="amount-input" readonly value="0">
+        <div class="calc-eq" id="txnEq"></div>
+        <div class="calc-pad" id="txnPad"></div>
+      </div>
+      <div class="field"><label>Tafseel / Note (optional)</label><input id="txnNote" placeholder="Misaal: Visiting cards 1000" autocomplete="off"></div>
+      <div class="field"><label>Tareekh</label><input id="txnDate" type="date"></div>
+      <div class="field"><label>Tasveer (optional) — design/parchi ki photo</label>
+        <div class="img-btns">
+          <button type="button" class="img-btn" id="txnCamBtn">📷 Camera</button>
+          <button type="button" class="img-btn" id="txnGalBtn">🖼️ Gallery / File</button>
+        </div>
+        <input type="file" id="txnImageCam" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="txnImage" accept="image/*" class="hidden">
+        <img id="txnImgPreview" class="img-preview hidden">
+      </div>
+      <label class="switch-row"><span>💬 Entry ke baad WhatsApp bhejein</span><input type="checkbox" id="txnNotify" checked></label>
+      <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveTxn">Save & Bhejein</button></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="quoteModal">
+    <div class="modal">
+      <h2 id="quoteModalTitle">Rate likhein</h2>
+      <div class="field"><label>Kaam / Job</label><input id="quoteJob" placeholder="Misaal: 1000 Visiting Cards, matte" autocomplete="off"></div>
+      <div class="field"><label>Rate diya (Rs)</label><input id="quoteRate" class="amount-input" type="number" inputmode="decimal" placeholder="0"></div>
+      <div class="field"><label>Stage</label>
+        <select id="quoteStatus">
+          <option>Rate Diya</option>
+          <option>Confirmed</option>
+          <option>Design</option>
+          <option>File Aayi</option>
+          <option>Printing</option>
+          <option>Delivered</option>
+          <option>Cancelled</option>
+        </select></div>
+      <div class="field"><label>Note (optional)</label><input id="quoteNote" placeholder="Misaal: file mail par aayegi" autocomplete="off"></div>
+      <div class="field"><label>Tareekh</label><input id="quoteDate" type="date"></div>
+      <div class="field"><label>Tasveer (optional)</label>
+        <div class="img-btns">
+          <button type="button" class="img-btn" id="quoteCamBtn">📷 Camera</button>
+          <button type="button" class="img-btn" id="quoteGalBtn">🖼️ Gallery / File</button>
+        </div>
+        <input type="file" id="quoteImageCam" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="quoteImage" accept="image/*" class="hidden">
+        <img id="quoteImgPreview" class="img-preview hidden"></div>
+      <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveQuote">Save</button></div>
+      <div class="modal-actions" id="deleteQuoteRow" style="margin-top:10px;"><button class="save danger" id="deleteQuote" style="flex:1;">🗑 Rate Delete</button></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="snapModal">
+    <div class="modal">
+      <h2>Purani Backups</h2>
+      <p class="hint">Galti se kuch delete/kharab ho jaye to yahan se purana version wapas laa sakte hain.</p>
+      <div class="list" id="snapList"></div>
+      <div class="modal-actions"><button class="cancel" data-close>Band karein</button></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="reminderModal">
+    <div class="modal">
+      <h2>Udhaar Reminders</h2>
+      <p class="hint">Jin customers se lena hai. "Yaad dilayein" par WhatsApp reminder + hisaab link khul jayega.</p>
+      <div class="list" id="reminderList"></div>
+      <div class="modal-actions"><button class="cancel" data-close>Band karein</button></div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="imgModal">
+    <div class="modal" style="padding:10px;"><img id="imgFull" style="width:100%; border-radius:12px;"><div class="modal-actions"><button class="cancel" data-close>Band karein</button></div></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/logo.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

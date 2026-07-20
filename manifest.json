@@ -2,7 +2,7 @@
   "name": "Al Tariq Printers — Hisaab",
   "short_name": "Al Tariq Hisaab",
   "description": "Customers ka udhaar hisaab, rate memory aur WhatsApp PDF link",
-  "start_url": "./index.html",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
