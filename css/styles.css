@@ -226,6 +226,10 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .field input::placeholder, .field textarea::placeholder { color: #6f6a60; }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: rgba(231,162,76,.5); }
 .amount-input { font-size: 22px !important; font-weight: 800; text-align: center; }
+.phone-row { display: flex; gap: 8px; align-items: stretch; }
+.phone-row input { flex: 1; }
+.pick-contact { flex: 0 0 auto; white-space: nowrap; padding: 0 14px; border: 1px solid rgba(231,162,76,.5); border-radius: 10px; background: rgba(231,162,76,.12); color: var(--gold, #e7a24c); font-weight: 700; font-size: 13px; cursor: pointer; }
+.pick-contact:active { background: rgba(231,162,76,.25); }
 
 .type-toggle { display: flex; gap: 10px; margin-bottom: 14px; }
 .type-toggle button { flex: 1; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: #0e0f14; font-weight: 800; font-size: 15px; color: var(--muted); }

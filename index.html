@@ -171,7 +171,12 @@
     <div class="modal">
       <h2 id="custModalTitle">Naya Customer</h2>
       <div class="field"><label>Naam</label><input id="custName" placeholder="Customer ka naam" autocomplete="off"></div>
-      <div class="field"><label>Mobile Number</label><input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off"></div>
+      <div class="field"><label>Mobile Number</label>
+        <div class="phone-row">
+          <input id="custPhone" type="tel" placeholder="03XX-XXXXXXX" autocomplete="off">
+          <button type="button" id="custPickContact" class="pick-contact" title="Contacts se number chuno">👤 Contacts</button>
+        </div>
+      </div>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveCust">Save</button></div>
       <div class="modal-actions" id="deleteCustRow" style="margin-top:10px;"><button class="save danger" id="deleteCust" style="flex:1;">🗑 Customer Delete</button></div>
     </div>

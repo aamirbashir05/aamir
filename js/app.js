@@ -389,6 +389,26 @@ $('#deleteCust').addEventListener('click', () => {
   if (confirm('Ye account aur iska poora hisaab delete ho jayega. Yaqeen hai?')) { Store.deleteParty(currentKind, currentCustId); closeModal('custModal'); backFromDetail(); }
 });
 
+/* ---- Contacts se number chuno (Contact Picker API — Android Chrome) ---- */
+const contactsSupported = !!(navigator.contacts && navigator.contacts.select);
+(function setupContactPicker() {
+  const btn = $('#custPickContact');
+  if (!btn) return;
+  if (!contactsSupported) { btn.style.display = 'none'; return; }
+  btn.addEventListener('click', async () => {
+    try {
+      const sel = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+      if (!sel || !sel.length) return;
+      const ct = sel[0];
+      const tel = (ct.tel && ct.tel[0]) ? String(ct.tel[0]).replace(/[^\d+]/g, '') : '';
+      const nm = (ct.name && ct.name[0]) ? ct.name[0] : '';
+      if (tel) $('#custPhone').value = tel;
+      if (nm && !$('#custName').value.trim()) $('#custName').value = nm;
+      if (!tel) toast('Is contact me number nahi mila');
+    } catch (e) { /* user ne cancel kiya ya ijazat nahi di */ }
+  });
+})();
+
 /* ---------- Transactions + image + auto WhatsApp ---------- */
 function openTxn(type) {
   txnType = type;
