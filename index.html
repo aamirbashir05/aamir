@@ -27,7 +27,8 @@
   body{background:var(--bg);color:var(--white);
     font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   a{color:inherit;text-decoration:none}
-  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+  /* fluid: har screen (mobile/laptop/PC/ultra-wide) par poori width bhare, sides khali na hon */
+  .wrap{width:100%;max-width:none;margin:0 auto;padding:0 clamp(18px,4.5vw,110px)}
   section{position:relative;perspective:1300px}
   .gold{background:linear-gradient(180deg,var(--gold1) 0%,var(--gold) 50%,var(--gold2) 100%);
     -webkit-background-clip:text;background-clip:text;color:transparent}
