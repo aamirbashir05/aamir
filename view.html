@@ -125,7 +125,9 @@
         firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
         const doc = await firebase.firestore().collection('share').doc(token).get();
         if (!doc.exists || !doc.data().data) { showErr('Hisaab nahi mila. Naya link mangwayein.', '📄'); return; }
-        renderData(norm(doc.data().data));
+        let raw = doc.data().data;
+        if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (e) {} }
+        renderData(norm(raw));
       } catch (e) { showErr('Load nahi hua. Internet check karke dobara kholein.'); }
     }
     function render() {

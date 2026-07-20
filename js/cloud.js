@@ -75,7 +75,8 @@ const Cloud = (() => {
   /* ---- live share links ---- */
   async function publishShare(token, data) {
     if (!ready || !db || !token) return false;
-    try { await db.collection('share').doc(token).set({ data, updatedAt: new Date().toISOString() }); return true; }
+    // JSON string me store karo — Firestore nested arrays (txn payload) ko allow nahi karta.
+    try { await db.collection('share').doc(token).set({ data: JSON.stringify(data), updatedAt: new Date().toISOString() }); return true; }
     catch (e) { console.warn('publishShare', e); return false; }
   }
   async function fetchShare(token) {
