@@ -147,8 +147,11 @@
       const balLbl = b > 0 ? 'Aap par baqi hai (Total Lena)'
                     : b < 0 ? 'Dukan ke zimmay hai' : 'Hisaab barabar hai';
 
+      // Running balance chronological (purana->naya) compute karo, phir NAYA UPAR dikhane
+      // ke liye rows ko ulta kar do (har row ka apna sahi baqaya rehta hai).
       let running = 0;
-      const rows = (data.txns || []).map(t => {
+      const sorted = (data.txns || []).slice().sort((x, y) => new Date(x.d) - new Date(y.d));
+      const rows = sorted.map(t => {
         const isDebit = t.y === 'debit';
         running += isDebit ? t.a : -t.a;
         return `<tr>
@@ -158,7 +161,7 @@
           <td class="r ${!isDebit ? 'credit' : ''}">${!isDebit ? fmtMoney(t.a) : ''}</td>
           <td class="r">${fmtMoney(running)}</td>
         </tr>`;
-      }).join('');
+      }).reverse().join('');
 
       document.title = 'Hisaab — ' + (data.name || '');
 
