@@ -1,5 +1,5 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v12';
+const CACHE = 'altariq-hisaab-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -33,6 +33,18 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  // view.html (customer ka hisaab page): NETWORK-FIRST — hamesha taza, taake purani
+  // cache ki wajah se customer ko ghalat/NaN data na dikhe. Offline par cache fallback.
+  if (url.origin === location.origin && url.pathname.endsWith('view.html')) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
   // Our own files: stale-while-revalidate — cache se FORAN do (app turant khule),
   // background me network se taza kar lo (agli dafa nayi code mil jaye).
   if (url.origin === location.origin) {
