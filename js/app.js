@@ -147,16 +147,102 @@ function renderOverview() {
   $('#ovNet').textContent = fmtMoney(lena - dena);
   $('#ovNet').className = 'm-val ' + ((lena - dena) >= 0 ? 'pos' : 'neg');
 
-  const today = new Date().toDateString();
-  const recent = Store.recentTxns(50);
-  $('#ovTodayCount').textContent = recent.filter(t => new Date(t.date).toDateString() === today).length;
+  const today = localDay(new Date());
+  let tc = 0;
+  Store.getCustomers().forEach(c => (c.txns || []).forEach(t => { if (localDay(t.date) === today) tc++; }));
+  Store.getSuppliers().forEach(c => (c.txns || []).forEach(t => { if (localDay(t.date) === today) tc++; }));
+  $('#ovTodayCount').textContent = tc;
 
   // backup reminder banner (if no backup in last 24h and there is data)
   const stale = (Date.now() - Store.lastBackup()) > 86400000;
   $('#backupBanner').classList.toggle('hidden', !(stale && customers > 0));
+
+  renderOvPanel(); // agar koi panel khula hai to fresh rakho
 }
 $('#ovSettings').addEventListener('click', () => nav('settings'));
 $('#bannerBackup').addEventListener('click', doExport);
+
+/* local calendar day (yyyy-mm-dd) — timezone-safe */
+function localDay(iso) {
+  const d = new Date(iso);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* latest activity time (last txn) — sorting ke liye */
+function lastActivity(c) {
+  const t = c.txns;
+  if (t && t.length) return new Date(t[t.length - 1].date).getTime();
+  return 0;
+}
+
+/* ---------- Overview: tap-able boxes → niche list ---------- */
+let ovPanelType = null;
+let ovDateFilter = ''; // yyyy-mm-dd (today panel)
+$$('#overviewView .tap').forEach(el => el.addEventListener('click', () => toggleOvPanel(el.dataset.panel)));
+
+function toggleOvPanel(type) {
+  if (ovPanelType === type) { ovPanelType = null; renderOvPanel(); return; }
+  ovPanelType = type;
+  if (type === 'today') ovDateFilter = '';
+  renderOvPanel();
+}
+function partyRowHtml(kind, c, rightHtml) {
+  return `<div class="cust" data-kind="${kind}" data-id="${c.id}">
+    <div class="avatar" style="background:${avatarColor(c.id)}">${initials(c.name)}</div>
+    <div class="info"><div class="name">${esc(c.name)}</div><div class="phone">${esc(c.phone) || '—'}</div></div>
+    ${rightHtml || ''}</div>`;
+}
+function renderOvPanel() {
+  const box = $('#ovPanel');
+  $$('#overviewView .tap').forEach(el => el.classList.toggle('sel', el.dataset.panel === ovPanelType));
+  if (!ovPanelType) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.classList.remove('hidden');
+
+  if (ovPanelType === 'lena' || ovPanelType === 'dena') {
+    // lena: customer b>0 + supplier b<0 ; dena: customer b<0 + supplier b>0
+    const rows = [];
+    Store.getCustomers().forEach(c => { const b = Store.balanceOf(c); if (ovPanelType === 'lena' ? b > 0 : b < 0) rows.push({ kind: 'customer', c, amt: Math.abs(b) }); });
+    Store.getSuppliers().forEach(c => { const b = Store.balanceOf(c); if (ovPanelType === 'lena' ? b < 0 : b > 0) rows.push({ kind: 'supplier', c, amt: Math.abs(b) }); });
+    rows.sort((a, b) => b.amt - a.amt); // sab se ziada balance upar, kam niche
+    const title = ovPanelType === 'lena' ? `Jin se LENA hai (${rows.length})` : `Jin ko DENA hai (${rows.length})`;
+    const cls = ovPanelType === 'lena' ? 'pos' : 'neg';
+    box.innerHTML = `<div class="ov-head">${title}</div>` + (rows.length
+      ? `<div class="list">` + rows.map(r => partyRowHtml(r.kind, r.c, `<div class="bal"><div class="amt ${cls}">${fmtMoney(r.amt)}</div></div>`)).join('') + `</div>`
+      : `<div class="empty" style="padding:20px;">Koi nahi 🎉</div>`);
+  }
+  else if (ovPanelType === 'customers') {
+    const list = Store.getCustomers().slice().sort((a, b) => lastActivity(b) - lastActivity(a));
+    box.innerHTML = `<div class="ov-head">Customers (${list.length}) — naam &amp; number</div>`
+      + `<div class="list">` + list.map(c => partyRowHtml('customer', c, '')).join('') + `</div>`;
+  }
+  else if (ovPanelType === 'today') {
+    const all = [];
+    Store.getCustomers().forEach(c => (c.txns || []).forEach(t => all.push({ t, c, kind: 'customer' })));
+    Store.getSuppliers().forEach(c => (c.txns || []).forEach(t => all.push({ t, c, kind: 'supplier' })));
+    const day = ovDateFilter || localDay(new Date());
+    const rows = all.filter(x => localDay(x.t.date) === day)
+      .sort((a, b) => new Date(b.t.date) - new Date(a.t.date));
+    const label = ovDateFilter ? fmtDate(ovDateFilter + 'T12:00:00') : 'Aaj';
+    box.innerHTML = `<div class="ov-head">${label} ki entries (${rows.length})
+        <input type="date" id="ovDate" class="ov-date" value="${day}"></div>`
+      + (rows.length
+        ? `<div class="list">` + rows.map(x => {
+            const d = x.t.type === 'debit';
+            return `<div class="cust" data-kind="${x.kind}" data-id="${x.c.id}">
+              <div class="t-icon ${x.t.type}">${d ? '↑' : '↓'}</div>
+              <div class="info"><div class="name">${esc(x.c.name)}</div><div class="phone">${esc(x.t.note) || (d ? 'Maal diya' : 'Paisay milay')} • ${fmtDateTime(x.t.date)}</div></div>
+              <div class="bal"><div class="amt ${d ? 'neg' : 'pos'}">${d ? '−' : '+'}${fmtMoney(x.t.amount)}</div></div></div>`;
+          }).join('') + `</div>`
+        : `<div class="empty" style="padding:20px;">Is din koi entry nahi</div>`);
+    const di = $('#ovDate');
+    if (di) di.addEventListener('change', e => { ovDateFilter = e.target.value; renderOvPanel(); });
+  }
+  // rows → open detail
+  $$('#ovPanel .cust').forEach(el => el.addEventListener('click', ev => {
+    if (ev.target.id === 'ovDate') return;
+    openDetail(el.dataset.kind, el.dataset.id);
+  }));
+}
 
 /* ---------- Udhaar reminders ---------- */
 $('#btnReminders').addEventListener('click', () => {
@@ -192,7 +278,8 @@ function renderAccounts() {
   const q = $('#searchBox').value.trim().toLowerCase();
   let custs = Store.getParties(accountsKind).slice();
   if (q) custs = custs.filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').includes(q));
-  custs.sort((a, b) => Math.abs(Store.balanceOf(b)) - Math.abs(Store.balanceOf(a)));
+  // Sab se latest entry wala account sab se upar (jaise jaise entry karte jao top par aata jaye)
+  custs.sort((a, b) => lastActivity(b) - lastActivity(a));
   const list = $('#custList');
   if (custs.length === 0) {
     const none = accountsKind === 'supplier' ? 'Abhi koi supplier nahi.<br>Upar "+ Naya Supplier".' : 'Abhi koi customer nahi.<br>Upar "+ Naya Customer".';
@@ -261,7 +348,9 @@ function quoteRowHtml(x, showCust) {
 }
 
 /* ---------- Detail ---------- */
+let detailReturn = 'accounts';
 function openDetail(kind, id) {
+  detailReturn = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : 'accounts';
   currentKind = kind || 'customer';
   currentCustId = id;
   const isCust = currentKind === 'customer';
@@ -277,7 +366,7 @@ function openDetail(kind, id) {
   $('#bottomnav').classList.add('hidden');
   showView('detailView');
 }
-function backFromDetail() { currentCustId = null; nav('accounts'); }
+function backFromDetail() { currentCustId = null; nav(detailReturn === 'settings' ? 'accounts' : detailReturn); }
 $('#btnBack').addEventListener('click', backFromDetail);
 
 function switchDetailTab(tab) {

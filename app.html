@@ -24,14 +24,15 @@
         ⚠️ Aaj ka backup save nahi hua. <button id="bannerBackup">Backup Save</button>
       </div>
       <div class="summary">
-        <div class="sum-card lena"><div class="label">Total Lena</div><div class="val" id="ovLena">Rs 0</div></div>
-        <div class="sum-card dena"><div class="label">Total Dena</div><div class="val" id="ovDena">Rs 0</div></div>
+        <div class="sum-card lena tap" data-panel="lena"><div class="label">Total Lena ›</div><div class="val" id="ovLena">Rs 0</div></div>
+        <div class="sum-card dena tap" data-panel="dena"><div class="label">Total Dena ›</div><div class="val" id="ovDena">Rs 0</div></div>
       </div>
       <div class="mini-stats">
-        <div class="mini"><div class="m-val" id="ovCustCount">0</div><div class="m-lbl">Customers</div></div>
-        <div class="mini"><div class="m-val" id="ovTodayCount">0</div><div class="m-lbl">Aaj ki entries</div></div>
+        <div class="mini tap" data-panel="customers"><div class="m-val" id="ovCustCount">0</div><div class="m-lbl">Customers</div></div>
+        <div class="mini tap" data-panel="today"><div class="m-val" id="ovTodayCount">0</div><div class="m-lbl">Aaj ki entries</div></div>
         <div class="mini"><div class="m-val" id="ovNet">Rs 0</div><div class="m-lbl">Net Baqaya</div></div>
       </div>
+      <div class="ov-panel hidden" id="ovPanel"></div>
       <button class="reminder-btn" id="btnReminders">🔔 Udhaar Reminders bhejein</button>
     </div>
   </div>

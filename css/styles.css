@@ -285,3 +285,27 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .lock-pad button:active{background:rgba(231,162,76,.25);transform:scale(.96)}
 .lock-pad .lk-empty{visibility:hidden}
 .txn{cursor:pointer}
+
+/* ---------- Overview tap panels ---------- */
+.sum-card.tap, .mini.tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sum-card.tap:active, .mini.tap:active { transform: scale(.98); }
+.sum-card.tap.sel { border-color: var(--gold1, #e7a24c); box-shadow: 0 0 0 2px rgba(231,162,76,.35); }
+.mini.tap.sel { border-color: var(--gold1, #e7a24c); box-shadow: 0 0 0 2px rgba(231,162,76,.35); }
+.ov-panel { margin: 4px 0 12px; border: 1px solid var(--border); border-radius: 14px; padding: 10px; background: var(--card, rgba(255,255,255,.02)); animation: ovIn .16s ease; }
+@keyframes ovIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.ov-head { font-size: 13px; font-weight: 800; color: var(--muted); padding: 4px 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; letter-spacing: .02em; }
+.ov-panel .list { max-height: 60vh; overflow-y: auto; -webkit-overflow-scrolling: touch; gap: 8px; }
+.ov-panel .cust { padding: 11px 12px; }
+.ov-panel .cust .bal .amt.pos { color: var(--green); }
+.ov-panel .cust .bal .amt.neg { color: var(--red); }
+.ov-panel .t-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.ov-panel .t-icon.debit { background: var(--red-soft); color: var(--red); }
+.ov-panel .t-icon.credit { background: var(--green-soft); color: var(--green); }
+.ov-date { background: #0e0f14; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: inherit; }
+
+/* ---------- Smoothness: fast tap + fluid scroll for long lists ---------- */
+* { -webkit-tap-highlight-color: transparent; }
+button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action: manipulation; }
+.view { -webkit-overflow-scrolling: touch; }
+.list { -webkit-overflow-scrolling: touch; }
+.list .cust, #txnList .txn { content-visibility: auto; contain-intrinsic-size: 66px; }
