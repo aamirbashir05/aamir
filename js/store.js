@@ -230,6 +230,17 @@ const Store = (() => {
     const t = p.txns.find(x => x.id === txnId); if (t && t.img) delImage(t.img);
     p.txns = p.txns.filter(x => x.id !== txnId); save();
   }
+  function updatePartyTxn(kind, id, txnId, patch) {
+    const p = getParty(kind, id); if (!p) return null;
+    const t = p.txns.find(x => x.id === txnId); if (!t) return null;
+    if (patch.amount != null) t.amount = Math.round(Number(patch.amount) * 100) / 100;
+    if (patch.type) t.type = patch.type;
+    if (patch.note != null) t.note = (patch.note || '').trim();
+    if (patch.date) t.date = patch.date;
+    if (patch.img !== undefined) t.img = patch.img || '';
+    p.txns.sort((a, b) => new Date(a.date) - new Date(b.date));
+    save(); return t;
+  }
 
   /* ---------- Shareable permanent link token (per party) ---------- */
   function randToken() {
@@ -308,7 +319,7 @@ const Store = (() => {
   return {
     init, save, onSave, getData, replaceAll, mergeRemote,
     getShop, setShop,
-    getParties, getParty, addParty, updateParty, deleteParty, addPartyTxn, deletePartyTxn,
+    getParties, getParty, addParty, updateParty, deleteParty, addPartyTxn, deletePartyTxn, updatePartyTxn,
     ensureShareId,
     getCustomers, getSuppliers, getCustomer, addCustomer, updateCustomer, deleteCustomer,
     addTxn, deleteTxn,

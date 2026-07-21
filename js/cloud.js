@@ -46,13 +46,43 @@ const Cloud = (() => {
     } catch (e) { ready = false; console.warn('cloud init', e); return { ok: false, error: e.message || String(e) }; }
   }
 
-  /* ---- dataset sync (optional) ---- */
-  // Union-merge remote into local so NO entry is ever lost from either device.
-  // If the merge added anything, push the combined result back up so the other
-  // device also converges to the union.
+  /* ---- gzip helpers (bara data Firestore ki 1MB limit me fit karne ke liye) ---- */
+  async function gzipB64(str) {
+    if (typeof CompressionStream === 'undefined') return null;
+    const cs = new CompressionStream('gzip');
+    const buf = await new Response(new Blob([new TextEncoder().encode(str)]).stream().pipeThrough(cs)).arrayBuffer();
+    const bytes = new Uint8Array(buf); let bin = '';
+    for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return btoa(bin);
+  }
+  async function gunzipB64(b64) {
+    const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const ds = new DecompressionStream('gzip');
+    const buf = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+    return new TextDecoder().decode(buf);
+  }
+  const RKEY = 'altariq_reset';
+
+  /* ---- dataset sync ---- */
+  // Normal: union-merge (koi entry na khoye). Lekin agar remote par naya "fullReset"
+  // marker ho (ek dafa clean rebuild) to poora local replace kar do — taake purana/
+  // duplicate data saaf ho jaye. Bara data gzip me store hota hai.
   async function pull(sd) {
-    if (!sd || !sd.payload) return false;
-    let rd; try { rd = JSON.parse(sd.payload); } catch (e) { return false; }
+    if (!sd) return false;
+    let json = null;
+    try {
+      if (sd.gz) json = await gunzipB64(sd.gz);
+      else if (sd.payload) json = sd.payload;
+    } catch (e) { console.warn('decompress', e); return false; }
+    if (!json) return false;
+    let rd; try { rd = JSON.parse(json); } catch (e) { return false; }
+
+    // one-time clean replace
+    if (sd.fullReset && String(sd.fullReset) !== (localStorage.getItem(RKEY) || '')) {
+      try { Store.replaceAll(rd); localStorage.setItem(RKEY, String(sd.fullReset)); if (onRemote) onRemote(); schedulePush(); return true; }
+      catch (e) { console.warn('reset', e); return false; }
+    }
     let changed = false;
     try { changed = Store.mergeRemote(rd); } catch (e) { console.warn('merge', e); return false; }
     if (changed) { if (onRemote) onRemote(); schedulePush(); }
@@ -60,7 +90,14 @@ const Cloud = (() => {
   }
   async function push() {
     if (!docRef) return;
-    try { await docRef.set({ payload: JSON.stringify(Store.getData()), updatedAt: new Date().toISOString() }); } catch (e) { console.warn('push', e); }
+    try {
+      const json = JSON.stringify(Store.getData());
+      const doc = { updatedAt: new Date().toISOString() };
+      const gz = await gzipB64(json);
+      if (gz) doc.gz = gz; else doc.payload = json;
+      const r = localStorage.getItem(RKEY); if (r) doc.fullReset = r; // marker barqarar rakho
+      await docRef.set(doc);
+    } catch (e) { console.warn('push', e); }
   }
   function schedulePush() { if (!syncOn) return; clearTimeout(pushT); pushT = setTimeout(push, 1500); }
   async function startSync(syncId) {

@@ -284,3 +284,4 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
   background:#0e0f14;color:var(--text,#f4f2ee);cursor:pointer;transition:.12s}
 .lock-pad button:active{background:rgba(231,162,76,.25);transform:scale(.96)}
 .lock-pad .lk-empty{visibility:hidden}
+.txn{cursor:pointer}

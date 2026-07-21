@@ -8,6 +8,7 @@ let currentKind = 'customer';   // 'customer' | 'supplier'
 let accountsKind = 'customer';
 let txnType = 'debit';
 let editingCust = false;
+let editingTxn = null;   // txn object being edited (null = adding new)
 
 function kindLabels(kind) {
   if (kind === 'supplier') return {
@@ -99,7 +100,7 @@ function makeCalc(padEl, dispEl, eqEl) {
     else expr += k;
     refresh();
   }));
-  return { get value() { return evalExpr(expr) || 0; }, reset() { expr = ''; refresh(); } };
+  return { get value() { return evalExpr(expr) || 0; }, reset() { expr = ''; refresh(); }, set(v) { expr = (v == null ? '' : String(v)); refresh(); } };
 }
 const txnCalc = makeCalc(document.getElementById('txnPad'), document.getElementById('txnAmount'), document.getElementById('txnEq'));
 
@@ -322,6 +323,7 @@ function renderDetail() {
     }).join('');
     $$('#txnList .txn').forEach(el => {
       el.querySelector('.t-del').addEventListener('click', e => { e.stopPropagation(); if (confirm('Ye lein-dein delete karein?')) { Store.deletePartyTxn(currentKind, currentCustId, el.dataset.id); renderDetail(); republishIfShared(curParty()); } });
+      el.addEventListener('click', () => { const t = (curParty().txns || []).find(x => x.id === el.dataset.id); if (t) openTxnEdit(t); });
       const th = el.querySelector('.t-thumb'); if (th) th.addEventListener('click', () => openImage(th.dataset.img));
     });
     hydrateImages(list);
@@ -394,6 +396,7 @@ const contactsSupported = !!(navigator.contacts && navigator.contacts.select);
 
 /* ---------- Transactions + image + auto WhatsApp ---------- */
 function openTxn(type) {
+  editingTxn = null;
   txnType = type;
   const L = kindLabels(currentKind);
   $('#typeDebit').textContent = '− ' + L.debit;
@@ -408,6 +411,25 @@ function openTxn(type) {
   else { notifyRow.style.display = 'none'; $('#txnNotify').checked = false; }
   $('#txnImage').value = ''; $('#txnImageCam').value = ''; pendingTxnImg = null;
   $('#txnImgPreview').classList.add('hidden');
+  openModal('txnModal');
+}
+// Purani entry par click -> edit mode (raqam/type/note/date badlein ya delete)
+function openTxnEdit(t) {
+  editingTxn = t;
+  txnType = t.type;
+  const L = kindLabels(currentKind);
+  $('#typeDebit').textContent = '− ' + L.debit;
+  $('#typeCredit').textContent = '+ ' + L.credit;
+  $('#txnModalTitle').textContent = '✏️ Entry Edit';
+  updateTypeToggle();
+  txnCalc.set(t.amount);
+  $('#txnNote').value = t.note || '';
+  $('#txnDate').value = (t.date || '').slice(0, 10);
+  const notifyRow = $('#txnNotify').closest('.switch-row');
+  notifyRow.style.display = 'none'; $('#txnNotify').checked = false;
+  $('#txnImage').value = ''; $('#txnImageCam').value = ''; pendingTxnImg = null;
+  if (t.img) { const p = $('#txnImgPreview'); Store.getImage(t.img).then(u => { if (u) { p.src = u; p.classList.remove('hidden'); } }); }
+  else $('#txnImgPreview').classList.add('hidden');
   openModal('txnModal');
 }
 function updateTypeToggle() {
@@ -432,6 +454,23 @@ $('#saveTxn').addEventListener('click', async () => {
   const amt = txnCalc.value;
   if (!amt || amt <= 0) { toast('Sahi raqam likhein'); return; }
   const dateStr = $('#txnDate').value;
+
+  // EDIT mode — mojooda entry update karein
+  if (editingTxn) {
+    // date: agar din wahi hai to asli waqt rakho, warna nayi date
+    let date = editingTxn.date;
+    if (dateStr && dateStr !== (editingTxn.date || '').slice(0, 10)) {
+      const tm = editingTxn.date ? new Date(editingTxn.date).toTimeString().slice(0, 8) : '09:00:00';
+      date = new Date(dateStr + 'T' + tm).toISOString();
+    }
+    let patch = { amount: amt, type: txnType, note: $('#txnNote').value, date };
+    if (pendingTxnImg) patch.img = await Store.putImage(pendingTxnImg);
+    Store.updatePartyTxn(currentKind, currentCustId, editingTxn.id, patch);
+    editingTxn = null;
+    closeModal('txnModal'); renderDetail(); republishIfShared(curParty());
+    toast('Entry update ho gayi ✅'); return;
+  }
+
   const date = dateStr ? new Date(dateStr + 'T' + new Date().toTimeString().slice(0, 8)).toISOString() : new Date().toISOString();
   let imgId = '';
   if (pendingTxnImg) imgId = await Store.putImage(pendingTxnImg);
