@@ -64,9 +64,21 @@ const Cloud = (() => {
   }
   const RKEY = 'altariq_reset';
 
+  // Clean rebuild: sirf LEDGER (customers/suppliers/items) replace karo — har device
+  // ke apne shop settings (Sync ID, PIN, viewerBase) bilkul mehfooz rehte hain.
+  function applyReset(rd) {
+    const cur = Store.getData();
+    const merged = Object.assign({}, cur, {
+      customers: rd.customers || [],
+      suppliers: rd.suppliers || [],
+      items: rd.items || []
+    });
+    Store.replaceAll(merged); // shop reference cur se aata hai — preserve
+  }
+
   /* ---- dataset sync ---- */
   // Normal: union-merge (koi entry na khoye). Lekin agar remote par naya "fullReset"
-  // marker ho (ek dafa clean rebuild) to poora local replace kar do — taake purana/
+  // marker ho (ek dafa clean rebuild) to ledger replace kar do — taake purana/
   // duplicate data saaf ho jaye. Bara data gzip me store hota hai.
   async function pull(sd) {
     if (!sd) return false;
@@ -80,7 +92,7 @@ const Cloud = (() => {
 
     // one-time clean replace
     if (sd.fullReset && String(sd.fullReset) !== (localStorage.getItem(RKEY) || '')) {
-      try { Store.replaceAll(rd); localStorage.setItem(RKEY, String(sd.fullReset)); if (onRemote) onRemote(); schedulePush(); return true; }
+      try { applyReset(rd); localStorage.setItem(RKEY, String(sd.fullReset)); if (onRemote) onRemote(); schedulePush(); return true; }
       catch (e) { console.warn('reset', e); return false; }
     }
     let changed = false;
@@ -122,6 +134,25 @@ const Cloud = (() => {
     catch (e) { console.warn('fetchShare', e); return null; }
   }
 
+  /* ---- one-time clean import (final Udhaar data) ----
+     Sirf naye code (v19+) me chalta hai, isliye purana app is race me nahi aata.
+     Incoming snapshots ko rok kar clean data local par likho, marker set karo,
+     phir cloud par push karo taake doosra device (bhi v19) fullReset uthaye. */
+  async function importFromGz(b64, marker) {
+    let json = await gunzipB64(b64);
+    const rd = JSON.parse(json);
+    if (!rd || !Array.isArray(rd.customers)) throw new Error('bad import data');
+    if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+    applyReset(rd);
+    localStorage.setItem(RKEY, String(marker));
+    if (docRef) {
+      await push(); // gz + fullReset=marker
+      unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
+    }
+    if (onRemote) onRemote();
+    return { customers: rd.customers.length, txns: rd.customers.reduce((n, c) => n + (c.txns || []).length, 0) };
+  }
+
   async function testConnect(configStr, syncId) {
     try {
       const cfg = configStr ? JSON.parse(configStr) : getActiveConfig();
@@ -134,5 +165,5 @@ const Cloud = (() => {
     } catch (e) { return { ok: false, error: e.message || String(e) }; }
   }
 
-  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect };
+  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz };
 })();

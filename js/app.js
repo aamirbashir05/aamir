@@ -811,5 +811,41 @@ $('#btnSnapshots').addEventListener('click', async () => {
   applyBranding();
   nav('overview');
   // start cloud sync if configured (non-blocking)
-  Cloud.init(onCloudRemote).then(r => { if (r && r.ok) { renderOverview(); } }).catch(() => {});
+  Cloud.init(onCloudRemote).then(r => {
+    if (r && r.ok) { renderOverview(); }
+    maybeRunImport();
+  }).catch(() => { maybeRunImport(); });
 })();
+
+/* Ek-baar final Udhaar data import: app.html?import=altariq-final
+   Sirf yeh nayi (v19+) build me maujood hai, is liye purana app clean doc ko
+   overwrite nahi kar sakta. Marker se do baara chalne par bhi double nahi hota. */
+const IMPORT_MARKER = 'final-udhaar-2026-07-21';
+async function maybeRunImport() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('import') !== 'altariq-final') return;
+    if (localStorage.getItem('altariq_import_done') === IMPORT_MARKER) {
+      cleanImportUrl(); toast('Data pehle hi import ho chuka hai ✓'); return;
+    }
+    if (!Cloud.isSyncOn || !Cloud.isSyncOn()) {
+      alert('Import ke liye pehle Sync ID set hona zaroori hai (Settings me). Sync on karke dobara try karain.');
+      return;
+    }
+    if (!confirm('FINAL Udhaar data import karain?\n\n173 customers + 52,564 entries.\nYeh purana/duplicate ledger data saaf kar ke clean data laga dega (dono phones par).\n\nJari rakhain?')) return;
+    toast('Import ho raha hai… (thora intezar)');
+    const res = await fetch('data/altariq-final.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error('file');
+    const b64 = (await res.text()).trim();
+    const out = await Cloud.importFromGz(b64, IMPORT_MARKER + '-' + Date.now());
+    localStorage.setItem('altariq_import_done', IMPORT_MARKER);
+    cleanImportUrl();
+    renderOverview();
+    alert('Import mukammal ✓\n\nCustomers: ' + out.customers + '\nEntries: ' + out.txns + '\n\nAbu ke phone par bhi khud-ba-khud clean data aa jayega.');
+  } catch (e) {
+    alert('Import me masla: ' + (e && e.message ? e.message : e) + '\nDobara try karain.');
+  }
+}
+function cleanImportUrl() {
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+}
