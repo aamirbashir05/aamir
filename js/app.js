@@ -397,6 +397,11 @@ function renderDetail() {
 
   const q = detailSearch.trim().toLowerCase();
   const list = $('#txnList');
+  // har entry ka running balance (chronological order) — Udhaar jaisa
+  const chron = c.txns.slice().sort((x, y) => new Date(x.date) - new Date(y.date));
+  const runMap = {}; let run = 0;
+  chron.forEach(t => { run += t.type === 'debit' ? t.amount : -t.amount; runMap[t.id] = run; });
+  const balCls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero';
   let txns = c.txns.slice().reverse();
   if (q) txns = txns.filter(t => (t.note || '').toLowerCase().includes(q) || String(t.amount).includes(q));
   if (txns.length === 0) { list.innerHTML = `<div class="empty" style="padding:24px;">${q ? 'Koi lein-dein nahi mila' : 'Abhi koi lein-dein nahi'}</div>`; }
@@ -404,9 +409,11 @@ function renderDetail() {
     list.innerHTML = txns.map(t => {
       const d = t.type === 'debit';
       const thumb = t.img ? `<img class="t-thumb" data-img="${t.img}" alt="">` : '';
+      const bv = runMap[t.id] || 0;
       return `<div class="txn ${t.type}" data-id="${t.id}">
         <div class="t-icon">${d ? '↑' : '↓'}</div>${thumb}
-        <div class="t-info"><div class="t-note">${esc(t.note) || (d ? L.debit : L.credit)}</div><div class="t-date">${fmtDateTime(t.date)}</div></div>
+        <div class="t-info"><div class="t-note">${esc(t.note) || (d ? L.debit : L.credit)}</div>
+          <div class="t-meta"><span class="t-date">${fmtDateTime(t.date)}</span><span class="t-bal ${balCls(bv)}">Bal. ${fmtMoney(bv)}</span></div></div>
         <div class="t-amt">${d ? '−' : '+'}${fmtMoney(t.amount)}</div>
         <button class="t-del" title="Delete">🗑</button></div>`;
     }).join('');
@@ -666,9 +673,27 @@ async function ensurePublished(party) {
   try { await Promise.race([Cloud.publishShare(token, sharePayload(party)), timeout]); }
   catch (e) { console.warn('publish', e); }
 }
+// Shared customers jinki PDF link update honi hai. Agar abhi net/cloud na ho to
+// yaad rakho aur baad me (net aane par ya backup hone par) khud update kar do.
+const pendingShares = new Set();
 function republishIfShared(party) {
-  if (party && party.shareId && Cloud.isReady()) Cloud.publishShare(party.shareId, sharePayload(party));
+  if (!party || !party.shareId) return;
+  if (Cloud.isReady() && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+    Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) pendingShares.add(party.shareId); });
+  } else {
+    pendingShares.add(party.shareId); // baad me update hogi
+  }
 }
+function flushShares() {
+  if (!pendingShares.size || !Cloud.isReady() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+  const all = [...Store.getCustomers(), ...Store.getSuppliers()];
+  [...pendingShares].forEach(id => {
+    const p = all.find(x => x.shareId === id);
+    if (!p) { pendingShares.delete(id); return; }
+    Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) pendingShares.delete(id); });
+  });
+}
+if (typeof window !== 'undefined') window.addEventListener('online', flushShares);
 function bizLine() { const l = (Store.getShop().bizLink || '').trim(); return l ? '\n' + l : ''; }
 function payFooter() { const p = (Store.getShop().paymentInfo || '').trim(); return p ? '\n\n' + p : ''; }
 function entryMessage(c, entry) {
@@ -899,12 +924,32 @@ $('#btnSnapshots').addEventListener('click', async () => {
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   applyBranding();
   nav('overview');
+  // backup status bar — auto cloud backup ka haal + retry
+  if (Cloud.onStatus) Cloud.onStatus(renderBackupBar);
+  const bb = document.getElementById('backupBar');
+  if (bb) bb.addEventListener('click', () => {
+    const st = Cloud.getStatus ? Cloud.getStatus().state : '';
+    if (st === 'offline' || st === 'error') { renderBackupBar('saving'); Cloud.retry && Cloud.retry(); flushShares(); }
+  });
   // start cloud sync if configured (non-blocking)
   Cloud.init(onCloudRemote).then(r => {
-    if (r && r.ok) { renderOverview(); }
+    if (r && r.ok) { renderOverview(); if (Cloud.getStatus) renderBackupBar(Cloud.getStatus().state); }
     maybeRunImport();
   }).catch(() => { maybeRunImport(); });
 })();
+
+/* Backup status bar render (sync on hone par hi dikhta hai) */
+let bkHideT = null;
+function renderBackupBar(st) {
+  const bar = document.getElementById('backupBar'); if (!bar) return;
+  if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { bar.className = 'backup-bar hidden'; return; }
+  clearTimeout(bkHideT);
+  if (st === 'saving') { bar.className = 'backup-bar saving'; bar.innerHTML = '<span class="spin">↻</span> Backup ho raha hai…'; }
+  else if (st === 'pending') { bar.className = 'backup-bar pending'; bar.innerHTML = '⏳ Backup baqi hai…'; }
+  else if (st === 'saved') { bar.className = 'backup-bar saved'; bar.innerHTML = '☁️ Backup save ho gaya ✓'; flushShares(); bkHideT = setTimeout(() => bar.classList.add('hidden'), 2300); }
+  else if (st === 'offline' || st === 'error') { bar.className = 'backup-bar warn'; bar.innerHTML = '⚠️ Backup nahi hua — <b>tap karke dobara karein</b>'; }
+  else { bar.className = 'backup-bar hidden'; }
+}
 
 /* Ek-baar final Udhaar data import: app.html?import=altariq-final
    Sirf yeh nayi (v19+) build me maujood hai, is liye purana app clean doc ko

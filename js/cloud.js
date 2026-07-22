@@ -6,6 +6,8 @@
 
 const Cloud = (() => {
   let ready = false, syncOn = false, db = null, docRef = null, unsub = null, pushT = null, onRemote = null;
+  let status = 'idle', onStatusCb = null, dirty = false, retryT = null, onlineHooked = false;
+  function setStatus(s) { if (s === status) return; status = s; if (onStatusCb) { try { onStatusCb(s); } catch (e) {} } }
 
   function loadScript(src) {
     return new Promise((res, rej) => {
@@ -102,6 +104,8 @@ const Cloud = (() => {
   }
   async function push() {
     if (!docRef) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { dirty = true; setStatus('offline'); return; }
+    setStatus('saving');
     try {
       const json = JSON.stringify(Store.getData());
       const doc = { updatedAt: new Date().toISOString() };
@@ -109,9 +113,14 @@ const Cloud = (() => {
       if (gz) doc.gz = gz; else doc.payload = json;
       const r = localStorage.getItem(RKEY); if (r) doc.fullReset = r; // marker barqarar rakho
       await docRef.set(doc);
-    } catch (e) { console.warn('push', e); }
+      dirty = false; clearTimeout(retryT); setStatus('saved');
+    } catch (e) {
+      console.warn('push', e); dirty = true; setStatus('error');
+      clearTimeout(retryT); retryT = setTimeout(push, 8000); // khud dobara koshish
+    }
   }
-  function schedulePush() { if (!syncOn) return; clearTimeout(pushT); pushT = setTimeout(push, 1500); }
+  function schedulePush() { if (!syncOn) return; dirty = true; setStatus('pending'); clearTimeout(pushT); pushT = setTimeout(push, 1500); }
+  function retry() { clearTimeout(retryT); return push(); }
   async function startSync(syncId) {
     docRef = db.collection('khatas').doc(syncId);
     const snap = await docRef.get();
@@ -119,6 +128,11 @@ const Cloud = (() => {
     unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
     syncOn = true;
     Store.onSave(schedulePush);
+    if (!onlineHooked && typeof window !== 'undefined') {
+      onlineHooked = true;
+      window.addEventListener('online', () => { if (docRef && dirty) push(); });
+      window.addEventListener('offline', () => setStatus('offline'));
+    }
   }
 
   /* ---- live share links ---- */
@@ -165,5 +179,6 @@ const Cloud = (() => {
     } catch (e) { return { ok: false, error: e.message || String(e) }; }
   }
 
-  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz };
+  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz,
+    getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry };
 })();

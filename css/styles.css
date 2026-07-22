@@ -190,7 +190,12 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .txn.credit .t-icon { background: var(--green-soft); color: var(--green); }
 .txn .t-info { flex: 1; min-width: 0; }
 .txn .t-note { font-weight: 600; }
+.txn .t-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 3px; }
 .txn .t-date { font-size: 12px; color: var(--muted); }
+.txn .t-bal { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: rgba(231,162,76,.1); border: 1px solid var(--border); white-space: nowrap; }
+.txn .t-bal.pos { color: var(--green); }
+.txn .t-bal.neg { color: var(--red); }
+.txn .t-bal.zero { color: var(--muted); }
 .txn .t-amt { font-weight: 800; }
 .txn.debit .t-amt { color: var(--red); }
 .txn.credit .t-amt { color: var(--green); }
@@ -309,3 +314,17 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
 .view { -webkit-overflow-scrolling: touch; }
 .list { -webkit-overflow-scrolling: touch; }
 .list .cust, #txnList .txn { content-visibility: auto; contain-intrinsic-size: 66px; }
+
+/* ---------- Backup status bar (auto cloud backup + retry) ---------- */
+.backup-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; z-index: 45;
+  max-width: 92%; padding: 9px 16px; border-radius: 24px; font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.5);
+  border: 1px solid var(--border); backdrop-filter: blur(6px); white-space: nowrap; }
+.backup-bar.saving { background: rgba(231,162,76,.16); color: var(--gold1); }
+.backup-bar.saved { background: rgba(52,211,153,.16); color: var(--green); border-color: rgba(52,211,153,.4); }
+.backup-bar.pending { background: rgba(231,162,76,.14); color: var(--gold1); }
+.backup-bar.warn { background: rgba(248,113,113,.16); color: #fda4a4; border-color: rgba(248,113,113,.5);
+  cursor: pointer; animation: bkPulse 1.8s ease-in-out infinite; }
+@keyframes bkPulse { 0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.5); } 50% { box-shadow: 0 6px 26px rgba(248,113,113,.4); } }
+.backup-bar .spin { display: inline-block; animation: bkSpin 1s linear infinite; }
+@keyframes bkSpin { to { transform: rotate(360deg); } }
