@@ -970,7 +970,7 @@ function renderBackupBar(st) {
 /* Ek-baar final Udhaar data import: app.html?import=altariq-final
    Sirf yeh nayi (v19+) build me maujood hai, is liye purana app clean doc ko
    overwrite nahi kar sakta. Marker se do baara chalne par bhi double nahi hota. */
-const IMPORT_MARKER = 'final-udhaar-desc-2026-07-22'; // descriptions wala naya data
+const IMPORT_MARKER = 'final-udhaar-desc-v3-2026-07-22'; // clean re-import (descriptions + links fix)
 async function maybeRunImport() {
   try {
     const q = new URLSearchParams(location.search);
@@ -994,7 +994,7 @@ async function maybeRunImport() {
     // pehle bheje gaye shared links ki PDF ko naye data se update kar do (globally)
     const shared = [...Store.getCustomers(), ...Store.getSuppliers()].filter(c => c.shareId);
     let done = 0;
-    for (const c of shared) { try { await Cloud.publishShare(c.shareId, sharePayload(c)); done++; } catch (e) {} }
+    for (const c of shared) { Store.recordShareToken(c.name, c.shareId); try { await Cloud.publishShare(c.shareId, sharePayload(c)); done++; } catch (e) {} }
     alert('Import mukammal ✓\n\nCustomers: ' + out.customers + '\nEntries: ' + out.txns +
       (shared.length ? '\nShared links update: ' + done + '/' + shared.length : '') +
       '\n\nAbu ke phone par bhi khud-ba-khud aa jayega.');

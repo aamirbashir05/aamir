@@ -149,7 +149,14 @@ const Cloud = (() => {
     curSyncId = String(syncId).trim();
     docRef = db.collection('khatas').doc(curSyncId);
     const snap = await docRef.get();
-    if (snap.exists) { const adopted = await pull(snap.data()); if (!adopted) await push(); } else { await push(); }
+    if (snap.exists) {
+      const d = snap.data();
+      const hasData = d && (d.gz || d.payload || d.chunks); // doc me pehle se data hai?
+      const adopted = await pull(d);
+      // Agar doc me data mojood hai lekin hum use padh nahi paye, to us par apna data
+      // OVERWRITE mat karo (warna clean data zaya ho jaye). Sirf khaali doc par push.
+      if (!adopted && !hasData) await push();
+    } else { await push(); }
     unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
     syncOn = true;
     Store.onSave(schedulePush);
