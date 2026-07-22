@@ -916,6 +916,7 @@ $('#btnSnapshots').addEventListener('click', async () => {
 /* ---------- Boot ---------- */
 (async function boot() {
   await Store.init();
+  try { await Store.recoverShareIds(); } catch (e) {} // purane bheje link tokens wapis
   maybeLock(); // PIN lock (agar set hai) — sab se pehle
   const s = Store.getShop();
   if (!s.viewerBase && location.protocol.startsWith('http')) {
@@ -954,7 +955,7 @@ function renderBackupBar(st) {
 /* Ek-baar final Udhaar data import: app.html?import=altariq-final
    Sirf yeh nayi (v19+) build me maujood hai, is liye purana app clean doc ko
    overwrite nahi kar sakta. Marker se do baara chalne par bhi double nahi hota. */
-const IMPORT_MARKER = 'final-udhaar-2026-07-21';
+const IMPORT_MARKER = 'final-udhaar-desc-2026-07-22'; // descriptions wala naya data
 async function maybeRunImport() {
   try {
     const q = new URLSearchParams(location.search);
@@ -966,16 +967,22 @@ async function maybeRunImport() {
       alert('Import ke liye pehle Sync ID set hona zaroori hai (Settings me). Sync on karke dobara try karain.');
       return;
     }
-    if (!confirm('FINAL Udhaar data import karain?\n\n173 customers + 52,564 entries.\nYeh purana/duplicate ledger data saaf kar ke clean data laga dega (dono phones par).\n\nJari rakhain?')) return;
+    if (!confirm('Udhaar data (DESCRIPTIONS ke sath) import karain?\n\n173 customers + 52,564 entries — ab har entry ki detail bhi.\nPurana data saaf kar ke naya laga dega (dono phones par).\n\nJari rakhain?')) return;
     toast('Import ho raha hai… (thora intezar)');
-    const res = await fetch('data/altariq-final.txt', { cache: 'no-store' });
+    const res = await fetch('data/altariq-final.txt?v=' + IMPORT_MARKER, { cache: 'no-store' });
     if (!res.ok) throw new Error('file');
     const b64 = (await res.text()).trim();
     const out = await Cloud.importFromGz(b64, IMPORT_MARKER + '-' + Date.now());
     localStorage.setItem('altariq_import_done', IMPORT_MARKER);
     cleanImportUrl();
     renderOverview();
-    alert('Import mukammal ✓\n\nCustomers: ' + out.customers + '\nEntries: ' + out.txns + '\n\nAbu ke phone par bhi khud-ba-khud clean data aa jayega.');
+    // pehle bheje gaye shared links ki PDF ko naye data se update kar do (globally)
+    const shared = [...Store.getCustomers(), ...Store.getSuppliers()].filter(c => c.shareId);
+    let done = 0;
+    for (const c of shared) { try { await Cloud.publishShare(c.shareId, sharePayload(c)); done++; } catch (e) {} }
+    alert('Import mukammal ✓\n\nCustomers: ' + out.customers + '\nEntries: ' + out.txns +
+      (shared.length ? '\nShared links update: ' + done + '/' + shared.length : '') +
+      '\n\nAbu ke phone par bhi khud-ba-khud aa jayega.');
   } catch (e) {
     alert('Import me masla: ' + (e && e.message ? e.message : e) + '\nDobara try karain.');
   }

@@ -6,7 +6,8 @@
 
 const Cloud = (() => {
   let ready = false, syncOn = false, db = null, docRef = null, unsub = null, pushT = null, onRemote = null;
-  let status = 'idle', onStatusCb = null, dirty = false, retryT = null, onlineHooked = false;
+  let status = 'idle', onStatusCb = null, dirty = false, retryT = null, onlineHooked = false, curSyncId = null;
+  const CHUNK = 700000; // base64 chars per chunk doc (Firestore 1 MiB limit ke neeche)
   function setStatus(s) { if (s === status) return; status = s; if (onStatusCb) { try { onStatusCb(s); } catch (e) {} } }
 
   function loadScript(src) {
@@ -70,6 +71,13 @@ const Cloud = (() => {
   // ke apne shop settings (Sync ID, PIN, viewerBase) bilkul mehfooz rehte hain.
   function applyReset(rd) {
     const cur = Store.getData();
+    // purane shared links (shareId) naam se match karke barqarar rakho — taake
+    // pehle bheje gaye link band na hon aur naye data se update hote rahein.
+    const keep = {};
+    (cur.customers || []).forEach(c => { if (c.shareId) keep['c:' + c.name] = c.shareId; });
+    (cur.suppliers || []).forEach(c => { if (c.shareId) keep['s:' + c.name] = c.shareId; });
+    (rd.customers || []).forEach(c => { const k = keep['c:' + c.name]; if (k && !c.shareId) c.shareId = k; });
+    (rd.suppliers || []).forEach(c => { const k = keep['s:' + c.name]; if (k && !c.shareId) c.shareId = k; });
     const merged = Object.assign({}, cur, {
       customers: rd.customers || [],
       suppliers: rd.suppliers || [],
@@ -86,7 +94,15 @@ const Cloud = (() => {
     if (!sd) return false;
     let json = null;
     try {
-      if (sd.gz) json = await gunzipB64(sd.gz);
+      if (sd.chunks && sd.chunks > 0) {           // bara data — kai docs me
+        let b64 = '';
+        for (let i = 0; i < sd.chunks; i++) {
+          const cs = await db.collection('khatas').doc(curSyncId + '_c' + i).get();
+          if (!cs.exists) return false;
+          b64 += (cs.data().part || '');
+        }
+        json = await gunzipB64(b64);
+      } else if (sd.gz) json = await gunzipB64(sd.gz);
       else if (sd.payload) json = sd.payload;
     } catch (e) { console.warn('decompress', e); return false; }
     if (!json) return false;
@@ -109,9 +125,17 @@ const Cloud = (() => {
     try {
       const json = JSON.stringify(Store.getData());
       const doc = { updatedAt: new Date().toISOString() };
-      const gz = await gzipB64(json);
-      if (gz) doc.gz = gz; else doc.payload = json;
       const r = localStorage.getItem(RKEY); if (r) doc.fullReset = r; // marker barqarar rakho
+      const gz = await gzipB64(json);
+      if (gz) {
+        if (gz.length <= 900000) { doc.gz = gz; doc.chunks = 0; }
+        else {                                    // 1 MiB se bara — kai docs me tor do
+          const parts = [];
+          for (let i = 0; i < gz.length; i += CHUNK) parts.push(gz.slice(i, i + CHUNK));
+          for (let i = 0; i < parts.length; i++) await db.collection('khatas').doc(curSyncId + '_c' + i).set({ part: parts[i] });
+          doc.chunks = parts.length;              // chunks pehle likho, phir main doc
+        }
+      } else { doc.payload = json; doc.chunks = 0; }
       await docRef.set(doc);
       dirty = false; clearTimeout(retryT); setStatus('saved');
     } catch (e) {
@@ -122,7 +146,8 @@ const Cloud = (() => {
   function schedulePush() { if (!syncOn) return; dirty = true; setStatus('pending'); clearTimeout(pushT); pushT = setTimeout(push, 1500); }
   function retry() { clearTimeout(retryT); return push(); }
   async function startSync(syncId) {
-    docRef = db.collection('khatas').doc(syncId);
+    curSyncId = String(syncId).trim();
+    docRef = db.collection('khatas').doc(curSyncId);
     const snap = await docRef.get();
     if (snap.exists) { const adopted = await pull(snap.data()); if (!adopted) await push(); } else { await push(); }
     unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));

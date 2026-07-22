@@ -1,5 +1,5 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v21';
+const CACHE = 'altariq-hisaab-v22';
 const ASSETS = [
   './app.html',
   './view.html',
@@ -36,7 +36,7 @@ self.addEventListener('fetch', e => {
   // hamesha taza. Offline par cache fallback.
   const p = url.pathname;
   if (url.origin === location.origin &&
-      (p.endsWith('view.html') || p.endsWith('index.html') || p === '/' || p.endsWith('/'))) {
+      (p.endsWith('view.html') || p.endsWith('index.html') || p === '/' || p.endsWith('/') || p.includes('/data/'))) {
     e.respondWith(
       fetch(e.request).then(res => {
         const copy = res.clone();

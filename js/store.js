@@ -118,8 +118,14 @@ const Store = (() => {
   /* ---------- save / persist ---------- */
   function persist(snapshot = true) {
     data.updatedAt = new Date().toISOString();
-    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) { /* quota */ }
-    idbPut(S_KV, clone(data), 'data');
+    // IndexedDB = asal durable store (barson ka bara data yahan, structured-clone khud hota hai).
+    idbPut(S_KV, data, 'data');
+    // localStorage sirf chhote data ka mirror — bara hone par skip (quota crash se bachne ke liye).
+    try {
+      const s = JSON.stringify(data);
+      if (s.length < 2500000) localStorage.setItem(LS_KEY, s);
+      else localStorage.removeItem(LS_KEY);
+    } catch (e) { try { localStorage.removeItem(LS_KEY); } catch (_) {} }
     if (snapshot) maybeSnapshot();
   }
   const saveCbs = [];
@@ -175,6 +181,24 @@ const Store = (() => {
     // prune to newest 60
     const keys = (await idbKeys(S_SNAP)).sort((a, b) => a - b);
     while (keys.length > 60) { await idbDel(S_SNAP, keys.shift()); }
+  }
+
+  // Purane shareId (bheje gaye link tokens) auto-backup snapshots se wapis
+  // laao — pehle import ne inhe uda diya tha. Naam se match karke current par lagao.
+  async function recoverShareIds() {
+    const keys = (await idbKeys(S_SNAP)).sort((a, b) => b - a); // newest first
+    const map = {};
+    for (const k of keys) {
+      const s = await idbGet(S_SNAP, k);
+      if (!s || !s.data) continue;
+      (s.data.customers || []).forEach(c => { if (c.shareId && c.name && !map['c:' + c.name]) map['c:' + c.name] = c.shareId; });
+      (s.data.suppliers || []).forEach(c => { if (c.shareId && c.name && !map['s:' + c.name]) map['s:' + c.name] = c.shareId; });
+    }
+    let changed = false;
+    data.customers.forEach(c => { if (!c.shareId && map['c:' + c.name]) { c.shareId = map['c:' + c.name]; changed = true; } });
+    data.suppliers.forEach(c => { if (!c.shareId && map['s:' + c.name]) { c.shareId = map['s:' + c.name]; changed = true; } });
+    if (changed) persist(false);
+    return changed;
   }
 
   async function listSnapshots() {
@@ -326,7 +350,7 @@ const Store = (() => {
     addQuote, updateQuote, deleteQuote, allQuotes,
     putImage, getImage,
     balanceOf, totals, recentTxns,
-    listSnapshots, restoreSnapshot,
+    listSnapshots, restoreSnapshot, recoverShareIds,
     markBackup, lastBackup, exportJSON, importJSON
   };
 })();
