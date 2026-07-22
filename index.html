@@ -229,6 +229,28 @@
   .sg-item:hover{transform:translateY(-3px) scale(1.02);border-color:rgba(231,190,110,.6)}
   .sg-item img{width:100%;height:100%;object-fit:cover;display:block}
   .sph-item{cursor:zoom-in}
+  /* ===== Premium per-service FX carousels ===== */
+  .svc-fx{display:none;position:relative;margin-top:14px}
+  .svc-fx.on{display:block}
+  .fx-view{position:relative;height:360px;perspective:1400px;perspective-origin:50% 46%;overflow:hidden;touch-action:pan-y}
+  @media(max-width:600px){.fx-view{height:270px;perspective:1000px}}
+  .fx-card{position:absolute;left:50%;top:50%;height:270px;will-change:transform,opacity;
+    transform:translate(-50%,-50%);transition:transform .55s cubic-bezier(.22,.61,.36,1),opacity .45s ease;
+    cursor:zoom-in;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#15141a,#0b0b0f);
+    border:1.5px solid rgba(231,162,76,.42);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+  @media(max-width:600px){.fx-card{height:200px}}
+  .fx-card img{height:100%;width:auto;max-width:none;display:block}
+  .fx-card::after{content:"";position:absolute;inset:0;background:linear-gradient(150deg,rgba(255,255,255,.16),transparent 42%);pointer-events:none}
+  .fx-card.active{border-color:rgba(248,218,152,.9);box-shadow:0 26px 70px rgba(231,162,76,.32),0 20px 50px rgba(0,0,0,.6)}
+  .fx-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:60;width:44px;height:44px;border-radius:50%;
+    border:1px solid rgba(231,162,76,.5);background:rgba(12,10,15,.72);color:var(--gold);font-size:26px;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);transition:.2s}
+  .fx-nav:hover{background:rgba(231,162,76,.9);color:#1a1206}
+  .fx-prev{left:2px}.fx-next{right:2px}
+  @media(max-width:600px){.fx-nav{width:38px;height:38px;font-size:22px}}
+  .fx-dots{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .fx-dots i{width:8px;height:8px;border-radius:50%;background:rgba(231,162,76,.3);cursor:pointer;transition:.25s}
+  .fx-dots i.on{background:var(--gold);width:22px;border-radius:5px}
   /* lightbox: card bara, baaki blur */
   .lightbox{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;padding:26px;
     background:rgba(4,4,7,.55);backdrop-filter:blur(16px) saturate(.85);-webkit-backdrop-filter:blur(16px) saturate(.85);cursor:zoom-out}
@@ -349,6 +371,12 @@
       <div class="sphere" id="svcSphere"></div>
     </div>
     <div class="svc-grid2" id="svcGallery"></div>
+    <div class="svc-fx" id="svcFx">
+      <button class="fx-nav fx-prev" id="fxPrev" aria-label="prev">‹</button>
+      <div class="fx-view" id="fxView"></div>
+      <button class="fx-nav fx-next" id="fxNext" aria-label="next">›</button>
+      <div class="fx-dots" id="fxDots"></div>
+    </div>
     <div class="sphere-hint" id="svcHint">🖐️ <b>3D me ghumaanay</b> ke liye drag karein · <b>bara dekhne</b> ke liye card par click karein</div>
     <a class="btn btn-g" id="svcWa" href="#" target="_blank" style="margin-top:18px">💬 Is tarah ka order dein</a>
   </div>
@@ -383,10 +411,10 @@
   const SERVICES=[
     {k:'visiting',t:'Visiting Cards',e:'💳',glow:'#e7a24c',d:'Matte, glossy, spot-UV aur premium finishes.',b:['Premium Paper','Custom Design','Fast'],imgs:VC_IMGS},
     {k:'shaadi',t:'Shaadi Cards',e:'💌',glow:'#d98cc0',d:'Khoobsurat designs, foiling aur custom envelopes.',b:['Foiling','Custom','Envelopes'],imgs:SHAADI_IMGS},
-    {k:'flyers',t:'Flyers & Brochures',e:'📄',glow:'#5aa6f0',d:'Rangeen flyers, brochures aur menu cards.',b:['Full Colour','Bulk Rate'],imgs:['assets/work/design-menu.jpg','assets/work/flyer-tabaqmenu.jpg','assets/work/flyer-school.jpg']},
-    {k:'stickers',t:'Stickers & Labels',e:'🏷️',glow:'#57d38a',d:'Product labels aur packaging stickers, har shape.',b:['Any Shape','Waterproof'],imgs:['assets/work/design-label.jpg','assets/work/sticker-shahsarson.jpg','assets/work/sticker-hamzaoil.jpg','assets/work/sticker-tanawal.jpg']},
-    {k:'banners',t:'Banners & Flex',e:'🖼️',glow:'#e05656',d:'Shops, events aur promotions ke liye flex printing.',b:['Large Format','Weatherproof'],imgs:['assets/work/design-altariq-banner.jpg','assets/work/banner-khanji.jpg','assets/work/banner-punjabmilk.jpg','assets/work/banner-almaida.jpg','assets/work/banner-naveedauto.jpg','assets/work/banner-shaheenfood.jpg']},
-    {k:'books',t:'Books & Pads',e:'📚',glow:'#b07de0',d:'Bill books, receipt pads, registers aur binding.',b:['Binding','Bulk'],imgs:['assets/work/design-billbook.jpg','assets/work/book-iconic.jpg','assets/work/book-awais.jpg','assets/work/book-darband.jpg']}
+    {k:'flyers',t:'Flyers & Brochures',e:'📄',glow:'#5aa6f0',d:'Rangeen flyers, brochures aur menu cards.',b:['Full Colour','Bulk Rate'],anim:'flip',imgs:['assets/work/design-menu.jpg','assets/work/flyer-tabaqmenu.jpg','assets/work/flyer-school.jpg']},
+    {k:'stickers',t:'Stickers & Labels',e:'🏷️',glow:'#57d38a',d:'Product labels aur packaging stickers, har shape.',b:['Any Shape','Waterproof'],anim:'fan',imgs:['assets/work/design-label.jpg','assets/work/sticker-shahsarson.jpg','assets/work/sticker-hamzaoil.jpg','assets/work/sticker-tanawal.jpg']},
+    {k:'banners',t:'Banners & Flex',e:'🖼️',glow:'#e05656',d:'Shops, events aur promotions ke liye flex printing.',b:['Large Format','Weatherproof'],anim:'coverflow',imgs:['assets/work/design-altariq-banner.jpg','assets/work/banner-khanji.jpg','assets/work/banner-punjabmilk.jpg','assets/work/banner-almaida.jpg','assets/work/banner-naveedauto.jpg','assets/work/banner-shaheenfood.jpg']},
+    {k:'books',t:'Books & Pads',e:'📚',glow:'#b07de0',d:'Bill books, receipt pads, registers aur binding.',b:['Binding','Bulk'],anim:'stack',imgs:['assets/work/design-billbook.jpg','assets/work/book-iconic.jpg','assets/work/book-awais.jpg','assets/work/book-darband.jpg']}
   ];
   const SEAL='<div class="seal">PREMIUM<br>★★★</div>';
   document.getElementById('svcGrid').innerHTML=SERVICES.map(s=>`
@@ -474,6 +502,58 @@
   addEventListener('keydown',e=>{if(e.key==='Escape')closeLight();});
 
   const gallery=document.getElementById('svcGallery'), hint=document.getElementById('svcHint');
+  /* ===== Premium FX carousels (coverflow / flip / fan / stack) ===== */
+  const fxWrap=document.getElementById('svcFx'), fxView=document.getElementById('fxView'), fxDots=document.getElementById('fxDots');
+  let fxCards=[], fxIdx=0, fxN=0, fxStyle='coverflow', fxTimer=null;
+  function fxStop(){ if(fxTimer){clearInterval(fxTimer);fxTimer=null;} }
+  function fxAuto(){ fxStop(); if(fxN>1) fxTimer=setInterval(()=>fxGo(fxIdx+1), 2900); }
+  function fxGo(i){ fxIdx=((i%fxN)+fxN)%fxN; fxLayout(); }
+  function fxLayout(){
+    const vw=fxView.clientWidth||760, sm=innerWidth<600;
+    fxCards.forEach((c,i)=>{
+      let o=i-fxIdx;
+      if(fxStyle!=='stack'){ if(o>fxN/2)o-=fxN; if(o<-fxN/2)o+=fxN; }
+      const a=Math.abs(o), sgn=Math.sign(o); let t, op=1, zi=100-Math.round(a*10);
+      if(fxStyle==='coverflow'){
+        const x=o*Math.min(sm?118:188,vw*0.30), z=-a*(sm?120:168), ry=-sgn*Math.min(52,a*40), sc=o===0?1.08:Math.max(.66,1-a*.16);
+        op=a>3?0:1; t=`translate(-50%,-50%) translateX(${x}px) translateZ(${z}px) rotateY(${ry}deg) scale(${sc})`;
+      } else if(fxStyle==='flip'){
+        const y=o*(sm?90:118), z=-a*(sm?120:168), rx=sgn*Math.min(55,a*42), sc=o===0?1.06:Math.max(.66,1-a*.15);
+        op=a>3?0:1; t=`translate(-50%,-50%) translateY(${y}px) translateZ(${z}px) rotateX(${rx}deg) scale(${sc})`;
+      } else if(fxStyle==='fan'){
+        const ang=o*(sm?10:13), lift=a*(sm?9:13), sc=o===0?1.08:Math.max(.72,1-a*.11);
+        op=a>3?0:1; zi=100-a; t=`translate(-50%,-50%) rotate(${ang}deg) translateY(${lift}px) scale(${sc})`;
+      } else { // stack — deck
+        if(o<0){ op=0; t=`translate(-50%,-50%) translateX(-480px) rotate(-15deg) scale(.8)`; }
+        else { const sc=Math.max(.76,1-o*.06); op=o>3?0:1; zi=100-o;
+          t=`translate(-50%,-50%) translateX(${o*(sm?9:15)}px) translateY(${-o*(sm?8:12)}px) scale(${sc})`; }
+      }
+      c.style.opacity=op; c.style.zIndex=zi; c.style.transform=t;
+      c.classList.toggle('active', o===0);
+    });
+    [...fxDots.children].forEach((d,i)=>d.classList.toggle('on', i===fxIdx));
+  }
+  function buildFx(s, style){
+    fxStop(); fxStyle=style; fxIdx=0; fxN=s.imgs.length; fxWrap.classList.add('on');
+    fxView.innerHTML=s.imgs.map(u=>`<div class="fx-card"><img src="${u}" loading="lazy" alt=""></div>`).join('');
+    fxCards=[...fxView.querySelectorAll('.fx-card')];
+    fxDots.innerHTML=s.imgs.map(()=>'<i></i>').join('');
+    [...fxDots.children].forEach((d,i)=>d.addEventListener('click',()=>{fxGo(i);fxAuto();}));
+    fxCards.forEach((c,i)=>{
+      c.addEventListener('click',()=>{ if(i!==fxIdx){fxGo(i);fxAuto();} else {const im=c.querySelector('img'); if(im)openLight(im.src);} });
+      const im=c.querySelector('img'); if(im)im.addEventListener('load',fxLayout);
+    });
+    requestAnimationFrame(()=>{ fxLayout(); requestAnimationFrame(fxLayout); });
+    fxAuto();
+  }
+  // arrows + swipe (once)
+  document.getElementById('fxPrev').addEventListener('click',()=>{fxGo(fxIdx-1);fxAuto();});
+  document.getElementById('fxNext').addEventListener('click',()=>{fxGo(fxIdx+1);fxAuto();});
+  let fxSx=0, fxSw=false;
+  fxView.addEventListener('pointerdown',e=>{fxSw=true;fxSx=e.clientX;fxStop();});
+  addEventListener('pointerup',e=>{ if(!fxSw)return; fxSw=false; const dx=e.clientX-fxSx; if(Math.abs(dx)>40){ fxGo(fxIdx+(dx<0?1:-1)); } fxAuto(); });
+  addEventListener('resize',()=>{ if(fxWrap.classList.contains('on')) fxLayout(); });
+
   function openSvc(k){
     const s=SERVICES.find(x=>x.k===k); if(!s)return;
     document.getElementById('svcTitle').textContent=s.t;
@@ -481,22 +561,31 @@
     document.getElementById('svcDesc').textContent=s.d;
     document.getElementById('svcWa').href=waLink(s.t+' ka rate/order chahiye');
     document.getElementById('svcModal').classList.add('open');
-    if(s.imgs.length>14){
+    // saare modes chhupa do, phir chuna hua mode dikhao
+    stage.style.display='none'; gallery.classList.remove('on'); fxWrap.classList.remove('on'); fxStop();
+    const FX={coverflow:1,flip:1,fan:1,stack:1};
+    if(s.anim && FX[s.anim]){
+      hint.innerHTML = s.anim==='coverflow' ? '↔️ <b>Slide</b> ya arrows · card par click = <b>bara dekhein</b>'
+        : s.anim==='fan' ? '🃏 Cards khud chalte hain · click = <b>bara dekhein</b>'
+        : s.anim==='stack' ? '📚 Deck khud chalta hai · arrows/swipe · click = <b>bara</b>'
+        : '↕️ <b>Flip</b> carousel · swipe/arrows · click = <b>bara dekhein</b>';
+      buildFx(s, s.anim);
+    } else if(s.imgs.length>14){
       // GRID mode — bahut saari cards (scrollable, lazy-load, click-zoom)
-      stage.style.display='none'; gallery.classList.add('on');
+      gallery.classList.add('on');
       hint.innerHTML='🖼️ <b>'+s.imgs.length+' designs</b> · scroll karein · <b>bara dekhne</b> ke liye kisi card par click karein';
       gallery.innerHTML=s.imgs.map(u=>`<div class="sg-item"><img loading="lazy" src="${u}" alt=""></div>`).join('');
       gallery.scrollTop=0;
     } else {
-      // GLOBE mode — thori cards
-      stage.style.display=''; gallery.classList.remove('on');
+      // GLOBE mode — visiting cards
+      stage.style.display='';
       hint.innerHTML='🖐️ <b>3D me ghumaanay</b> ke liye drag karein · <b>bara dekhne</b> ke liye card par click karein';
       buildSphere(s);
     }
   }
   // grid card click -> lightbox
   gallery.addEventListener('click',e=>{const it=e.target.closest('.sg-item');if(!it)return;const img=it.querySelector('img');if(img)openLight(img.src);});
-  const closeSvc=()=>document.getElementById('svcModal').classList.remove('open');
+  const closeSvc=()=>{ document.getElementById('svcModal').classList.remove('open'); fxStop(); };
   document.querySelectorAll('.pcard').forEach(c=>c.addEventListener('click',()=>openSvc(c.dataset.k)));
   document.getElementById('svcX').addEventListener('click',closeSvc);
   document.getElementById('svcModal').addEventListener('click',e=>{if(e.target.id==='svcModal')closeSvc();});
