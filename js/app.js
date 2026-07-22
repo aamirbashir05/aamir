@@ -678,11 +678,25 @@ async function ensurePublished(party) {
 const pendingShares = new Set();
 function republishIfShared(party) {
   if (!party || !party.shareId) return;
+  Store.recordShareToken(party.name, party.shareId); // token permanently yaad rakho
   if (Cloud.isReady() && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
     Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) pendingShares.add(party.shareId); });
   } else {
     pendingShares.add(party.shareId); // baad me update hogi
   }
+}
+// Sab bheje gaye links ko ek saath naye data se update karo
+async function republishAllShared() {
+  if (!Cloud.isReady()) { toast('Internet nahi — thori der baad dobara'); return; }
+  const all = [...Store.getCustomers(), ...Store.getSuppliers()].filter(c => c.shareId);
+  if (!all.length) { toast('Koi bheja hua link nahi mila'); return; }
+  toast('Links update ho rahe hain…');
+  let done = 0;
+  for (const c of all) {
+    Store.recordShareToken(c.name, c.shareId);
+    try { const ok = await Cloud.publishShare(c.shareId, sharePayload(c)); if (ok) done++; } catch (e) {}
+  }
+  toast('✅ ' + done + '/' + all.length + ' links update ho gaye');
 }
 function flushShares() {
   if (!pendingShares.size || !Cloud.isReady() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
@@ -888,6 +902,7 @@ function doExport() {
   $('#backupBanner').classList.add('hidden');
   toast('Backup file save ho gayi ✅');
 }
+$('#btnRepublish') && $('#btnRepublish').addEventListener('click', republishAllShared);
 $('#btnExport').addEventListener('click', doExport);
 $('#btnImport').addEventListener('click', () => $('#importFile').click());
 $('#importFile').addEventListener('change', e => {

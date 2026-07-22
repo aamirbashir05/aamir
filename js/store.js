@@ -186,17 +186,22 @@ const Store = (() => {
   // Purane shareId (bheje gaye link tokens) auto-backup snapshots se wapis
   // laao — pehle import ne inhe uda diya tha. Naam se match karke current par lagao.
   async function recoverShareIds() {
+    const map = loadShareMap(); // persistent map (fullReset ke baad bhi survive)
+    // auto-backup snapshots se bhi bharo (jo map me nahi)
     const keys = (await idbKeys(S_SNAP)).sort((a, b) => b - a); // newest first
-    const map = {};
     for (const k of keys) {
       const s = await idbGet(S_SNAP, k);
       if (!s || !s.data) continue;
-      (s.data.customers || []).forEach(c => { if (c.shareId && c.name && !map['c:' + c.name]) map['c:' + c.name] = c.shareId; });
-      (s.data.suppliers || []).forEach(c => { if (c.shareId && c.name && !map['s:' + c.name]) map['s:' + c.name] = c.shareId; });
+      (s.data.customers || []).forEach(c => { if (c.shareId && c.name && !map[c.name]) map[c.name] = c.shareId; });
+      (s.data.suppliers || []).forEach(c => { if (c.shareId && c.name && !map[c.name]) map[c.name] = c.shareId; });
     }
     let changed = false;
-    data.customers.forEach(c => { if (!c.shareId && map['c:' + c.name]) { c.shareId = map['c:' + c.name]; changed = true; } });
-    data.suppliers.forEach(c => { if (!c.shareId && map['s:' + c.name]) { c.shareId = map['s:' + c.name]; changed = true; } });
+    data.customers.forEach(c => { if (!c.shareId && map[c.name]) { c.shareId = map[c.name]; changed = true; } });
+    data.suppliers.forEach(c => { if (!c.shareId && map[c.name]) { c.shareId = map[c.name]; changed = true; } });
+    // current shareIds ko map me save karo (aage kabhi na khoein)
+    data.customers.forEach(c => { if (c.shareId) map[c.name] = c.shareId; });
+    data.suppliers.forEach(c => { if (c.shareId) map[c.name] = c.shareId; });
+    try { localStorage.setItem(SHARE_MAP, JSON.stringify(map)); } catch (e) {}
     if (changed) persist(false);
     return changed;
   }
@@ -273,10 +278,19 @@ const Store = (() => {
     for (let i = 0; i < 14; i++) s += a[Math.floor(Math.random() * a.length)];
     return s;
   }
+  // Persistent share-token map (localStorage) — fullReset/import ke baad bhi rehta hai,
+  // taake bheje gaye link tokens kabhi na khoein.
+  const SHARE_MAP = 'altariq_sharemap';
+  function loadShareMap() { try { return JSON.parse(localStorage.getItem(SHARE_MAP) || '{}'); } catch (e) { return {}; } }
+  function recordShareToken(name, token) {
+    if (!name || !token) return;
+    try { const m = loadShareMap(); m[name] = token; localStorage.setItem(SHARE_MAP, JSON.stringify(m)); } catch (e) {}
+  }
   function ensureShareId(kind, id) {
     const p = getParty(kind, id);
     if (!p) return '';
     if (!p.shareId) { p.shareId = randToken(); save(); }
+    recordShareToken(p.name, p.shareId);
     return p.shareId;
   }
 
@@ -350,7 +364,7 @@ const Store = (() => {
     addQuote, updateQuote, deleteQuote, allQuotes,
     putImage, getImage,
     balanceOf, totals, recentTxns,
-    listSnapshots, restoreSnapshot, recoverShareIds,
+    listSnapshots, restoreSnapshot, recoverShareIds, recordShareToken,
     markBackup, lastBackup, exportJSON, importJSON
   };
 })();
