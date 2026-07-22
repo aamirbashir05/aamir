@@ -984,7 +984,7 @@ async function maybeRunImport() {
     }
     if (!confirm('Udhaar data (DESCRIPTIONS ke sath) import karain?\n\n173 customers + 52,564 entries — ab har entry ki detail bhi.\nPurana data saaf kar ke naya laga dega (dono phones par).\n\nJari rakhain?')) return;
     toast('Import ho raha hai… (thora intezar)');
-    const res = await fetch('data/altariq-final.txt?v=' + IMPORT_MARKER, { cache: 'no-store' });
+    const res = await fetch('data/altariq-final.txt?v=' + IMPORT_MARKER + '&t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('file');
     const b64 = (await res.text()).trim();
     const out = await Cloud.importFromGz(b64, IMPORT_MARKER + '-' + Date.now());
