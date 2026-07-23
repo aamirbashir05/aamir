@@ -727,8 +727,8 @@ async function sendEntryNotification(custId, entry, preWin) {
   const c = Store.getCustomer(custId); if (!c) { if (preWin) preWin.close(); return; }
   const phone = intlPhone(c.phone);
   if (!phone) { if (preWin) preWin.close(); toast('WhatsApp nahi khula — is customer ka number add karein'); return; }
-  await ensurePublished(c); // link ka share doc publish (preWin pehle se khula hai, block nahi hoga)
-  const msg = entryMessage(c, entry);
+  const msg = entryMessage(c, entry); // link sync ban jaata hai (token ensure ho jaata hai)
+  ensurePublished(c).catch(() => {}); // share doc BACKGROUND me publish — WhatsApp foran khulega
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
     if (preWin) preWin.close();
