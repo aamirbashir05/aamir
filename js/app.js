@@ -710,20 +710,17 @@ function flushShares() {
 if (typeof window !== 'undefined') window.addEventListener('online', flushShares);
 function bizLine() { const l = (Store.getShop().bizLink || '').trim(); return l ? '\n' + l : ''; }
 function payFooter() { const p = (Store.getShop().paymentInfo || '').trim(); return p ? '\n\n' + p : ''; }
+// Sirf us entry ke pese aur total — baaki kuch nahi (per-entry auto WhatsApp)
 function entryMessage(c, entry) {
-  const shop = Store.getShop();
-  const link = shareLinkFor(c);
   const b = Store.balanceOf(c);
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
-  const balLine = b > 0 ? `Ab aap par baqi: *${fmtMoney(b)}*` : b < 0 ? `Ab hamare zimmay: *${fmtMoney(b)}*` : `Ab hisaab barabar hai.`;
-  return `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\nAap ke khaate me nayi entry hui hai:\n\n${kind}: *${fmtMoney(entry.amount)}*\n` +
-    (entry.note ? `Tafseel: ${entry.note}\n` : '') + `${balLine}\n\nPoora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
+  const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
+  return `${kind}: *${fmtMoney(entry.amount)}*\n${balLine}`;
 }
 async function sendEntryNotification(custId, entry) {
   const c = Store.getCustomer(custId); if (!c) return;
   const phone = intlPhone(c.phone);
   if (!phone) { toast('WhatsApp ke liye customer ka number add karein'); return; }
-  await ensurePublished(c);
   const msg = entryMessage(c, entry);
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
