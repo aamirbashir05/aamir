@@ -719,12 +719,15 @@ function entryMessage(c, entry) {
   const b = Store.balanceOf(c);
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
-  return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + balLine;
+  const link = shareLinkFor(c);
+  return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + balLine +
+    `\n\nPoora hisaab (PDF):\n${link}`;
 }
 async function sendEntryNotification(custId, entry, preWin) {
   const c = Store.getCustomer(custId); if (!c) { if (preWin) preWin.close(); return; }
   const phone = intlPhone(c.phone);
   if (!phone) { if (preWin) preWin.close(); toast('WhatsApp nahi khula — is customer ka number add karein'); return; }
+  await ensurePublished(c); // link ka share doc publish (preWin pehle se khula hai, block nahi hoga)
   const msg = entryMessage(c, entry);
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
