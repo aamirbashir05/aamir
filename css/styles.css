@@ -328,3 +328,26 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
 @keyframes bkPulse { 0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.5); } 50% { box-shadow: 0 6px 26px rgba(248,113,113,.4); } }
 .backup-bar .spin { display: inline-block; animation: bkSpin 1s linear infinite; }
 @keyframes bkSpin { to { transform: rotate(360deg); } }
+
+/* ---------- Entry (txn) modal — compact so it fits without scrolling ---------- */
+#txnModal .modal { padding: 15px 16px 16px; }
+#txnModal h2 { margin: 0 0 10px; font-size: 17px; }
+#txnModal .type-toggle { margin-bottom: 10px; gap: 8px; }
+#txnModal .type-toggle button { padding: 10px; font-size: 14px; }
+#txnModal .field { margin-bottom: 9px; }
+#txnModal .field label { margin-bottom: 4px; font-size: 12px; }
+#txnModal .field input, #txnModal .field select { padding: 9px 12px; }
+#txnModal .amount-input { font-size: 19px !important; padding: 8px 12px !important; }
+#txnModal .calc-eq { min-height: 13px; margin-top: 2px; font-size: 12px; }
+#txnModal .calc-pad { gap: 6px; margin-top: 6px; }
+#txnModal .calc-pad button { padding: 10px 0; font-size: 17px; border-radius: 10px; }
+#txnModal .img-btns { gap: 8px; }
+#txnModal .img-btn { padding: 9px; font-size: 13px; }
+#txnModal .switch-row { padding: 3px 0; font-size: 13px; }
+#txnModal .modal-actions { margin-top: 8px; }
+#txnModal .modal-actions .cancel, #txnModal .modal-actions .save { padding: 12px; }
+/* thori aur lambi screens par calculator ko aur compact */
+@media (max-height: 720px){
+  #txnModal .calc-pad button { padding: 8px 0; font-size: 16px; }
+  #txnModal .field { margin-bottom: 7px; }
+}
