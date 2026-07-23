@@ -568,13 +568,17 @@ $('#saveTxn').addEventListener('click', async () => {
   }
 
   const date = dateStr ? new Date(dateStr + 'T' + new Date().toTimeString().slice(0, 8)).toISOString() : new Date().toISOString();
+  const noteVal = $('#txnNote').value;
+  const notify = currentKind === 'customer' && $('#txnNotify').checked;
+  // Popup-block se bachne ke liye: click ke DAURAN hi WhatsApp window khol lo (baad me URL set karenge).
+  const hasEndpoint = !!(Store.getShop().waEndpoint || '').trim();
+  const preWin = (notify && !hasEndpoint && intlPhone((curParty() || {}).phone)) ? window.open('', '_blank') : null;
   let imgId = '';
   if (pendingTxnImg) imgId = await Store.putImage(pendingTxnImg);
-  Store.addPartyTxn(currentKind, currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value, date, img: imgId });
-  const notify = currentKind === 'customer' && $('#txnNotify').checked;
+  Store.addPartyTxn(currentKind, currentCustId, { amount: amt, type: txnType, note: noteVal, date, img: imgId });
   closeModal('txnModal'); renderDetail();
   republishIfShared(curParty());
-  if (notify) sendEntryNotification(currentCustId, { amount: amt, type: txnType, note: $('#txnNote').value });
+  if (notify) sendEntryNotification(currentCustId, { amount: amt, type: txnType, note: noteVal }, preWin);
   else toast('Entry save ho gayi');
 });
 
@@ -717,20 +721,23 @@ function entryMessage(c, entry) {
   const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
   return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + balLine;
 }
-async function sendEntryNotification(custId, entry) {
-  const c = Store.getCustomer(custId); if (!c) return;
+async function sendEntryNotification(custId, entry, preWin) {
+  const c = Store.getCustomer(custId); if (!c) { if (preWin) preWin.close(); return; }
   const phone = intlPhone(c.phone);
-  if (!phone) { toast('WhatsApp ke liye customer ka number add karein'); return; }
+  if (!phone) { if (preWin) preWin.close(); toast('WhatsApp nahi khula — is customer ka number add karein'); return; }
   const msg = entryMessage(c, entry);
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
+    if (preWin) preWin.close();
     try {
       const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phone, message: msg }) });
       if (res.ok) { toast('✅ WhatsApp bhej diya gaya'); return; }
       toast('Auto-send fail — WhatsApp khol raha hoon');
     } catch (e) { toast('Server na mila — WhatsApp khol raha hoon'); }
   }
-  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+  const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
+  if (preWin && !preWin.closed) { preWin.location.href = url; }
+  else { const w = window.open(url, '_blank'); if (!w) toast('WhatsApp block ho gaya — dobara koshish karein'); }
 }
 $('#btnWhatsApp').addEventListener('click', async () => {
   const c = curParty();
