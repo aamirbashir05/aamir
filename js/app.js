@@ -715,7 +715,7 @@ function entryMessage(c, entry) {
   const b = Store.balanceOf(c);
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
-  return `${kind}: *${fmtMoney(entry.amount)}*\n${balLine}`;
+  return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + balLine;
 }
 async function sendEntryNotification(custId, entry) {
   const c = Store.getCustomer(custId); if (!c) return;
