@@ -162,9 +162,18 @@ const Cloud = (() => {
     Store.onSave(schedulePush);
     if (!onlineHooked && typeof window !== 'undefined') {
       onlineHooked = true;
-      window.addEventListener('online', () => { if (docRef && dirty) push(); });
+      window.addEventListener('online', () => { if (docRef) { refresh(); if (dirty) push(); } });
       window.addEventListener('offline', () => setStatus('offline'));
+      // App wapis khulte/foreground aate hi FORAN taza data lo (background me listener so sakta hai)
+      const onResume = () => { if (!docRef) return; if (typeof document !== 'undefined' && document.hidden) return; refresh(); if (dirty) push(); };
+      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onResume);
+      window.addEventListener('focus', onResume);
     }
+  }
+  // cloud se seedha taza data khud maang lo (onSnapshot ka intezaar na karo)
+  function refresh() {
+    if (!docRef) return Promise.resolve(false);
+    return docRef.get().then(s => (s.exists ? pull(s.data()) : false)).catch(() => false);
   }
 
   /* ---- live share links ---- */
@@ -212,5 +221,5 @@ const Cloud = (() => {
   }
 
   return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz,
-    getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry };
+    getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry, refresh };
 })();
