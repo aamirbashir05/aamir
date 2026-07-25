@@ -123,11 +123,13 @@
           await loadScript(base + 'firebase-firestore-compat.js');
         }
         firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
-        const doc = await firebase.firestore().collection('share').doc(token).get();
-        if (!doc.exists || !doc.data().data) { showErr('Hisaab nahi mila. Naya link mangwayein.', '📄'); return; }
-        let raw = doc.data().data;
-        if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (e) {} }
-        renderData(norm(raw));
+        // REALTIME: jaise hi hisaab update ho, khula hua link bhi foran naya dikhaye
+        firebase.firestore().collection('share').doc(token).onSnapshot(function (doc) {
+          if (!doc.exists || !doc.data().data) { showErr('Hisaab nahi mila. Naya link mangwayein.', '📄'); return; }
+          let raw = doc.data().data;
+          if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (e) {} }
+          renderData(norm(raw));
+        }, function () { showErr('Load nahi hua. Internet check karke dobara kholein.'); });
       } catch (e) { showErr('Load nahi hua. Internet check karke dobara kholein.'); }
     }
     function render() {
