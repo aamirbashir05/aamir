@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v37'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v38'; // har update par sw.js ke sath badalta hai
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));

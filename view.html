@@ -13,6 +13,7 @@
   <meta property="og:type" content="website">
   <style>
     * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; }
     body {
       font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans", system-ui, sans-serif;
       background: #f1f5f9; color: #0f172a; margin: 0; padding: 0; line-height: 1.5;
@@ -39,10 +40,16 @@
     .balance .amt { font-size: 30px; font-weight: 800; margin-top: 4px; }
     .pos-t { color: #16a34a; } .neg-t { color: #dc2626; } .zero-t { color: #64748b; }
     h3 { margin: 8px 24px; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
-    table { width: calc(100% - 48px); margin: 0 24px 20px; border-collapse: collapse; }
-    th { text-align: left; font-size: 12px; color: #64748b; padding: 8px 6px; border-bottom: 2px solid #e2e8f0; }
+    .ttbl { margin: 0 8px 20px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th { text-align: left; font-size: 11px; color: #64748b; padding: 8px 3px; border-bottom: 2px solid #e2e8f0; }
     th.r, td.r { text-align: right; }
-    td { padding: 10px 6px; border-bottom: 1px solid #f1f5f9; font-size: 14px; vertical-align: top; }
+    td.r { white-space: nowrap; font-size: 12px; font-weight: 700; }  /* raqam ek hi line par: "1,100 Rs" */
+    .cur { font-size: .6em; color: #94a3b8; font-weight: 600; margin-left: 1px; }
+    th:nth-child(1), td:nth-child(1) { width: 15%; }
+    th:nth-child(2), td:nth-child(2) { width: 31%; }
+    th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { width: 18%; }
+    td { padding: 9px 3px; border-bottom: 1px solid #f1f5f9; font-size: 12.5px; vertical-align: top; word-break: break-word; }
     .debit { color: #dc2626; font-weight: 700; }
     .credit { color: #16a34a; font-weight: 700; }
     tfoot td { font-weight: 800; border-top: 2px solid #e2e8f0; font-size: 15px; padding-top: 12px; }
@@ -86,6 +93,11 @@
     function fmtMoney(n) {
       const v = Math.abs(Math.round(n * 100) / 100);
       return 'Rs ' + v.toLocaleString('en-PK', { maximumFractionDigits: 2 });
+    }
+    // Table cells ke liye: "1,100 Rs" (number pehle, chhota Rs baad me, ek hi line)
+    function fmtAmt(n) {
+      const v = Math.abs(Math.round(n * 100) / 100);
+      return v.toLocaleString('en-PK', { maximumFractionDigits: 2 }) + '<span class="cur">Rs</span>';
     }
     function fmtDate(iso) {
       const d = new Date(iso);
@@ -159,9 +171,9 @@
         return `<tr>
           <td>${fmtDate(t.d)}</td>
           <td>${esc(t.n) || (isDebit ? 'Maal Diya' : 'Paisay Milay')}</td>
-          <td class="r ${isDebit ? 'debit' : ''}">${isDebit ? fmtMoney(t.a) : ''}</td>
-          <td class="r ${!isDebit ? 'credit' : ''}">${!isDebit ? fmtMoney(t.a) : ''}</td>
-          <td class="r">${fmtMoney(running)}</td>
+          <td class="r ${isDebit ? 'debit' : ''}">${isDebit ? fmtAmt(t.a) : ''}</td>
+          <td class="r ${!isDebit ? 'credit' : ''}">${!isDebit ? fmtAmt(t.a) : ''}</td>
+          <td class="r">${fmtAmt(running)}</td>
         </tr>`;
       }).reverse().join('');
 
@@ -182,15 +194,15 @@
           <div class="amt ${balTxtCls}">${fmtMoney(b)}</div>
         </div>
         <h3>Lein-Dein ki Tafseel</h3>
-        <table>
+        <div class="ttbl"><table>
           <thead>
             <tr><th>Tareekh</th><th>Tafseel</th><th class="r">Maal</th><th class="r">Jama</th><th class="r">Baqaya</th></tr>
           </thead>
           <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;">Koi lein-dein nahi</td></tr>'}</tbody>
           <tfoot>
-            <tr><td colspan="4">Total Baqaya</td><td class="r ${balTxtCls}">${fmtMoney(b)}</td></tr>
+            <tr><td colspan="4">Total Baqaya</td><td class="r ${balTxtCls}">${fmtAmt(b)}</td></tr>
           </tfoot>
-        </table>
+        </table></div>
         <div class="foot">Ye hisaab ${esc(data.shop || 'Al Tariq Printers')} ne bheja hai • ${fmtDate(data.gen || new Date().toISOString())}</div>
         <div class="toolbar">
           <button class="btn-pdf" onclick="window.print()">📄 PDF Download</button>
