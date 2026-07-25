@@ -949,6 +949,22 @@ $('#btnSnapshots').addEventListener('click', async () => {
 });
 
 /* ---------- Boot ---------- */
+// App khud ko chup-chaap update karta rahe: jab bhi khule/foreground aaye, naya code
+// (aur naya data padhne ki salahiyat) aa jaye — doosre phone par kuch na karna parre.
+function setupAutoUpdate() {
+  const hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing || !hadController) return; // pehli-dafa install par reload ki zaroorat nahi
+    refreshing = true; location.reload();      // naya version aa gaya — foran laga do
+  });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.update();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update(); });
+    window.addEventListener('focus', () => { try { reg.update(); } catch (e) {} });
+  }).catch(() => {});
+}
+
 (async function boot() {
   await Store.init();
   try { await Store.recoverShareIds(); } catch (e) {} // purane bheje link tokens wapis
@@ -957,7 +973,7 @@ $('#btnSnapshots').addEventListener('click', async () => {
   if (!s.viewerBase && location.protocol.startsWith('http')) {
     Store.setShop({ viewerBase: location.origin + location.pathname.replace(/\/[^\/]*\.html.*$/, "").replace(/\/$/, '') });
   }
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) setupAutoUpdate();
   applyBranding();
   nav('overview');
   // backup status bar — auto cloud backup ka haal + retry
