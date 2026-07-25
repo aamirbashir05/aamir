@@ -1,4 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
+const APP_VERSION = 'v37'; // har update par sw.js ke sath badalta hai
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -976,6 +977,7 @@ function setupAutoUpdate() {
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) setupAutoUpdate();
   applyBranding();
   nav('overview');
+  const av = document.getElementById('appVer'); if (av) av.textContent = 'Al Tariq Hisaab · ' + APP_VERSION;
   // backup status bar — auto cloud backup ka haal + retry
   if (Cloud.onStatus) Cloud.onStatus(renderBackupBar);
   const bb = document.getElementById('backupBar');

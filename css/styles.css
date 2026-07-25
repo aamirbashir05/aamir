@@ -351,3 +351,6 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
   #txnModal .calc-pad button { padding: 8px 0; font-size: 16px; }
   #txnModal .field { margin-bottom: 7px; }
 }
+
+/* App version label (Overview footer) */
+.app-ver { text-align: center; color: var(--muted); font-size: 11px; margin-top: 16px; letter-spacing: .06em; opacity: .65; }
