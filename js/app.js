@@ -365,6 +365,8 @@ function openDetail(kind, id) {
   renderDetail();
   $('#bottomnav').classList.add('hidden');
   showView('detailView');
+  // Customer kholte hi uska bheja hua link taaza kar do (agar koi publish reh gaya ho)
+  if (isCust) republishIfShared(curParty());
 }
 function backFromDetail() { currentCustId = null; nav(detailReturn === 'settings' ? 'accounts' : detailReturn); }
 $('#btnBack').addEventListener('click', backFromDetail);
@@ -711,7 +713,10 @@ function flushShares() {
     Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) pendingShares.delete(id); });
   });
 }
-if (typeof window !== 'undefined') window.addEventListener('online', flushShares);
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', flushShares);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) flushShares(); });
+}
 function bizLine() { const l = (Store.getShop().bizLink || '').trim(); return l ? '\n' + l : ''; }
 function payFooter() { const p = (Store.getShop().paymentInfo || '').trim(); return p ? '\n\n' + p : ''; }
 // Sirf us entry ke pese aur total — baaki kuch nahi (per-entry auto WhatsApp)

@@ -66,6 +66,20 @@ const Cloud = (() => {
     return new TextDecoder().decode(buf);
   }
   const RKEY = 'altariq_reset';
+  const PSIG = 'altariq_pushsig'; // aakhri kamyab push ka signature
+
+  // Data ka halka signature (bina poora stringify) — add/edit/delete pakadta hai
+  function dataSig() {
+    const d = Store.getData(); let n = 0, s = 0;
+    const acc = arr => (arr || []).forEach(c => (c.txns || []).forEach(t => { n++; s += (t.amount || 0); }));
+    acc(d.customers); acc(d.suppliers);
+    return (d.customers || []).length + '/' + (d.suppliers || []).length + '/' + n + '/' + Math.round(s);
+  }
+  // Agar local data cloud par bheje gaye se mukhtalif hai to push karo (unpushed entries mehfooz)
+  function pushIfNeeded() {
+    if (!docRef || !syncOn) return;
+    try { if (dataSig() !== localStorage.getItem(PSIG)) schedulePush(); } catch (e) {}
+  }
 
   // Clean rebuild: sirf LEDGER (customers/suppliers/items) replace karo — har device
   // ke apne shop settings (Sync ID, PIN, viewerBase) bilkul mehfooz rehte hain.
@@ -137,7 +151,9 @@ const Cloud = (() => {
         }
       } else { doc.payload = json; doc.chunks = 0; }
       await docRef.set(doc);
-      dirty = false; clearTimeout(retryT); setStatus('saved');
+      dirty = false; clearTimeout(retryT);
+      try { localStorage.setItem(PSIG, dataSig()); } catch (e) {} // is state ko "pushed" mark karo
+      setStatus('saved');
     } catch (e) {
       console.warn('push', e); dirty = true; setStatus('error');
       clearTimeout(retryT); retryT = setTimeout(push, 8000); // khud dobara koshish
@@ -160,12 +176,13 @@ const Cloud = (() => {
     unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
     syncOn = true;
     Store.onSave(schedulePush);
+    pushIfNeeded(); // app khulte hi: koi local entry jo pichli dafa push na hui thi, ab bhej do
     if (!onlineHooked && typeof window !== 'undefined') {
       onlineHooked = true;
-      window.addEventListener('online', () => { if (docRef) { refresh(); if (dirty) push(); } });
+      window.addEventListener('online', () => { if (docRef) refresh().then(pushIfNeeded); });
       window.addEventListener('offline', () => setStatus('offline'));
-      // App wapis khulte/foreground aate hi FORAN taza data lo (background me listener so sakta hai)
-      const onResume = () => { if (!docRef) return; if (typeof document !== 'undefined' && document.hidden) return; refresh(); if (dirty) push(); };
+      // App wapis khulte/foreground aate hi: FORAN taza data lo aur local unpushed changes bhej do
+      const onResume = () => { if (!docRef) return; if (typeof document !== 'undefined' && document.hidden) return; refresh().then(pushIfNeeded); };
       if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onResume);
       window.addEventListener('focus', onResume);
     }
