@@ -349,8 +349,10 @@ function quoteRowHtml(x, showCust) {
 
 /* ---------- Detail ---------- */
 let detailReturn = 'accounts';
+let accountsScroll = 0; // list me apni jagah yaad rakho (hisaab bhejte waqt scroll na karna parre)
 function openDetail(kind, id) {
   detailReturn = (typeof activeNav !== 'undefined' && activeNav) ? activeNav : 'accounts';
+  if (detailReturn === 'accounts') accountsScroll = window.scrollY || document.documentElement.scrollTop || 0;
   currentKind = kind || 'customer';
   currentCustId = id;
   const isCust = currentKind === 'customer';
@@ -368,7 +370,13 @@ function openDetail(kind, id) {
   // Customer kholte hi uska bheja hua link taaza kar do (agar koi publish reh gaya ho)
   if (isCust) republishIfShared(curParty());
 }
-function backFromDetail() { currentCustId = null; nav(detailReturn === 'settings' ? 'accounts' : detailReturn); }
+function backFromDetail() {
+  currentCustId = null;
+  const target = detailReturn === 'settings' ? 'accounts' : detailReturn;
+  nav(target);
+  // accounts list me wapis wahi jagah — upar se scroll na karna parre
+  if (target === 'accounts') requestAnimationFrame(() => window.scrollTo(0, accountsScroll));
+}
 $('#btnBack').addEventListener('click', backFromDetail);
 
 function switchDetailTab(tab) {
