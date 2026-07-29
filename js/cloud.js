@@ -42,6 +42,9 @@ const Cloud = (() => {
       firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
       await firebase.auth().signInAnonymously();
       db = firebase.firestore();
+      // OFFLINE PERSISTENCE: data local par cache ho jaye taake net na hone par bhi
+      // aakhri synced hisaab dikhe, aur net aate hi khud (bina refresh) update ho jaye.
+      try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) { console.warn('persistence', e && e.code); }
       ready = true;
       const c = (Store.getShop().cloud) || {};
       if (c.enabled && c.syncId) { try { await startSync(String(c.syncId).trim()); } catch (e) { console.warn('sync', e); } }

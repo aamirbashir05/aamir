@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v38'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v39'; // har update par sw.js ke sath badalta hai
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -27,6 +27,7 @@ function kindLabels(kind) {
 }
 function curParty() { return Store.getParty(currentKind, currentCustId); }
 let editingQuoteId = null;
+let quoteCtx = 'detail'; // 'detail' = customer ke andar se, 'rates' = Rates screen se (customer choose karna hai)
 let pendingTxnImg = null;    // dataURL staged for a new txn
 let pendingQuoteImg = null;  // dataURL staged for a new quote
 let activeNav = 'overview';
@@ -224,8 +225,15 @@ function renderOvPanel() {
     const rows = all.filter(x => localDay(x.t.date) === day)
       .sort((a, b) => new Date(b.t.date) - new Date(a.t.date));
     const label = ovDateFilter ? fmtDate(ovDateFilter + 'T12:00:00') : 'Aaj';
+    // us din ka total: kitne ka MAAL (kaam) gaya aur kitni PAYMENT aayi
+    let tDeb = 0, tCred = 0;
+    rows.forEach(x => { if (x.t.type === 'debit') tDeb += x.t.amount; else tCred += x.t.amount; });
+    const totHtml = rows.length ? `<div class="day-tot">
+        <div><span>Maal / Kaam</span><b class="neg">${fmtMoney(tDeb)}</b></div>
+        <div><span>Payment aayi</span><b class="pos">${fmtMoney(tCred)}</b></div>
+      </div>` : '';
     box.innerHTML = `<div class="ov-head">${label} ki entries (${rows.length})
-        <input type="date" id="ovDate" class="ov-date" value="${day}"></div>`
+        <input type="date" id="ovDate" class="ov-date" value="${day}"></div>` + totHtml
       + (rows.length
         ? `<div class="list">` + rows.map(x => {
             const d = x.t.type === 'debit';
@@ -310,7 +318,7 @@ function renderRates() {
   if (q) quotes = quotes.filter(x => x.custName.toLowerCase().includes(q) || (x.job || '').toLowerCase().includes(q) || (x.note || '').toLowerCase().includes(q));
   const list = $('#rateList');
   if (quotes.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="big">🧾</div>${q ? 'Koi rate nahi mila' : 'Abhi koi rate darj nahi.<br>Customer kholein → "Rates diye" → "+ Rate likhein".'}</div>`;
+    list.innerHTML = `<div class="empty"><div class="big">🧾</div>${q ? 'Koi rate nahi mila' : 'Abhi koi rate darj nahi.<br>Upar "+ Naya rate likhein" dabayein — kaam/rate likh kar customer chun lein.'}</div>`;
     return;
   }
   list.innerHTML = quotes.map(x => quoteRowHtml(x, true)).join('');
@@ -594,7 +602,7 @@ $('#saveTxn').addEventListener('click', async () => {
 });
 
 /* ---------- Quotes / Rate memory ---------- */
-$('#btnAddQuote').addEventListener('click', () => {
+function resetQuoteForm() {
   editingQuoteId = null;
   $('#quoteModalTitle').textContent = 'Rate likhein';
   $('#quoteJob').value = ''; $('#quoteRate').value = ''; $('#quoteNote').value = '';
@@ -602,10 +610,29 @@ $('#btnAddQuote').addEventListener('click', () => {
   $('#quoteDate').value = new Date().toISOString().slice(0, 10);
   $('#quoteImage').value = ''; $('#quoteImageCam').value = ''; pendingQuoteImg = null; $('#quoteImgPreview').classList.add('hidden');
   $('#deleteQuoteRow').style.display = 'none';
+}
+// Customer ke andar se rate likhna (customer pehle se maloom)
+$('#btnAddQuote').addEventListener('click', () => {
+  quoteCtx = 'detail';
+  resetQuoteForm();
+  $('#quoteCustField').style.display = 'none';
+  openModal('quoteModal'); setTimeout(() => $('#quoteJob').focus(), 200);
+});
+// Rates screen se rate likhna — pehle kaam/rate likhein, phir customer choose karein
+$('#btnAddRate').addEventListener('click', () => {
+  quoteCtx = 'rates';
+  resetQuoteForm();
+  const sel = $('#quoteCust');
+  const custs = Store.getCustomers().slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (custs.length === 0) { toast('Pehle koi customer banayein'); return; }
+  sel.innerHTML = custs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  $('#quoteCustField').style.display = 'block';
   openModal('quoteModal'); setTimeout(() => $('#quoteJob').focus(), 200);
 });
 function openQuote(id) {
   const c = Store.getCustomer(currentCustId); const q = c.quotes.find(x => x.id === id); if (!q) return;
+  quoteCtx = 'detail';
+  $('#quoteCustField').style.display = 'none';
   editingQuoteId = id;
   $('#quoteModalTitle').textContent = 'Rate Edit';
   $('#quoteJob').value = q.job; $('#quoteRate').value = q.rate; $('#quoteNote').value = q.note || '';
@@ -633,6 +660,9 @@ $('#saveQuote').addEventListener('click', async () => {
   if (!rate || rate <= 0) { toast('Rate likhein'); return; }
   const date = new Date($('#quoteDate').value + 'T' + new Date().toTimeString().slice(0, 8)).toISOString();
   const status = $('#quoteStatus').value, note = $('#quoteNote').value;
+  // Kis customer par rate lagega: Rates screen se aaya to dropdown, warna khula hua customer
+  const targetId = (quoteCtx === 'rates') ? $('#quoteCust').value : currentCustId;
+  if (!targetId) { toast('Customer chunein'); return; }
   let imgId = editingQuoteId ? undefined : '';
   if (pendingQuoteImg) imgId = await Store.putImage(pendingQuoteImg);
   if (editingQuoteId) {
@@ -640,9 +670,10 @@ $('#saveQuote').addEventListener('click', async () => {
     if (imgId !== undefined) patch.img = imgId;
     Store.updateQuote(currentCustId, editingQuoteId, patch);
   } else {
-    Store.addQuote(currentCustId, { job, rate, note, status, date, img: imgId });
+    Store.addQuote(targetId, { job, rate, note, status, date, img: imgId });
   }
-  closeModal('quoteModal'); renderQuotes();
+  closeModal('quoteModal');
+  if (quoteCtx === 'rates') renderRates(); else renderQuotes();
   toast('Rate mehfooz ho gaya ✅');
 });
 $('#deleteQuote').addEventListener('click', () => {

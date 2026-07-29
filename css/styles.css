@@ -354,3 +354,10 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
 
 /* App version label (Overview footer) */
 .app-ver { text-align: center; color: var(--muted); font-size: 11px; margin-top: 16px; letter-spacing: .06em; opacity: .65; }
+
+/* "Aaj ki entries" — din ka total (kaam + payment) */
+.day-tot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 4px 10px; }
+.day-tot > div { background: rgba(231,162,76,.07); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; text-align: center; }
+.day-tot span { display: block; font-size: 11px; color: var(--muted); letter-spacing: .03em; }
+.day-tot b { font-size: 16px; font-weight: 800; }
+.day-tot b.pos { color: var(--green); } .day-tot b.neg { color: var(--red); }
