@@ -7,6 +7,11 @@
 const Cloud = (() => {
   let ready = false, syncOn = false, db = null, docRef = null, unsub = null, pushT = null, onRemote = null;
   let status = 'idle', onStatusCb = null, dirty = false, retryT = null, onlineHooked = false, curSyncId = null;
+  // FAST BACKUP: delta doc — sirf nayi/badli hui entries chhoti si upload hoti hain
+  // (slow net par bhi foran), poora bara snapshot background me kabhi kabhi jata hai.
+  let deltaRef = null, deltaUnsub = null, deltaT = null, fullT = null;
+  let fullPushedIds = new Set(); // aakhri POORE push me jo ids gayi thi
+  let lastDelStr = '';           // aakhri delete-list jo delta me bheji
   const CHUNK = 700000; // base64 chars per chunk doc (Firestore 1 MiB limit ke neeche)
   function setStatus(s) { if (s === status) return; status = s; if (onStatusCb) { try { onStatusCb(s); } catch (e) {} } }
 
@@ -107,7 +112,7 @@ const Cloud = (() => {
   // Normal: union-merge (koi entry na khoye). Lekin agar remote par naya "fullReset"
   // marker ho (ek dafa clean rebuild) to ledger replace kar do — taake purana/
   // duplicate data saaf ho jaye. Bara data gzip me store hota hai.
-  async function pull(sd) {
+  async function pull(sd, capture) {
     if (!sd) return false;
     let json = null;
     try {
@@ -125,6 +130,18 @@ const Cloud = (() => {
     if (!json) return false;
     let rd; try { rd = JSON.parse(json); } catch (e) { return false; }
 
+    // startup: cloud me jo pehle se hai wahi "base" hai — is se aage ki (aur band app
+    // ke doran ki) entries chhote delta me foran jayengi, na ke bara snapshot ka intezaar.
+    if (capture) {
+      fullPushedIds = new Set();
+      const add = list => (list || []).forEach(p => {
+        (p.txns || []).forEach(t => fullPushedIds.add(t.id));
+        (p.quotes || []).forEach(q => fullPushedIds.add(q.id));
+      });
+      add(rd.customers); add(rd.suppliers);
+      lastDelStr = JSON.stringify(rd.deletedIds || {});
+    }
+
     // one-time clean replace
     if (sd.fullReset && String(sd.fullReset) !== (localStorage.getItem(RKEY) || '')) {
       try { applyReset(rd); localStorage.setItem(RKEY, String(sd.fullReset)); if (onRemote) onRemote(); schedulePush(); return true; }
@@ -135,10 +152,49 @@ const Cloud = (() => {
     if (changed) { if (onRemote) onRemote(); schedulePush(); }
     return changed;
   }
+  /* ---- FAST delta backup ---- */
+  // Aakhri poore push ke baad se jo nayi entries/rates hain unhe jama karo
+  function markAllPushed() {
+    const d = Store.getData();
+    fullPushedIds = new Set();
+    const add = list => (list || []).forEach(p => {
+      (p.txns || []).forEach(t => fullPushedIds.add(t.id));
+      (p.quotes || []).forEach(q => fullPushedIds.add(q.id));
+    });
+    add(d.customers); add(d.suppliers);
+    lastDelStr = JSON.stringify(d.deletedIds || {});
+  }
+  function buildDelta() {
+    const d = Store.getData();
+    const pick = list => {
+      const out = [];
+      (list || []).forEach(p => {
+        const nt = (p.txns || []).filter(t => !fullPushedIds.has(t.id));
+        const nq = (p.quotes || []).filter(q => !fullPushedIds.has(q.id));
+        if (nt.length || nq.length) out.push({ id: p.id, name: p.name, phone: p.phone, shareId: p.shareId, txns: nt, quotes: nq });
+      });
+      return out;
+    };
+    return { v: 1, c: pick(d.customers), s: pick(d.suppliers), del: d.deletedIds || {} };
+  }
+  // Sirf changes ki chhoti si upload — slow net par bhi foran ho jaati hai
+  async function pushDelta() {
+    if (!deltaRef || !syncOn) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) { setStatus('offline'); return; }
+    const payload = buildDelta();
+    const delStr = JSON.stringify(payload.del);
+    if (!payload.c.length && !payload.s.length && delStr === lastDelStr) return; // kuch naya nahi
+    setStatus('saving');
+    try {
+      await deltaRef.set({ d: JSON.stringify(payload), updatedAt: new Date().toISOString() });
+      lastDelStr = delStr;
+      setStatus('saved'); // user ko foran "backup ho gaya" — bara snapshot background me
+    } catch (e) { console.warn('delta', e); setStatus('pending'); /* full push cover kar lega */ }
+  }
+
   async function push() {
     if (!docRef) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { dirty = true; setStatus('offline'); return; }
-    setStatus('saving');
     try {
       const json = JSON.stringify(Store.getData());
       const doc = { updatedAt: new Date().toISOString() };
@@ -155,28 +211,51 @@ const Cloud = (() => {
       } else { doc.payload = json; doc.chunks = 0; }
       await docRef.set(doc);
       dirty = false; clearTimeout(retryT);
-      try { localStorage.setItem(PSIG, dataSig()); } catch (e) {} // is state ko "pushed" mark karo
+      markAllPushed();                            // ab poora data cloud par — delta reset
+      try { localStorage.setItem(PSIG, dataSig()); } catch (e) {}
+      // stale delta doc khaali kar do (ab main doc me sab kuch hai)
+      if (deltaRef) { try { await deltaRef.set({ d: JSON.stringify({ v: 1, c: [], s: [], del: Store.getData().deletedIds || {} }), updatedAt: new Date().toISOString() }); } catch (e) {} }
       setStatus('saved');
     } catch (e) {
       console.warn('push', e); dirty = true; setStatus('error');
       clearTimeout(retryT); retryT = setTimeout(push, 8000); // khud dobara koshish
     }
   }
-  function schedulePush() { if (!syncOn) return; dirty = true; setStatus('pending'); clearTimeout(pushT); pushT = setTimeout(push, 1500); }
+  // Har change par: pehle FORAN chhota delta bhejo, bara snapshot thori der baad background me
+  function schedulePush() {
+    if (!syncOn) return;
+    dirty = true; setStatus('pending');
+    clearTimeout(deltaT); deltaT = setTimeout(pushDelta, 500);   // fast: sirf changes
+    clearTimeout(fullT); fullT = setTimeout(push, 12000);        // slow: poora snapshot
+  }
   function retry() { clearTimeout(retryT); return push(); }
+  // Receiver: chhota delta aaya to foran mila do (mergeRemote union+tombstone safe hai)
+  function pullDelta(dd) {
+    if (!dd || !dd.d) return;
+    let p; try { p = JSON.parse(dd.d); } catch (e) { return; }
+    if (!p) return;
+    const rd = { customers: p.c || [], suppliers: p.s || [], items: [], deletedIds: p.del || {}, updatedAt: 0 };
+    let changed = false; try { changed = Store.mergeRemote(rd); } catch (e) { return; }
+    if (changed && onRemote) onRemote(); // sirf UI update — receiver dobara push na kare (loop se bacho)
+  }
   async function startSync(syncId) {
     curSyncId = String(syncId).trim();
     docRef = db.collection('khatas').doc(curSyncId);
+    deltaRef = db.collection('khatas').doc(curSyncId + '_d');
     const snap = await docRef.get();
     if (snap.exists) {
       const d = snap.data();
       const hasData = d && (d.gz || d.payload || d.chunks); // doc me pehle se data hai?
-      const adopted = await pull(d);
+      const adopted = await pull(d, true); // cloud ke ids ko base bana lo
       // Agar doc me data mojood hai lekin hum use padh nahi paye, to us par apna data
       // OVERWRITE mat karo (warna clean data zaya ho jaye). Sirf khaali doc par push.
       if (!adopted && !hasData) await push();
     } else { await push(); }
+    // koi pending delta (jo abhi main doc me na aaya ho) foran mila lo
+    try { const ds = await deltaRef.get(); if (ds.exists) pullDelta(ds.data()); } catch (e) {}
+    if (fullPushedIds.size === 0) markAllPushed(); // fallback agar base set na hua
     unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
+    deltaUnsub = deltaRef.onSnapshot(s => { if (s.exists) pullDelta(s.data()); }, e => console.warn('dsub', e));
     syncOn = true;
     Store.onSave(schedulePush);
     pushIfNeeded(); // app khulte hi: koi local entry jo pichli dafa push na hui thi, ab bhej do
@@ -186,7 +265,11 @@ const Cloud = (() => {
       window.addEventListener('offline', () => setStatus('offline'));
       // App wapis khulte/foreground aate hi: FORAN taza data lo aur local unpushed changes bhej do
       const onResume = () => { if (!docRef) return; if (typeof document !== 'undefined' && document.hidden) return; refresh().then(pushIfNeeded); };
-      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onResume);
+      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+        // App band/background hote hi: abhi ka chhota delta FORAN bhej do (taake aakhri
+        // entry band karne se pehle mehfooz ho jaye — bara snapshot ka intezaar na ho).
+        if (document.hidden) { clearTimeout(deltaT); pushDelta(); } else onResume();
+      });
       window.addEventListener('focus', onResume);
     }
   }
