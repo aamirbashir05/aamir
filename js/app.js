@@ -1,5 +1,9 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v41'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v42'; // har update par sw.js ke sath badalta hai
+
+// PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
+// Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
+const PERMANENT_SYNC_ID = 'altariq-q7f3k9m2xp';
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -814,12 +818,13 @@ function loadSettings() {
   $('#setWaEndpoint').value = s.waEndpoint || '';
   const cl = s.cloud || {};
   $('#setCloudEnabled').checked = !!cl.enabled;
-  // Agar sync pehle se ON hai magar ID khaali hai, to khud bana do (aur save kar do).
-  if (cl.enabled && !cl.syncId) {
-    cl.syncId = genSyncId();
+  // PERMANENT ID: sync ON hai to hamesha yehi fixed id — purani/khaali ko bhi isi par
+  // le aao, taake dono phone khud-ba-khud aik hi id par mil jayein (naya kabhi na bane).
+  if (cl.enabled && cl.syncId !== PERMANENT_SYNC_ID) {
+    cl.syncId = PERMANENT_SYNC_ID;
     Store.setShop({ cloud: Object.assign({}, cl) });
   }
-  $('#setCloudSyncId').value = cl.syncId || '';
+  $('#setCloudSyncId').value = cl.syncId || PERMANENT_SYNC_ID;
   $('#setCloudConfig').value = cl.config || '';
   $('#cloudStatus').textContent = Cloud.isReady() ? (Cloud.isSyncOn() ? '☁️ Cloud connected + sync on.' : '☁️ Cloud connected (live links on).') : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
   $('#logoPreview').src = s.logo || 'assets/logo.png';
@@ -842,24 +847,20 @@ $('#logoFile').addEventListener('change', async e => {
 });
 $('#btnRemoveLogo').addEventListener('click', () => { Store.setShop({ logo: '', logoSmall: '' }); $('#logoPreview').src = 'assets/logo.png'; applyBranding(); toast('Default logo laga diya'); });
 
-function genSyncId() {
-  const a = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let s = '';
-  for (let i = 0; i < 10; i++) s += a[Math.floor(Math.random() * a.length)];
-  return 'altariq-' + s;
-}
+// Hamesha PERMANENT id — dobara koi naya random ID nahi banta.
+function genSyncId() { return PERMANENT_SYNC_ID; }
 // Jaise hi Cloud Sync ON karo, agar Sync ID khaali hai to khud ban jaye.
 $('#setCloudEnabled').addEventListener('change', () => {
-  if ($('#setCloudEnabled').checked && !$('#setCloudSyncId').value.trim()) {
-    $('#setCloudSyncId').value = genSyncId();
-    $('#cloudStatus').textContent = '🔑 Sync ID ban gayi. Ye ID Abu ke phone par bhi wahi daalein. Ab Test → Save.';
+  if ($('#setCloudEnabled').checked) {
+    $('#setCloudSyncId').value = PERMANENT_SYNC_ID; // hamesha permanent id
+    $('#cloudStatus').textContent = '🔑 Permanent Sync ID lag gayi. Yehi ID Abu ke phone par bhi. Ab Test → Save.';
   }
 });
 
 $('#saveSettings').addEventListener('click', async () => {
-  // Sync on hai magar ID khaali → khud bana do (taake kabhi blank na rahe)
-  if ($('#setCloudEnabled').checked && !$('#setCloudSyncId').value.trim()) {
-    $('#setCloudSyncId').value = genSyncId();
+  // Sync ON hai to hamesha PERMANENT id — koi naya kabhi generate nahi hota
+  if ($('#setCloudEnabled').checked) {
+    $('#setCloudSyncId').value = PERMANENT_SYNC_ID;
   }
   const cloud = {
     enabled: $('#setCloudEnabled').checked,
