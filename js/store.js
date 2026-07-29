@@ -90,6 +90,9 @@ const Store = (() => {
       if (!Array.isArray(s.quotes)) s.quotes = [];
     });
     if (!Array.isArray(d.items)) d.items = [];
+    // deletedIds: mit chuki entries/parties ke ids (tombstones) — taake sync
+    // union-merge inhe dobara wapas na le aaye. { id: deleteTime }
+    if (!d.deletedIds || typeof d.deletedIds !== 'object') d.deletedIds = {};
     if (!d.updatedAt) d.updatedAt = new Date().toISOString();
     if (!d.lastBackup) d.lastBackup = 0;
     return d;
@@ -158,13 +161,32 @@ const Store = (() => {
     });
     return [...m.values()];
   }
+  // Tombstones (mit chuki cheezein) dono taraf se jama karo — sab se nayi delete-time rakho
+  function mergeTombstones(a, b) {
+    const out = Object.assign({}, a || {});
+    const rb = b || {};
+    for (const id in rb) { if (!(id in out) || rb[id] > out[id]) out[id] = rb[id]; }
+    return out;
+  }
+  // Union ke baad: jo ids delete ho chuki hain unhe (party/txn/quote) nikaal do
+  function pruneDead(list, dead) {
+    return (list || []).filter(p => !dead[p.id]).map(p => {
+      p.txns = (p.txns || []).filter(t => !dead[t.id]);
+      p.quotes = (p.quotes || []).filter(q => !dead[q.id]);
+      return p;
+    });
+  }
   // Union-merge a remote copy into local; returns true if anything changed.
   function mergeRemote(remote) {
     try { remote = migrate(remote); } catch (e) { return false; }
     const before = JSON.stringify(data);
-    data.customers = mergeParties(data.customers, remote.customers);
-    data.suppliers = mergeParties(data.suppliers, remote.suppliers);
-    data.items = mergeById(data.items, remote.items);
+    // pehle tombstones jama karo, phir union ke baad unhe lagao — taake delete ki
+    // hui entry doosre phone se dobara wapas na aaye (chahe kisi bhi device se mite).
+    data.deletedIds = mergeTombstones(data.deletedIds, remote.deletedIds);
+    const dead = data.deletedIds;
+    data.customers = pruneDead(mergeParties(data.customers, remote.customers), dead);
+    data.suppliers = pruneDead(mergeParties(data.suppliers, remote.suppliers), dead);
+    data.items = mergeById(data.items, remote.items).filter(t => !dead[t.id]);
     if (new Date(remote.updatedAt || 0) > new Date(data.updatedAt || 0)) {
       data.shop = Object.assign({}, data.shop, remote.shop || {});
     }
@@ -224,6 +246,8 @@ const Store = (() => {
   }
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  // Kisi id ko "mit chuki" mark karo taake sync use dobara wapas na laaye
+  function markDeleted(id) { if (id) { data.deletedIds = data.deletedIds || {}; data.deletedIds[id] = Date.now(); } }
 
   /* ---------- Images ---------- */
   async function putImage(dataUrl) { const id = 'img_' + uid(); await idbPut(S_IMG, dataUrl, id); return id; }
@@ -246,6 +270,8 @@ const Store = (() => {
   function deleteParty(kind, id) {
     const p = getParty(kind, id);
     if (p) { p.txns.forEach(t => t.img && delImage(t.img)); (p.quotes || []).forEach(q => q.img && delImage(q.img)); }
+    // party + uski saari entries/rates ko tombstone karo (sync wapas na laaye)
+    if (p) { markDeleted(id); (p.txns || []).forEach(t => markDeleted(t.id)); (p.quotes || []).forEach(q => markDeleted(q.id)); }
     const l = listOf(kind); const i = l.findIndex(x => x.id === id);
     if (i >= 0) { l.splice(i, 1); save(); }
   }
@@ -257,6 +283,7 @@ const Store = (() => {
   function deletePartyTxn(kind, id, txnId) {
     const p = getParty(kind, id); if (!p) return;
     const t = p.txns.find(x => x.id === txnId); if (t && t.img) delImage(t.img);
+    markDeleted(txnId); // tombstone — doosre phone se dobara wapas na aaye
     p.txns = p.txns.filter(x => x.id !== txnId); save();
   }
   function updatePartyTxn(kind, id, txnId, patch) {
@@ -317,6 +344,7 @@ const Store = (() => {
   function deleteQuote(custId, qId) {
     const c = getCustomer(custId); if (!c) return;
     const q = c.quotes.find(x => x.id === qId); if (q && q.img) delImage(q.img);
+    markDeleted(qId); // tombstone — sync wapas na laaye
     c.quotes = c.quotes.filter(x => x.id !== qId); save();
   }
   function allQuotes() {
