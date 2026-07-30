@@ -247,6 +247,31 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .modal-actions .save { flex: 2; }
 .save.danger { background: var(--grad-red); color: #fff; }
 
+/* 3D action buttons (Settings) — icon + title + chhoti tafseel, dabaane par dabta hua */
+.btn3d {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 13px 15px; margin-top: 12px;
+  border: none; border-radius: 15px; text-align: left; color: #fff;
+  box-shadow: 0 6px 0 rgba(0,0,0,.34), 0 11px 20px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.4);
+  transition: transform .09s ease, box-shadow .09s ease;
+}
+.btn3d:active {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 rgba(0,0,0,.34), 0 3px 9px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.3);
+}
+.btn3d .b3-ic {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.2); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(0,0,0,.15);
+}
+.btn3d .b3-tx { display: flex; flex-direction: column; line-height: 1.28; }
+.btn3d .b3-tx b { font-size: 15px; font-weight: 800; }
+.btn3d .b3-tx small { font-size: 11.5px; font-weight: 600; opacity: .92; margin-top: 1px; }
+.btn3d.blue  { background: linear-gradient(180deg, #6bb2ff 0%, #2f6fd6 100%); }
+.btn3d.green { background: linear-gradient(180deg, #4fe9ab 0%, #0f9d6b 100%); color: #05271b; }
+.btn3d.green .b3-ic, .btn3d.amber .b3-ic { background: rgba(255,255,255,.28); }
+.btn3d.amber { background: linear-gradient(180deg, #f8da98 0%, #e7a24c 55%, #c9851f 100%); color: #3a2905; }
+
 /* Image buttons */
 .img-btns { display: flex; gap: 10px; }
 .img-btn { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: #0e0f14; font-weight: 700; font-size: 14px; color: var(--gold1); }

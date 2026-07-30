@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v44'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v45'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -725,14 +725,19 @@ async function ensurePublished(party) {
 }
 // Shared customers jinki PDF link update honi hai. Agar abhi net/cloud na ho to
 // yaad rakho aur baad me (net aane par ya backup hone par) khud update kar do.
-const pendingShares = new Set();
+// pendingShares ko localStorage me bhi rakho — app band ho kar khule to bhi koi
+// link-update zaya na ho (net aate hi khud publish ho jaye). LIVE + strong.
+const PENDING_SHARES_KEY = 'altariq_pendingshares';
+function loadPendingShares() { try { return new Set(JSON.parse(localStorage.getItem(PENDING_SHARES_KEY) || '[]')); } catch (e) { return new Set(); } }
+function savePendingShares() { try { localStorage.setItem(PENDING_SHARES_KEY, JSON.stringify([...pendingShares])); } catch (e) {} }
+const pendingShares = loadPendingShares();
 function republishIfShared(party) {
   if (!party || !party.shareId) return;
   Store.recordShareToken(party.name, party.shareId); // token permanently yaad rakho
   if (Cloud.isReady() && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
-    Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) pendingShares.add(party.shareId); });
+    Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) { pendingShares.add(party.shareId); savePendingShares(); } });
   } else {
-    pendingShares.add(party.shareId); // baad me update hogi
+    pendingShares.add(party.shareId); savePendingShares(); // baad me update hogi
   }
 }
 // Sab bheje gaye links ko ek saath naye data se update karo
@@ -753,8 +758,8 @@ function flushShares() {
   const all = [...Store.getCustomers(), ...Store.getSuppliers()];
   [...pendingShares].forEach(id => {
     const p = all.find(x => x.shareId === id);
-    if (!p) { pendingShares.delete(id); return; }
-    Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) pendingShares.delete(id); });
+    if (!p) { pendingShares.delete(id); savePendingShares(); return; }
+    Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) { pendingShares.delete(id); savePendingShares(); } });
   });
 }
 if (typeof window !== 'undefined') {
@@ -1028,6 +1033,7 @@ function setupAutoUpdate() {
   // start cloud sync if configured (non-blocking)
   Cloud.init(onCloudRemote).then(r => {
     if (r && r.ok) { renderOverview(); if (Cloud.getStatus) renderBackupBar(Cloud.getStatus().state); }
+    flushShares(); // app khulte hi: koi baqi link-update (pichli dafa net na hone se) ab bhej do
     maybeRunImport();
   }).catch(() => { maybeRunImport(); });
 })();

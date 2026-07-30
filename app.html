@@ -103,10 +103,14 @@
           <textarea id="setCloudConfig" rows="6" placeholder='{ "apiKey": "...", "authDomain": "...", "projectId": "...", "appId": "..." }'></textarea>
           <div class="settings-note">Setup guide: <b>CLOUD-SETUP.md</b>. Free Firebase project banayein, config yahan paste karein, Sync ID same rakhein har device par. Test karke Save.</div></div>
         <div class="modal-actions"><button class="cancel" id="btnCloudTest" style="flex:1;">🔌 Connection Test</button></div>
-        <button class="cancel" id="btnRepublish" style="width:100%; margin-top:10px;">🔗 Bheje gaye links update karein</button>
-        <div class="settings-note">Customers ko bheje gaye link/PDF ko naye data se refresh karta hai.</div>
-        <button class="cancel" id="btnForceEqual" style="width:100%; margin-top:10px;">🟰 Dono phone ka hisaab barabar karo</button>
-        <div class="settings-note">Agar kisi phone par total farq (ziada/kam) ho, to <b>is phone ka hisaab sahi</b> maan kar doosre phone par bhi bilkul wahi laga deta hai. (Ye <b>aap ke</b> phone par dabayein — jahan sahi hisaab hai.)</div>
+        <button class="btn3d blue" id="btnRepublish">
+          <span class="b3-ic">🔗</span>
+          <span class="b3-tx"><b>Bheje gaye Links taaza karein</b><small>Customers ko bheji hui PDF/link ko naye hisaab se update</small></span>
+        </button>
+        <button class="btn3d green" id="btnForceEqual">
+          <span class="b3-ic">🟰</span>
+          <span class="b3-tx"><b>Dono phone barabar karo</b><small>IS phone ka (sahi) hisaab doosre phone par bhi laga dein</small></span>
+        </button>
         <div class="settings-note" id="cloudStatus"></div>
       </div>
 
@@ -127,7 +131,10 @@
           <button class="cancel" id="btnImport" style="flex:1;">⬆️ Backup Load</button>
         </div>
         <input type="file" id="importFile" accept="application/json" class="hidden">
-        <button class="cancel" id="btnSnapshots" style="width:100%; margin-top:10px;">🕘 Purani Backups</button>
+        <button class="btn3d amber" id="btnSnapshots">
+          <span class="b3-ic">🕘</span>
+          <span class="b3-tx"><b>Purani Backups</b><small>Galti se kuch delete/kharab ho jaye to wapas laayein</small></span>
+        </button>
         <div class="settings-note" style="margin-top:10px;">Mashwara: hafte me ek dafa backup file Google Drive/WhatsApp par bhi rakh lein. Cloud sync chahiye to bata dein.</div>
       </div>
 
