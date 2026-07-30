@@ -323,6 +323,18 @@ const Cloud = (() => {
     } catch (e) { return { ok: false, error: e.message || String(e) }; }
   }
 
-  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz,
+  // "Dono phone barabar karo" — IS phone ka poora hisaab authoritative bana kar bhej do.
+  // Doosra phone (jaise Abu ka) fullReset marker dekh kar apna ledger ISI se badal lega,
+  // is liye har farq (edit/duplicate/purani entry) foran khatam ho jata hai.
+  async function forceResetAll() {
+    if (!docRef || !syncOn) return { ok: false, error: 'Pehle Cloud Sync ON karein' };
+    try {
+      localStorage.setItem(RKEY, 'force-' + Date.now()); // naya marker; apne aap ko dobara reset na karo
+      await push(); // poora data + fullReset marker — doosra phone isko apna lega
+      return { ok: true };
+    } catch (e) { return { ok: false, error: e.message || String(e) }; }
+  }
+
+  return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz, forceResetAll,
     getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry, refresh };
 })();

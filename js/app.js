@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v43'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v44'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -890,6 +890,14 @@ $('#btnCloudTest').addEventListener('click', async () => {
   $('#cloudStatus').textContent = 'Test ho raha hai...';
   const r = await Cloud.testConnect($('#setCloudConfig').value.trim(), $('#setCloudSyncId').value.trim());
   $('#cloudStatus').textContent = r.ok ? '✅ Connection theek hai. Ab Save karein.' : ('❌ Fail: ' + (r.error || ''));
+});
+$('#btnForceEqual').addEventListener('click', async () => {
+  if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein'); return; }
+  if (!confirm('IS phone ka hisaab sahi maan kar doosre phone (Abu) par bhi bilkul wahi laga diya jayega.\n\nYaqeeni banayein ke IS phone par hisaab theek hai. Jari rakhein?')) return;
+  $('#cloudStatus').textContent = 'Barabar kiya ja raha hai…';
+  const r = await Cloud.forceResetAll();
+  if (r && r.ok) { $('#cloudStatus').textContent = '✅ Ho gaya. Abu ka phone thori der (internet on) me is phone jaisa ho jayega.'; toast('Dono phone barabar ✅'); }
+  else { $('#cloudStatus').textContent = '❌ ' + ((r && r.error) || 'Masla'); }
 });
 $('#btnSetPin').addEventListener('click', () => showLock('set1'));
 $('#btnRemovePin').addEventListener('click', () => {

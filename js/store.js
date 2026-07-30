@@ -139,11 +139,13 @@ const Store = (() => {
   function replaceAll(d) { data = migrate(d); persist(false); }
 
   /* ---- Safe MERGE for multi-device sync (never lose entries) ---- */
+  // Same id par: jo NAYA (edit) hai wo jeete — 'm' (modify time) se. Is se kisi entry
+  // ki raqam badlo to doosre phone par bhi update ho jati hai (pehle purani reh jati thi).
   function mergeById(a, b) {
     a = a || []; b = b || [];
     const m = new Map();
     a.forEach(t => m.set(t.id, t));
-    b.forEach(t => { if (!m.has(t.id)) m.set(t.id, t); });
+    b.forEach(t => { const ex = m.get(t.id); if (!ex || (t.m || 0) > (ex.m || 0)) m.set(t.id, t); });
     return [...m.values()];
   }
   function mergeParties(a, b) {
@@ -155,8 +157,9 @@ const Store = (() => {
       const x = m.get(p.id);
       x.txns = mergeById(x.txns, p.txns).sort((u, v) => new Date(u.date) - new Date(v.date));
       x.quotes = mergeById(x.quotes, p.quotes).sort((u, v) => new Date(v.date) - new Date(u.date));
-      if (!x.name && p.name) x.name = p.name;
-      if (!x.phone && p.phone) x.phone = p.phone;
+      // naam/phone edit bhi sync ho: jo naya (bara m) ho wo jeete, warna khali-fill
+      if ((p.m || 0) > (x.m || 0)) { if (p.name) x.name = p.name; if (p.phone != null && p.phone !== '') x.phone = p.phone; x.m = p.m; }
+      else { if (!x.name && p.name) x.name = p.name; if (!x.phone && p.phone) x.phone = p.phone; }
       if (!x.shareId && p.shareId) x.shareId = p.shareId;
     });
     return [...m.values()];
@@ -268,10 +271,10 @@ const Store = (() => {
   function getParties(kind) { return listOf(kind); }
   function getParty(kind, id) { return listOf(kind).find(p => p.id === id); }
   function addParty(kind, { name, phone }) {
-    const p = { id: uid(), name: name.trim(), phone: (phone || '').trim(), txns: [], quotes: [] };
+    const p = { id: uid(), name: name.trim(), phone: (phone || '').trim(), txns: [], quotes: [], m: Date.now() };
     listOf(kind).push(p); save(); return p;
   }
-  function updateParty(kind, id, patch) { const p = getParty(kind, id); if (p) { Object.assign(p, patch); save(); } }
+  function updateParty(kind, id, patch) { const p = getParty(kind, id); if (p) { Object.assign(p, patch); p.m = Date.now(); save(); } }
   function deleteParty(kind, id) {
     const p = getParty(kind, id);
     if (p) { p.txns.forEach(t => t.img && delImage(t.img)); (p.quotes || []).forEach(q => q.img && delImage(q.img)); }
@@ -282,7 +285,7 @@ const Store = (() => {
   }
   function addPartyTxn(kind, id, { amount, type, note, date, img }) {
     const p = getParty(kind, id); if (!p) return null;
-    const t = { id: uid(), amount: Math.round(Number(amount) * 100) / 100, type, note: (note || '').trim(), date: date || new Date().toISOString(), img: img || '' };
+    const t = { id: uid(), amount: Math.round(Number(amount) * 100) / 100, type, note: (note || '').trim(), date: date || new Date().toISOString(), img: img || '', m: Date.now() };
     p.txns.push(t); p.txns.sort((a, b) => new Date(a.date) - new Date(b.date)); save(); return t;
   }
   function deletePartyTxn(kind, id, txnId) {
@@ -299,6 +302,7 @@ const Store = (() => {
     if (patch.note != null) t.note = (patch.note || '').trim();
     if (patch.date) t.date = patch.date;
     if (patch.img !== undefined) t.img = patch.img || '';
+    t.m = Date.now(); // edit ka waqt — doosre phone par bhi ye nayi value chali jaye
     p.txns.sort((a, b) => new Date(a.date) - new Date(b.date));
     save(); return t;
   }
@@ -339,12 +343,12 @@ const Store = (() => {
   /* ---------- Quotes / Rate memory ---------- */
   function addQuote(custId, { job, rate, note, date, status, img }) {
     const c = getCustomer(custId); if (!c) return null;
-    const q = { id: uid(), job: (job || '').trim(), rate: Number(rate) || 0, note: (note || '').trim(), date: date || new Date().toISOString(), status: status || 'Rate Diya', img: img || '' };
+    const q = { id: uid(), job: (job || '').trim(), rate: Number(rate) || 0, note: (note || '').trim(), date: date || new Date().toISOString(), status: status || 'Rate Diya', img: img || '', m: Date.now() };
     c.quotes.push(q); c.quotes.sort((a, b) => new Date(b.date) - new Date(a.date)); save(); return q;
   }
   function updateQuote(custId, qId, patch) {
     const c = getCustomer(custId); if (!c) return;
-    const q = c.quotes.find(x => x.id === qId); if (q) { Object.assign(q, patch); save(); }
+    const q = c.quotes.find(x => x.id === qId); if (q) { Object.assign(q, patch); q.m = Date.now(); save(); }
   }
   function deleteQuote(custId, qId) {
     const c = getCustomer(custId); if (!c) return;
