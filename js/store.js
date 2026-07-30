@@ -188,7 +188,12 @@ const Store = (() => {
     data.suppliers = pruneDead(mergeParties(data.suppliers, remote.suppliers), dead);
     data.items = mergeById(data.items, remote.items).filter(t => !dead[t.id]);
     if (new Date(remote.updatedAt || 0) > new Date(data.updatedAt || 0)) {
+      // cloud on/off aur config PER-DEVICE hai — ise doosre phone se KABHI overwrite
+      // na karo, warna aik phone ka "off" doosre ka "on" bujha deta hai (sync khud
+      // band ho jati thi). Baqi shop (naam, logo, PIN, payment) sync hota hai.
+      const localCloud = data.shop.cloud;
       data.shop = Object.assign({}, data.shop, remote.shop || {});
+      data.shop.cloud = localCloud;
     }
     const changed = JSON.stringify(data) !== before;
     if (changed) persist(false);
