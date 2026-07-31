@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v47'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v48'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -626,10 +626,10 @@ $('#btnAddQuote').addEventListener('click', () => {
 $('#btnAddRate').addEventListener('click', () => {
   quoteCtx = 'rates';
   resetQuoteForm();
-  const sel = $('#quoteCust');
   const custs = Store.getCustomers().slice().sort((a, b) => a.name.localeCompare(b.name));
   if (custs.length === 0) { toast('Pehle koi customer banayein'); return; }
-  sel.innerHTML = custs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  if (!quotePicker) quotePicker = setupCustPicker('quoteCust');
+  quotePicker.load(custs);
   $('#quoteCustField').style.display = 'block';
   openModal('quoteModal'); setTimeout(() => $('#quoteJob').focus(), 200);
 });
@@ -684,9 +684,36 @@ $('#deleteQuote').addEventListener('click', () => {
   if (editingQuoteId && confirm('Ye rate delete karein?')) { Store.deleteQuote(currentCustId, editingQuoteId); closeModal('quoteModal'); renderQuotes(); }
 });
 
+/* ---------- Searchable customer picker (rate flows) ---------- */
+function setupCustPicker(prefix) {
+  const search = $('#' + prefix + 'Search'), hidden = $('#' + prefix), drop = $('#' + prefix + 'Drop');
+  let custs = [];
+  function render(filter) {
+    const f = (filter || '').trim().toLowerCase();
+    const list = custs.filter(c => !f || c.name.toLowerCase().includes(f) || (c.phone || '').replace(/\s/g, '').includes(f));
+    drop.innerHTML = list.length
+      ? list.slice(0, 80).map(c => `<div class="cust-opt" data-id="${c.id}">${esc(c.name)}${c.phone ? '<span>' + esc(c.phone) + '</span>' : ''}</div>`).join('')
+      : '<div class="cust-empty">Koi customer nahi mila</div>';
+  }
+  search.addEventListener('focus', () => { render(search.value === (custs.find(c => c.id === hidden.value) || {}).name ? '' : search.value); drop.classList.remove('hidden'); });
+  search.addEventListener('input', () => { hidden.value = ''; render(search.value); drop.classList.remove('hidden'); });
+  drop.addEventListener('click', e => {
+    const el = e.target.closest('.cust-opt'); if (!el) return;
+    const c = custs.find(x => x.id === el.dataset.id);
+    hidden.value = c ? c.id : ''; search.value = c ? c.name : '';
+    drop.classList.add('hidden');
+  });
+  document.addEventListener('click', e => { if (!e.target.closest('#' + prefix + 'Drop') && e.target !== search) drop.classList.add('hidden'); });
+  return {
+    load(newCusts) { custs = newCusts; hidden.value = ''; search.value = ''; drop.classList.add('hidden'); render(''); },
+    getId() { return hidden.value; }
+  };
+}
+let rcPicker = null, quotePicker = null;
+
 /* ---------- Rate Calculator (Abu ke liye) — jama karke rate + WhatsApp ---------- */
-const RC_FIELDS = ['rcCutting', 'rcPlate', 'rcPrinting', 'rcSetting', 'rcFinish', 'rcKraya'];
-const RC_LABELS = { rcCutting: 'Cutting', rcPlate: 'Plate', rcPrinting: 'Printing', rcSetting: 'Setting', rcFinish: 'Finish cutting', rcKraya: 'Kraya' };
+const RC_FIELDS = ['rcCutting', 'rcPlate', 'rcPrinting', 'rcSetting', 'rcFinish', 'rcKraya', 'rcProfit'];
+const RC_LABELS = { rcCutting: 'Cutting', rcPlate: 'Plate', rcPrinting: 'Printing', rcSetting: 'Setting', rcFinish: 'Finish cutting', rcKraya: 'Kraya', rcProfit: 'Profit' };
 function rcNum(id) { const v = parseFloat($('#' + id).value); return isNaN(v) || v < 0 ? 0 : v; }
 function rcCompute() {
   const sheets = rcNum('rcSheets'), rate = rcNum('rcSheetRate');
@@ -702,10 +729,10 @@ function openRateCalc() {
   $('#rcJob').value = '';
   ['rcSheets', 'rcSheetRate', ...RC_FIELDS].forEach(id => $('#' + id).value = '');
   $('#rcNotify').checked = true;
-  const sel = $('#rcCust');
   const custs = Store.getCustomers().slice().sort((a, b) => a.name.localeCompare(b.name));
   if (custs.length === 0) { toast('Pehle koi customer banayein'); return; }
-  sel.innerHTML = custs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  if (!rcPicker) rcPicker = setupCustPicker('rcCust');
+  rcPicker.load(custs);
   rcCompute();
   openModal('rateCalcModal');
   setTimeout(() => $('#rcJob').focus(), 200);

@@ -238,7 +238,11 @@
       <div class="field"><label>Kaam / Job</label><input id="quoteJob" placeholder="Misaal: 1000 Visiting Cards, matte" autocomplete="off"></div>
       <div class="field"><label>Rate diya (Rs)</label><input id="quoteRate" class="amount-input" type="number" inputmode="decimal" placeholder="0"></div>
       <div class="field" id="quoteCustField" style="display:none;"><label>Kis customer ka rate hai?</label>
-        <select id="quoteCust"></select></div>
+        <div class="cust-picker">
+          <input type="hidden" id="quoteCust">
+          <input type="text" class="search cust-search" id="quoteCustSearch" placeholder="🔍 Customer chunein ya dhoondein..." autocomplete="off">
+          <div class="cust-drop hidden" id="quoteCustDrop"></div>
+        </div></div>
       <div class="field"><label>Stage</label>
         <select id="quoteStatus">
           <option>Rate Diya</option>
@@ -269,7 +273,12 @@
     <div class="modal">
       <h2>🧮 Rate Calculator</h2>
       <div class="field"><label>Kaam / Cheez ka naam</label><input id="rcJob" placeholder="Misaal: Shadi Card, 1000 adad" autocomplete="off"></div>
-      <div class="field"><label>Kis customer ka rate hai?</label><select id="rcCust"></select></div>
+      <div class="field"><label>Kis customer ka rate hai?</label>
+        <div class="cust-picker">
+          <input type="hidden" id="rcCust">
+          <input type="text" class="search cust-search" id="rcCustSearch" placeholder="🔍 Customer chunein ya dhoondein..." autocomplete="off">
+          <div class="cust-drop hidden" id="rcCustDrop"></div>
+        </div></div>
 
       <div class="rc-calc">
         <div class="rc-row rc-sheet">
@@ -285,6 +294,7 @@
         <div class="rc-row"><span class="rc-lbl">Setting</span><input type="number" inputmode="decimal" id="rcSetting" class="rc-in" placeholder="0"></div>
         <div class="rc-row"><span class="rc-lbl">Last finish cutting</span><input type="number" inputmode="decimal" id="rcFinish" class="rc-in" placeholder="0"></div>
         <div class="rc-row"><span class="rc-lbl">Kraya</span><input type="number" inputmode="decimal" id="rcKraya" class="rc-in" placeholder="0"></div>
+        <div class="rc-row"><span class="rc-lbl">Profit</span><input type="number" inputmode="decimal" id="rcProfit" class="rc-in" placeholder="0"></div>
       </div>
 
       <div class="rc-total"><span>Total Rate</span><b id="rcTotal">Rs 0</b></div>

@@ -190,6 +190,16 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .rc-total span { font-size: 13px; font-weight: 700; letter-spacing: .03em; }
 .rc-total b { font-size: 23px; font-weight: 900; }
 
+/* Searchable customer picker (rate flows) */
+.cust-picker { position: relative; }
+.cust-search { width: 100%; }
+.cust-drop { margin-top: 6px; max-height: 240px; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 26px rgba(0,0,0,.45); }
+.cust-opt { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; font-size: 15px; font-weight: 700; color: var(--text); border-bottom: 1px solid rgba(231,162,76,.08); }
+.cust-opt:last-child { border-bottom: none; }
+.cust-opt span { color: var(--muted); font-size: 12px; font-weight: 500; }
+.cust-opt:active { background: rgba(231,162,76,.14); }
+.cust-empty { padding: 12px 14px; color: var(--muted); font-size: 14px; }
+
 /* Quotes */
 .quote { border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; }
 .quote .q-main { flex: 1; min-width: 0; }
