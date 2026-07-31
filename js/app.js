@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v46'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v47'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -747,9 +747,7 @@ async function sendRateNotification(custId, job, total, preWin) {
   const phone = intlPhone(c.phone);
   if (!phone) { if (preWin) preWin.close(); toast('Rate save ho gaya (WhatsApp ke liye number add karein)'); return; }
   const shop = Store.getShop();
-  const b = Store.balanceOf(c);
-  const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
-  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${job}: *${fmtMoney(total)}*\n\n${balLine}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n📋 Aap ke kaam ka rate\n*${job}*\n\nRate: *${fmtMoney(total)}*\n\nKaam confirm karne ke liye rabta karein. Shukriya.`;
   const endpoint = (shop.waEndpoint || '').trim();
   if (endpoint) {
     if (preWin) preWin.close();
