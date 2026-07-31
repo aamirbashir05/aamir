@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v45'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v46'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -683,6 +683,85 @@ $('#saveQuote').addEventListener('click', async () => {
 $('#deleteQuote').addEventListener('click', () => {
   if (editingQuoteId && confirm('Ye rate delete karein?')) { Store.deleteQuote(currentCustId, editingQuoteId); closeModal('quoteModal'); renderQuotes(); }
 });
+
+/* ---------- Rate Calculator (Abu ke liye) — jama karke rate + WhatsApp ---------- */
+const RC_FIELDS = ['rcCutting', 'rcPlate', 'rcPrinting', 'rcSetting', 'rcFinish', 'rcKraya'];
+const RC_LABELS = { rcCutting: 'Cutting', rcPlate: 'Plate', rcPrinting: 'Printing', rcSetting: 'Setting', rcFinish: 'Finish cutting', rcKraya: 'Kraya' };
+function rcNum(id) { const v = parseFloat($('#' + id).value); return isNaN(v) || v < 0 ? 0 : v; }
+function rcCompute() {
+  const sheets = rcNum('rcSheets'), rate = rcNum('rcSheetRate');
+  const sheetSub = Math.round(sheets * rate * 100) / 100;
+  $('#rcSheetSub').textContent = '= ' + sheetSub.toLocaleString('en-PK');
+  let total = sheetSub;
+  RC_FIELDS.forEach(id => total += rcNum(id));
+  total = Math.round(total * 100) / 100;
+  $('#rcTotal').textContent = fmtMoney(total);
+  return { sheets, rate, sheetSub, total };
+}
+function openRateCalc() {
+  $('#rcJob').value = '';
+  ['rcSheets', 'rcSheetRate', ...RC_FIELDS].forEach(id => $('#' + id).value = '');
+  $('#rcNotify').checked = true;
+  const sel = $('#rcCust');
+  const custs = Store.getCustomers().slice().sort((a, b) => a.name.localeCompare(b.name));
+  if (custs.length === 0) { toast('Pehle koi customer banayein'); return; }
+  sel.innerHTML = custs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  rcCompute();
+  openModal('rateCalcModal');
+  setTimeout(() => $('#rcJob').focus(), 200);
+}
+$('#btnRateCalc').addEventListener('click', openRateCalc);
+// live total — kisi bhi khaane me likhte hi total update
+$('#rateCalcModal').addEventListener('input', e => { if (e.target.classList.contains('rc-in')) rcCompute(); });
+
+function rateBreakdown(v) {
+  const parts = [];
+  if (v.sheetSub > 0) parts.push('Sheet ' + v.sheets + '×' + v.rate + '=' + fmtMoney(v.sheetSub));
+  RC_FIELDS.forEach(id => { const n = rcNum(id); if (n > 0) parts.push(RC_LABELS[id] + ' ' + fmtMoney(n)); });
+  return parts.join(' • ');
+}
+$('#saveRateCalc').addEventListener('click', async () => {
+  const job = $('#rcJob').value.trim();
+  const custId = $('#rcCust').value;
+  const v = rcCompute();
+  if (!job) { toast('Cheez ka naam likhein'); return; }
+  if (!custId) { toast('Customer chunein'); return; }
+  if (!v.total || v.total <= 0) { toast('Rate ke khaane bharein'); return; }
+  const cust = Store.getCustomer(custId);
+  const notify = $('#rcNotify').checked;
+  // popup-block se bachne ke liye click ke DAURAN hi WhatsApp window khol lo
+  const hasEndpoint = !!(Store.getShop().waEndpoint || '').trim();
+  const preWin = (notify && !hasEndpoint && intlPhone((cust || {}).phone)) ? window.open('', '_blank') : null;
+
+  const note = rateBreakdown(v);
+  const date = new Date().toISOString();
+  Store.addQuote(custId, { job, rate: v.total, note, status: 'Rate Diya', date });
+  republishIfShared(cust);        // customer ke record/link me foran nazar aaye
+  closeModal('rateCalcModal');
+  renderRates();
+  if (notify) sendRateNotification(custId, job, v.total, preWin);
+  else toast('Rate save ho gaya ✅');
+});
+async function sendRateNotification(custId, job, total, preWin) {
+  const c = Store.getCustomer(custId); if (!c) { if (preWin) preWin.close(); return; }
+  const phone = intlPhone(c.phone);
+  if (!phone) { if (preWin) preWin.close(); toast('Rate save ho gaya (WhatsApp ke liye number add karein)'); return; }
+  const shop = Store.getShop();
+  const b = Store.balanceOf(c);
+  const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${job}: *${fmtMoney(total)}*\n\n${balLine}`;
+  const endpoint = (shop.waEndpoint || '').trim();
+  if (endpoint) {
+    if (preWin) preWin.close();
+    try {
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: phone, message: msg }) });
+      if (res.ok) { toast('✅ Rate WhatsApp par bhej diya'); return; }
+    } catch (e) {}
+  }
+  const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
+  if (preWin && !preWin.closed) preWin.location.href = url;
+  else { const w = window.open(url, '_blank'); if (!w) toast('WhatsApp block ho gaya — dobara koshish karein'); }
+}
 
 /* ---------- Link + WhatsApp ---------- */
 // compact v2 payload — short links (logo loaded by viewer; dates base36; type d/c)

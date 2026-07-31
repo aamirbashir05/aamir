@@ -56,7 +56,8 @@
     <div class="topbar light"><h1>Rates</h1></div>
     <div class="wrap">
       <p class="hint">Customer ko jo rate diya wo yahan mehfooz — Abu ko yaad rakhne ke liye. Customer ke naam ya kaam se dhoondein.</p>
-      <button class="add-quote" id="btnAddRate">+ Naya rate likhein</button>
+      <button class="add-quote" id="btnRateCalc">🧮 Rate Calculator — jama karke rate banayein</button>
+      <button class="add-quote secondary" id="btnAddRate">+ Seedha rate likhein</button>
       <input class="search" id="rateSearch" placeholder="🔍 Customer ya kaam dhoondein...">
       <div class="list" id="rateList"></div>
     </div>
@@ -260,6 +261,36 @@
         <img id="quoteImgPreview" class="img-preview hidden"></div>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveQuote">Save</button></div>
       <div class="modal-actions" id="deleteQuoteRow" style="margin-top:10px;"><button class="save danger" id="deleteQuote" style="flex:1;">🗑 Rate Delete</button></div>
+    </div>
+  </div>
+
+  <!-- ============ RATE CALCULATOR (Abu ke liye) ============ -->
+  <div class="modal-bg" id="rateCalcModal">
+    <div class="modal">
+      <h2>🧮 Rate Calculator</h2>
+      <div class="field"><label>Kaam / Cheez ka naam</label><input id="rcJob" placeholder="Misaal: Shadi Card, 1000 adad" autocomplete="off"></div>
+      <div class="field"><label>Kis customer ka rate hai?</label><select id="rcCust"></select></div>
+
+      <div class="rc-calc">
+        <div class="rc-row rc-sheet">
+          <span class="rc-lbl">Sheet Price</span>
+          <input type="number" inputmode="numeric" id="rcSheets" class="rc-in rc-qty" placeholder="sheets">
+          <span class="rc-x">×</span>
+          <input type="number" inputmode="decimal" id="rcSheetRate" class="rc-in rc-qty" placeholder="rate">
+          <span class="rc-sub" id="rcSheetSub">0</span>
+        </div>
+        <div class="rc-row"><span class="rc-lbl">Cutting</span><input type="number" inputmode="decimal" id="rcCutting" class="rc-in" placeholder="0"></div>
+        <div class="rc-row"><span class="rc-lbl">Plate</span><input type="number" inputmode="decimal" id="rcPlate" class="rc-in" placeholder="0"></div>
+        <div class="rc-row"><span class="rc-lbl">Printing</span><input type="number" inputmode="decimal" id="rcPrinting" class="rc-in" placeholder="0"></div>
+        <div class="rc-row"><span class="rc-lbl">Setting</span><input type="number" inputmode="decimal" id="rcSetting" class="rc-in" placeholder="0"></div>
+        <div class="rc-row"><span class="rc-lbl">Last finish cutting</span><input type="number" inputmode="decimal" id="rcFinish" class="rc-in" placeholder="0"></div>
+        <div class="rc-row"><span class="rc-lbl">Kraya</span><input type="number" inputmode="decimal" id="rcKraya" class="rc-in" placeholder="0"></div>
+      </div>
+
+      <div class="rc-total"><span>Total Rate</span><b id="rcTotal">Rs 0</b></div>
+
+      <label class="switch-row"><span>💬 Customer ko WhatsApp par rate bhejein</span><input type="checkbox" id="rcNotify" checked></label>
+      <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveRateCalc">Rate Save & Bhejein</button></div>
     </div>
   </div>
 
