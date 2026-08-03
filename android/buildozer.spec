@@ -12,7 +12,7 @@ source.include_exts = py,png,jpg,txt
 version = 1.0
 
 # Zaroori python packages (curl_cffi nahi — Android par embed-player kaafi hai)
-requirements = python3,kivy==2.3.0,yt-dlp,certifi,urllib3,pyjnius,android
+requirements = python3,kivy==2.3.0,yt-dlp,certifi,pyjnius,android
 
 orientation = portrait
 fullscreen = 0

@@ -40,10 +40,11 @@ jobs:
             pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
             build-essential ccache libltdl-dev
 
-      - name: Python build tools
+      - name: Python build tools (stable combo — Python 3.11 wala p4a)
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade "Cython==0.29.36" virtualenv buildozer
+          pip install "Cython==0.29.36" virtualenv \
+            "buildozer==1.5.0" "python-for-android==2024.1.21"
 
       - name: Cache buildozer global dir
         uses: actions/cache@v4
