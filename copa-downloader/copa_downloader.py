@@ -222,12 +222,17 @@ def _pip_install(pkgs, log):
     importlib.invalidate_caches()
 
 
+IS_ANDROID = ("ANDROID_ARGUMENT" in os.environ) or ("ANDROID_ROOT" in os.environ
+                                                    and "com.termux" not in sys.prefix)
+
+
 def ensure_ytdlp(log=print) -> bool:
     frozen = getattr(sys, "frozen", False)
+    can_pip = not frozen and not IS_ANDROID   # exe/APK me pip nahi chalta
     try:
         import yt_dlp  # noqa: F401
     except ImportError:
-        if frozen:
+        if not can_pip:
             log("yt-dlp is build me nahi hai.")
             return False
         log("yt-dlp install ho raha hai (pip)...")
@@ -240,7 +245,7 @@ def ensure_ytdlp(log=print) -> bool:
     try:
         import curl_cffi  # noqa: F401
     except ImportError:
-        if not frozen:
+        if can_pip:
             log("curl_cffi install ho raha hai (Vimeo ke liye)...")
             try:
                 _pip_install(["curl_cffi"], log)
@@ -328,8 +333,8 @@ def download_one(video, index, folder: Path, log, control, imp_target):
         "fragment_retries": 10,
         "extractor_retries": 5,
         "continuedl": True,
-        "sleep_interval": 2,
-        "max_sleep_interval": 6,
+        # SPEED: HLS/DASH ke kai fragments ek saath (IDM jaisi multi-connection)
+        "concurrent_fragment_downloads": 16,
     }
     if imp_target is not None:
         opts["impersonate"] = imp_target

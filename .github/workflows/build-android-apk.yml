@@ -1,0 +1,42 @@
+name: Build Android APK
+
+# COPA Downloader ka Android APK banata hai (Kivy + buildozer).
+# NOTE: pehli build ~30-45 min le sakti hai (SDK/NDK download).
+# Download: repo -> Actions -> yeh run -> Artifacts -> COPA-Downloader-APK
+
+on:
+  push:
+    branches:
+      - claude/chicago-copa-downloader-jvwb19
+    paths:
+      - "android/**"
+      - "copa-downloader/copa_downloader.py"
+      - ".github/workflows/build-android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Core logic android/ me copy karo
+        run: cp copa-downloader/copa_downloader.py android/copa_downloader.py
+
+      - name: Build APK (buildozer)
+        uses: ArtemSBulgakov/buildozer-action@v1
+        with:
+          command: buildozer android debug
+          workdir: android
+          buildozer_version: stable
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: COPA-Downloader-APK
+          path: android/bin/*.apk
+          if-no-files-found: error
