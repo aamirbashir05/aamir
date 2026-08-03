@@ -1,9 +1,9 @@
 # COPA Chicago — Case Video Downloader 🎥⬇️
 
 Ek chhota apna tool (public nahi) — sirf **[chicagocopa.org](https://www.chicagocopa.org/)**
-ke case pages ke liye. Ek case ka link do, **ek button** dabao, aur us case ki
-**saari videos** (BWC 1, BWC 2, BWC 3 …) **ek hi folder** me, ek-ek kar ke,
-apne aap download ho jaati hain.
+ke case pages ke liye. Ek ya **kai** case links do, **ek button** dabao, aur har
+case ki **saari videos** (BWC 1, BWC 2, BWC 3 …) uske apne folder me, ek-ek kar ke,
+apne aap download hoti chali jaati hain. **Bulk** — ek saath 10-20 case links bhi.
 
 > Yeh COPA ki videos **Vimeo** par hoti hain aur COPA ne un par download allow
 > kiya hua hai. IDM inko grab nahi karta, isliye yeh tool andar-hi-andar
@@ -27,22 +27,35 @@ uska address bar wala link.)
 
 ---
 
-## 🪟 Windows (PC / Laptop) — sabse aasaan
+## 🪟 Windows (PC / Laptop)
 
-**Pehli dafa (ek baar):**
-1. Python install karein: <https://www.python.org/downloads/>
-   → install karte waqt neeche **"Add python.exe to PATH"** par **tick** zaroor lagayein.
-2. (Optional, behtareen quality ke liye) ffmpeg install: PowerShell me
-   `winget install ffmpeg` — na bhi karein to tool phir bhi chalega.
+### Tareeqa A — Ready `.exe` (sabse aasaan, Python ki zaroorat NAHI) ⭐
 
-**Har dafa video download karne ke liye:**
-1. `START-Windows.bat` par **double-click** karein.
-   (Pehli dafa yeh yt-dlp khud install/update kar lega — thoda intezaar.)
-2. Ek window khulegi. Upar **case ka link paste** karein.
-3. **⬇ Download All** dabayein.
-4. Bas — saari videos `Downloads\COPA\<case ka naam>\` folder me aa jayengi.
+1. GitHub par is repo me jayein → upar **Actions** tab.
+2. **"Build Windows EXE"** wala latest (hara ✓) run kholein.
+3. Neeche **Artifacts** me se **`COPA-Downloader-Windows`** download karein (ek zip).
+4. Zip khol kar **`COPA-Downloader.exe`** nikaalein — bas ispar **double-click**.
+   (yt-dlp exe ke andar hi hai, alag se kuch install nahi karna.)
 
-> "Save folder" ko **Change…** se apni marzi ki jagah bhi rakh sakte hain.
+> Behtareen quality (video+audio merge) ke liye `ffmpeg` ho to accha; na ho to
+> bhi single-file MP4 aa jati hai. ffmpeg: PowerShell me `winget install ffmpeg`.
+
+### Tareeqa B — Python se (agar exe na chahiye)
+
+**Pehli dafa (ek baar):** Python install karein <https://www.python.org/downloads/>
+→ install ke waqt **"Add python.exe to PATH"** par **tick** zaroor.
+
+**Har dafa:** `START-Windows.bat` par **double-click** (pehli dafa yeh yt-dlp khud install kar lega).
+
+### Chalane ke baad (dono tareeqon me same)
+1. Ek window khulegi. Upar box me **case ke link(s) paste** karein —
+   **har line par ek link** (bulk ke liye kai lines).
+2. **⬇ Download All** dabayein.
+3. Har case ki videos `Downloads\COPA\<case ka naam>\` folder me, tarteeb se aa jayengi.
+
+> - **Bulk:** ek-ek line par kai case links; sab ek ke baad ek download honge.
+> - **📄 Links .txt se lo** button se ek text file (har line par link) bhi load kar sakte hain.
+> - **Save folder** ko **Change…** se apni marzi ki jagah rakh sakte hain.
 
 ---
 
@@ -76,9 +89,9 @@ case ke naam se save hongi.
 ## 🍏 Mac / Linux
 
 ```bash
-python3 copa_downloader.py          # window (GUI) khulegi
-# ya
-python3 copa_downloader.py "https://www.chicagocopa.org/....."   # seedha download
+python3 copa_downloader.py                       # window (GUI) khulegi
+python3 copa_downloader.py "<link1>" "<link2>"   # bulk: kai cases
+python3 copa_downloader.py --from-file links.txt # links ek file se (har line par ek)
 ```
 Pehle ek dafa: `pip3 install yt-dlp`  (behtar quality ke liye `ffmpeg` bhi).
 

@@ -1,0 +1,54 @@
+name: Build Windows EXE
+
+# COPA Downloader ka Windows .exe banata hai (asli Windows machine par).
+# Jab bhi is branch par tool badle, ya "Run workflow" dabao, exe ban jata hai.
+# Download: repo -> Actions -> yeh run -> neeche "Artifacts" -> COPA-Downloader-Windows
+
+on:
+  push:
+    branches:
+      - claude/chicago-copa-downloader-jvwb19
+    paths:
+      - "copa-downloader/**"
+      - ".github/workflows/build-windows-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller yt-dlp
+
+      - name: Build EXE
+        run: >
+          pyinstaller --noconfirm --onefile --windowed
+          --name "COPA-Downloader"
+          --collect-all yt_dlp
+          copa-downloader/copa_downloader.py
+
+      - name: Smoke test (exe chalta hai?)
+        run: |
+          dist\COPA-Downloader.exe --help
+        shell: cmd
+        continue-on-error: true
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: COPA-Downloader-Windows
+          path: dist/COPA-Downloader.exe
+          if-no-files-found: error
