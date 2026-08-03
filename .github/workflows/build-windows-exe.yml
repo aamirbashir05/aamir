@@ -33,12 +33,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller yt-dlp curl_cffi
 
+      - name: Get aria2c (multi-connection downloader — IDM jaisi speed)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+          Invoke-WebRequest -Uri $url -OutFile aria2.zip
+          Expand-Archive aria2.zip -DestinationPath aria2dir -Force
+          $exe = (Get-ChildItem -Recurse -Filter aria2c.exe aria2dir | Select-Object -First 1).FullName
+          Copy-Item $exe -Destination aria2c.exe
+          Write-Host "aria2c: $exe"
+
       - name: Build EXE
         run: >
           pyinstaller --noconfirm --onefile --windowed
           --name "COPA-Downloader"
           --collect-all yt_dlp
           --collect-all curl_cffi
+          --add-binary "aria2c.exe;."
           copa-downloader/copa_downloader.py
 
       - name: Smoke test (exe chalta hai?)

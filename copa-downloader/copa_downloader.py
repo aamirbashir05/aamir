@@ -258,6 +258,21 @@ def has_ffmpeg() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
+def aria2c_path():
+    """
+    aria2c (multi-connection downloader) ka rasta — exe me bundle hota hai,
+    warna PATH par (Termux: pkg install aria2). Isse single/progressive files
+    bhi 16 connections se (IDM jaisi) tez download hoti hain.
+    """
+    if getattr(sys, "frozen", False):
+        base = getattr(sys, "_MEIPASS", "")
+        for name in ("aria2c.exe", "aria2c"):
+            p = os.path.join(base, name)
+            if os.path.exists(p):
+                return p
+    return shutil.which("aria2c")
+
+
 def impersonate_target():
     try:
         import curl_cffi  # noqa: F401
@@ -338,6 +353,25 @@ def download_one(video, index, folder: Path, log, control, imp_target):
     }
     if imp_target is not None:
         opts["impersonate"] = imp_target
+
+    # SPEED (progressive/single files): aria2c se 16-connection (IDM jaisi).
+    # HLS/DASH pehle se concurrent_fragment_downloads=16 se tez hai (native).
+    ar = aria2c_path()
+    if ar:
+        opts["external_downloader"] = {"http": ar, "https": ar, "ftp": ar}
+        opts["external_downloader_args"] = {
+            "aria2c": [
+                "--max-connection-per-server=16",
+                "--split=16",
+                "--min-split-size=1M",
+                "--max-concurrent-downloads=16",
+                "--file-allocation=none",
+                "--continue=true",
+                "--console-log-level=warn",
+                "--summary-interval=0",
+            ]
+        }
+
     if has_ffmpeg():
         opts["format"] = "bestvideo*+bestaudio/best"
         opts["merge_output_format"] = "mp4"
