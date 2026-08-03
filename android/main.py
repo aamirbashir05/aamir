@@ -77,9 +77,41 @@ def request_perms():
             Permission.INTERNET,
             Permission.WRITE_EXTERNAL_STORAGE,
             Permission.READ_EXTERNAL_STORAGE,
+            Permission.WAKE_LOCK,
         ])
     except Exception:
         pass
+
+
+# ---- Wake lock: app background me jaye ya screen band ho, phir bhi download chale ----
+_WAKELOCK = {"obj": None}
+
+
+def acquire_wakelock():
+    if _WAKELOCK["obj"] is not None:
+        return
+    try:
+        from jnius import autoclass
+        PythonActivity = autoclass("org.kivy.android.PythonActivity")
+        Context = autoclass("android.content.Context")
+        PowerManager = autoclass("android.os.PowerManager")
+        activity = PythonActivity.mActivity
+        pm = activity.getSystemService(Context.POWER_SERVICE)
+        wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "COPA::download")
+        wl.setReferenceCounted(False)
+        wl.acquire()
+        _WAKELOCK["obj"] = wl
+    except Exception:
+        _WAKELOCK["obj"] = None
+
+
+def release_wakelock():
+    try:
+        if _WAKELOCK["obj"] is not None:
+            _WAKELOCK["obj"].release()
+    except Exception:
+        pass
+    _WAKELOCK["obj"] = None
 
 
 class Card(BoxLayout):
@@ -237,6 +269,7 @@ class RootUI(BoxLayout):
         self.big.text = "Shuru…"
         self.ctrl = core.Control(on_stats=self.on_stats)
         self._set_running(True)
+        acquire_wakelock()   # background/screen-off me bhi download chale
         threading.Thread(target=self._worker, args=(urls,), daemon=True).start()
 
     def _worker(self, urls):
@@ -245,6 +278,7 @@ class RootUI(BoxLayout):
         except Exception as e:
             self.log(f"Error: {e}")
         finally:
+            release_wakelock()
             self._set_running(False)
 
     def pause(self):

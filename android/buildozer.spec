@@ -18,11 +18,14 @@ orientation = portrait
 fullscreen = 0
 
 # Android
-android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,WAKE_LOCK,FOREGROUND_SERVICE,POST_NOTIFICATIONS
 android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a
 android.allow_backup = True
+
+# Background me download chalta rahe (CPU na soye) — app minimize karne par bhi
+android.wakelock = True
 
 # Legacy storage (Download folder me likhne ke liye purane devices par)
 android.manifest_placeholders = usesCleartextTraffic=true
