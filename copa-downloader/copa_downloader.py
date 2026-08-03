@@ -73,15 +73,18 @@ PAUSED = object()   # sentinel: yeh video pause hui, resume par dobara try
 
 
 class Control:
-    """Download ko stop/pause/resume karne ka control + GUI callbacks."""
+    """Download ko stop/pause/resume karne ka control + dashboard stats."""
 
-    def __init__(self, on_progress=None, on_status=None):
+    def __init__(self, on_stats=None):
         self.stop = False
         self.paused = False
         self._ev = threading.Event()
         self._ev.set()
-        self.on_progress = on_progress   # fn(frac, speed, eta, name)
-        self.on_status = on_status       # fn(text)
+        self.on_stats = on_stats   # fn(stats_dict)
+        self.cur = {
+            "kind": "", "idx": 0, "total": 0, "title": "",
+            "frac": 0.0, "speed": "", "eta": "", "msg": "",
+        }
 
     def request_stop(self):
         self.stop = True
@@ -104,13 +107,24 @@ class Control:
     def wait_resume(self):
         self._ev.wait()
 
-    def status(self, text):
-        if self.on_status:
-            self.on_status(text)
+    def _emit(self):
+        if self.on_stats:
+            self.on_stats(dict(self.cur))
 
-    def progress(self, frac, speed="", eta="", name=""):
-        if self.on_progress:
-            self.on_progress(frac, speed, eta, name)
+    def set_item(self, kind, idx, total, title, msg=""):
+        self.cur.update(kind=kind, idx=idx, total=total, title=title,
+                        frac=0.0, speed="", eta="", msg=msg)
+        self._emit()
+
+    def prog(self, frac, speed="", eta=""):
+        self.cur.update(frac=frac, speed=speed, eta=eta)
+        self._emit()
+
+    def message(self, msg, kind=None):
+        if kind is not None:
+            self.cur["kind"] = kind
+        self.cur["msg"] = msg
+        self._emit()
 
 
 # --------------------------------------------------------------------------
@@ -293,13 +307,13 @@ def download_one(video, index, folder: Path, log, control, imp_target):
             frac = (done / total) if total else 0.0
             spd = (d.get("_speed_str") or "").strip()
             eta = (d.get("_eta_str") or "").strip()
-            control.progress(frac, spd, eta, f"{index:02d}")
+            control.prog(frac, spd, eta)
             pct = (d.get("_percent_str") or "").strip()
             if pct and pct != last["pct"]:
                 last["pct"] = pct
                 log(f"   {pct}   {spd}   ETA {eta}")
         elif st == "finished":
-            control.progress(1.0, "", "", f"{index:02d}")
+            control.prog(1.0)
             log("   file tayyar kar raha hoon…")
 
     opts = {
@@ -378,18 +392,20 @@ def download_case(url, out_root: Path, log, control, imp_target, case_label=""):
     ok = 0
     total = len(videos) + len(pdfs)
 
+    disp = (case_label + title).strip(" •")
+
     # ---- videos ----
     for i, v in enumerate(videos, start=1):
-        control.status(f"{case_label}Video {i}/{len(videos)}  •  {title}")
+        control.set_item("video", i, len(videos), disp)
         while True:
             res = download_one(v, i, folder, log, control, imp_target)
             if res is PAUSED:
                 log("⏸ Paused — 'Resume' dabayein.")
-                control.status("⏸ Paused")
+                control.message("⏸ Paused")
                 control.wait_resume()
                 if control.stop:
                     return ok, total
-                control.status(f"{case_label}Video {i}/{len(videos)}  •  {title}")
+                control.set_item("video", i, len(videos), disp)
                 continue    # wahi video dobara (adhi file resume hogi)
             break
         if res:
@@ -399,12 +415,12 @@ def download_case(url, out_root: Path, log, control, imp_target, case_label=""):
     if pdfs:
         log(f"\n📄 {len(pdfs)} PDF document…")
         for j, p in enumerate(pdfs, start=1):
-            control.status(f"{case_label}PDF {j}/{len(pdfs)}  •  {title}")
+            control.set_item("pdf", j, len(pdfs), disp)
             try:
                 if download_pdf(p, folder, log, control):
                     ok += 1
             except PauseRequested:
-                control.status("⏸ Paused")
+                control.message("⏸ Paused")
                 control.wait_resume()
                 if control.stop:
                     return ok, total
@@ -427,7 +443,7 @@ def run_bulk(urls, out_root: Path, log=print, control=None):
         control = Control()
     if not ensure_ytdlp(log):
         log("\n❌ yt-dlp nahi mila. Install karein: pip install yt-dlp")
-        control.status("yt-dlp missing")
+        control.set_item("done", 0, 0, "", msg="❌ yt-dlp nahi mila")
         return
 
     urls = [u for u in urls if u.strip()]
@@ -462,8 +478,8 @@ def run_bulk(urls, out_root: Path, log=print, control=None):
         log(f"✅ {done_cases}/{len(urls)} case, {total_ok}/{total_all} files download.")
         log(f"📁 {out_root}")
         log("=========================================")
-        control.status(f"✅ Done — {total_ok}/{total_all} files")
-        control.progress(0.0)
+        control.set_item("done", 0, 0, "",
+                         msg=f"✅ Done — {total_ok}/{total_all} files download hui")
 
 
 # --------------------------------------------------------------------------
@@ -724,26 +740,47 @@ def launch_gui():
                            base=C_DANGER, bg=C_BG, font=("Segoe UI", 11, "bold"))
     stop_btn.pack(side="left", padx=(10, 0))
 
-    # ---------- progress ----------
+    # ---------- DASHBOARD (clean) ----------
     sh2, c2 = card(body)
     sh2.pack(fill="x", pady=(0, 12))
-    status_var = tk.StringVar(value="Tayyar — case ka link paste karke 'Download All' dabayein.")
-    tk.Label(c2, textvariable=status_var, bg=C_CARD, fg=C_TEXT, anchor="w",
-             font=("Segoe UI", 10, "bold")).pack(fill="x", padx=14, pady=(10, 4))
-    pbar = ttk.Progressbar(c2, style="COPA.Horizontal.TProgressbar",
-                           mode="determinate", maximum=100)
-    pbar.pack(fill="x", padx=14, pady=(0, 4))
-    detail_var = tk.StringVar(value="")
-    tk.Label(c2, textvariable=detail_var, bg=C_CARD, fg=C_MUTED, anchor="w",
-             font=("Consolas", 9)).pack(fill="x", padx=14, pady=(0, 10))
+    dash = tk.Frame(c2, bg=C_CARD)
+    dash.pack(fill="x", padx=18, pady=14)
 
-    # ---------- log ----------
+    toprow = tk.Frame(dash, bg=C_CARD)
+    toprow.pack(fill="x")
+    big_var = tk.StringVar(value="Tayyar")
+    pct_var = tk.StringVar(value="")
+    tk.Label(toprow, textvariable=big_var, bg=C_CARD, fg=C_PRIMARY,
+             font=("Segoe UI Semibold", 20, "bold"), anchor="w").pack(side="left")
+    tk.Label(toprow, textvariable=pct_var, bg=C_CARD, fg=C_ACCENT,
+             font=("Segoe UI", 24, "bold"), anchor="e").pack(side="right")
+
+    title_var = tk.StringVar(value="Case ka link paste karke 'Download All' dabayein.")
+    tk.Label(dash, textvariable=title_var, bg=C_CARD, fg=C_MUTED,
+             font=("Segoe UI", 10), anchor="w").pack(fill="x", pady=(2, 10))
+
+    pbar = ttk.Progressbar(dash, style="COPA.Horizontal.TProgressbar",
+                           mode="determinate", maximum=100)
+    pbar.pack(fill="x")
+    meta_var = tk.StringVar(value="")
+    tk.Label(dash, textvariable=meta_var, bg=C_CARD, fg=C_MUTED, anchor="w",
+             font=("Consolas", 9)).pack(fill="x", pady=(6, 0))
+
+    # ---------- LIVE box (chhota) ----------
     sh3, c3 = card(body)
     sh3.pack(fill="both", expand=True)
-    log_box = scrolledtext.ScrolledText(c3, font=("Consolas", 9), height=12,
+    livehdr = tk.Frame(c3, bg=C_CARD)
+    livehdr.pack(fill="x", padx=10, pady=(8, 0))
+    tk.Label(livehdr, text="●", bg=C_CARD, fg=C_DANGER,
+             font=("Segoe UI", 10, "bold")).pack(side="left")
+    tk.Label(livehdr, text=" LIVE", bg=C_CARD, fg=C_TEXT,
+             font=("Segoe UI Semibold", 9, "bold")).pack(side="left")
+    tk.Label(livehdr, text="  — technical activity", bg=C_CARD, fg=C_MUTED,
+             font=("Segoe UI", 8)).pack(side="left")
+    log_box = scrolledtext.ScrolledText(c3, font=("Consolas", 8), height=7,
                                         bg=C_LOGBG, fg=C_LOGFG, relief="flat",
                                         insertbackground=C_LOGFG, borderwidth=0)
-    log_box.pack(fill="both", expand=True, padx=4, pady=4)
+    log_box.pack(fill="both", expand=True, padx=8, pady=8)
     log_box.configure(state="disabled")
 
     # ---------- callbacks (thread-safe via root.after) ----------
@@ -755,16 +792,31 @@ def launch_gui():
             log_box.configure(state="disabled")
         root.after(0, _a)
 
-    def on_status(text):
-        root.after(0, lambda: status_var.set(text))
+    KIND_LABEL = {"video": "Video", "pdf": "PDF"}
 
-    def on_progress(frac, speed="", eta="", name=""):
+    def on_stats(d):
         def _a():
+            kind = d.get("kind", "")
+            total = d.get("total", 0)
+            idx = d.get("idx", 0)
+            frac = d.get("frac", 0.0)
+            msg = d.get("msg", "") or ""
+            if msg.startswith("⏸"):
+                big_var.set("⏸ Paused")
+                return
+            if kind == "done" or total == 0:
+                big_var.set(msg or "Tayyar")
+                pct_var.set("")
+                pbar["value"] = 0
+                meta_var.set("")
+                title_var.set("")
+                return
+            big_var.set(f"{KIND_LABEL.get(kind, 'Item')}  {idx} / {total}")
+            title_var.set(d.get("title", ""))
+            pct_var.set(f"{frac*100:.0f}%")
             pbar["value"] = max(0, min(100, frac * 100))
-            if frac > 0:
-                detail_var.set(f"{frac*100:5.1f}%    {speed}    ETA {eta}")
-            else:
-                detail_var.set("")
+            spd, eta = d.get("speed", ""), d.get("eta", "")
+            meta_var.set(f"{spd}     ETA {eta}" if spd else "")
         root.after(0, _a)
 
     # ---------- button wiring ----------
@@ -794,8 +846,11 @@ def launch_gui():
         log_box.delete("1.0", "end")
         log_box.configure(state="disabled")
         pbar["value"] = 0
-        detail_var.set("")
-        ctrl["obj"] = Control(on_progress=on_progress, on_status=on_status)
+        big_var.set("Shuru ho raha hai…")
+        pct_var.set("")
+        title_var.set("")
+        meta_var.set("")
+        ctrl["obj"] = Control(on_stats=on_stats)
         set_running(True)
         threading.Thread(target=worker, args=(urls, Path(out_var.get())),
                          daemon=True).start()
@@ -805,20 +860,20 @@ def launch_gui():
             ctrl["obj"].request_pause()
             pause_btn.set_enabled(False)
             resume_btn.set_enabled(True)
-            on_status("⏸ Pause ho raha hai… (chalta fragment poora hone do)")
+            big_var.set("⏸ Pause ho raha hai…")
 
     def do_resume():
         if ctrl["obj"] and ctrl["running"]:
             ctrl["obj"].request_resume()
             pause_btn.set_enabled(True)
             resume_btn.set_enabled(False)
-            on_status("▶ Resume…")
+            big_var.set("▶ Resume…")
 
     def do_stop():
         if ctrl["obj"]:
             ctrl["obj"].request_stop()
             ctrl["obj"].request_resume()   # agar paused tha to chhoot jaye
-            on_status("⏹ Rok raha hoon…")
+            big_var.set("⏹ Rok raha hoon…")
 
     dl_btn.command = start
     pause_btn.command = do_pause
