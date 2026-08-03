@@ -192,20 +192,46 @@ def has_ffmpeg() -> bool:
 
 
 def impersonate_target():
-    """Vimeo ke liye browser impersonation target (curl_cffi ho to)."""
+    """
+    Vimeo ke liye browser impersonation target — SIRF tab jab yt-dlp ke paas
+    woh target sach-much available ho (warna hard-error 'chrome not available').
+    Return: ImpersonateTarget ya None.
+    """
     try:
         import curl_cffi  # noqa: F401
-        from yt_dlp.networking.impersonate import ImpersonateTarget
-        return ImpersonateTarget("chrome")
     except Exception:
         return None
+    try:
+        import yt_dlp
+        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as y:
+            avail = list(y._get_available_impersonate_targets())
+        if avail:
+            # (target, handler) — pehla available target use karo (guaranteed chalega)
+            return avail[0][0]
+    except Exception:
+        pass
+    return None
 
 
-def download_one(video, index, folder: Path, log=print, stop_flag=None) -> bool:
+def player_url(video) -> str:
+    """
+    Download ke liye Vimeo ka EMBED player URL banao (jaise COPA site karti hai).
+    Yeh OAuth-token wala raasta bypass karta hai -> 429 nahi aata.
+    """
+    vid = video["id"]
+    vhash = video.get("hash")
+    if vhash:
+        return f"https://player.vimeo.com/video/{vid}?h={vhash}"
+    return f"https://player.vimeo.com/video/{vid}"
+
+
+def download_one(video, index, folder: Path, log=print, stop_flag=None,
+                 imp_target="__unset__") -> bool:
     """Ek video download karo folder me (yt_dlp Python API se)."""
     import yt_dlp
 
     out_tmpl = str(folder / f"{index:02d} - %(title)s.%(ext)s")
+    dl_url = player_url(video)   # embed player (OAuth/429 se bachne ke liye)
 
     class _Logger:
         def debug(self, msg):
@@ -251,7 +277,7 @@ def download_one(video, index, folder: Path, log=print, stop_flag=None) -> bool:
         "sleep_interval": 2,
         "max_sleep_interval": 6,
     }
-    tgt = impersonate_target()
+    tgt = impersonate_target() if imp_target == "__unset__" else imp_target
     if tgt is not None:
         opts["impersonate"] = tgt      # asli Chrome jaisa dikho (Vimeo block na kare)
     if has_ffmpeg():
@@ -263,7 +289,7 @@ def download_one(video, index, folder: Path, log=print, stop_flag=None) -> bool:
     log(f"\n▶ [{index}] {video['url']}")
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.download([video["url"]])
+            ydl.download([dl_url])
         log("✔ ho gayi")
         return True
     except KeyboardInterrupt:
@@ -278,7 +304,8 @@ def download_one(video, index, folder: Path, log=print, stop_flag=None) -> bool:
 # Flow: ek case  /  bulk (kai cases)
 # --------------------------------------------------------------------------
 
-def download_case(url: str, out_root: Path, log=print, stop_flag=None):
+def download_case(url: str, out_root: Path, log=print, stop_flag=None,
+                  imp_target="__unset__"):
     """Ek case: kholo -> folder banao -> saari videos download karo."""
     title, videos = collect_case(url, log=log)
     if not videos:
@@ -298,7 +325,8 @@ def download_case(url: str, out_root: Path, log=print, stop_flag=None):
     for i, v in enumerate(videos, start=1):
         if stop_flag is not None and stop_flag():
             break
-        if download_one(v, i, folder, log=log, stop_flag=stop_flag):
+        if download_one(v, i, folder, log=log, stop_flag=stop_flag,
+                        imp_target=imp_target):
             ok += 1
     log(f"— Case done: {ok}/{len(videos)} — {folder}\n")
     return ok, len(videos)
@@ -326,6 +354,10 @@ def run_bulk(urls, out_root: Path, log=print, stop_flag=None):
         return
 
     log(f"Kul {len(urls)} case link(s) mile.\n")
+    # impersonation target ek hi baar nikaalo (agar mil jaye to sab videos ke liye)
+    imp = impersonate_target()
+    if imp is not None:
+        log(f"(impersonation on: {imp})")
     total_ok = total_all = 0
     done_cases = 0
     try:
@@ -335,7 +367,8 @@ def run_bulk(urls, out_root: Path, log=print, stop_flag=None):
                 break
             log(f"============ CASE {n}/{len(urls)} ============")
             try:
-                ok, allv = download_case(url, out_root, log=log, stop_flag=stop_flag)
+                ok, allv = download_case(url, out_root, log=log,
+                                         stop_flag=stop_flag, imp_target=imp)
                 total_ok += ok
                 total_all += allv
                 done_cases += 1
