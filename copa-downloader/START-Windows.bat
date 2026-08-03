@@ -24,7 +24,7 @@ if not defined PY (
 
 echo yt-dlp taaza (update/install) kar raha hoon... thoda intezaar...
 %PY% -m pip install --quiet --upgrade pip
-%PY% -m pip install --quiet --upgrade yt-dlp
+%PY% -m pip install --quiet --upgrade yt-dlp curl_cffi
 
 echo.
 echo Window khul rahi hai...

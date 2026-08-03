@@ -113,6 +113,11 @@ Pehle ek dafa: `pip3 install yt-dlp`  (behtar quality ke liye `ffmpeg` bhi).
 - **"Koi video nahi mili"** — link case-page ka nahi tha, ya videos JavaScript se
   baad me load hoti hain. Ek video ka seedha Vimeo link paste karke dekhein, ya
   mujhe bata dein — tool aasani se update ho jayega.
+- **Vimeo 429 / "Too Many Requests" / "impersonation … no target"** — Vimeo ki
+  bot-protection. Tool `curl_cffi` ke zariye asli-browser jaisa ban kar ise handle
+  karta hai (exe me pehle se shaamil; Python wale tareeqe me khud install ho jata hai).
+  Agar phir bhi kabhi 429 aaye to kuch minute ruk kar dobara chalayein (Vimeo ne
+  IP ko thodi der ke liye roka hota hai) — jo videos aa chuki hain woh skip hongi.
 - **Slow / ruk gaya?** Dobara chalayein — jo videos aa chuki hain won skip ho
   jayengi (yt-dlp file dobara nahi banata agar mukammal ho).
 - **Quality** — agar `ffmpeg` install ho to tool best video+audio mil ke sabse

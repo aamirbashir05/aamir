@@ -13,6 +13,9 @@ echo "== COPA Downloader (Android/Termux) =="
 pkg update -y >/dev/null 2>&1 || true
 pkg install -y python ffmpeg >/dev/null 2>&1 || true
 pip install --upgrade yt-dlp >/dev/null 2>&1 || pip install yt-dlp
+# curl_cffi = Vimeo bot-protection (impersonation) ke liye
+pip install --upgrade curl_cffi >/dev/null 2>&1 || pip install curl_cffi || \
+  echo "(curl_cffi install nahi hua — Vimeo shayad fail kare; koi baat nahi, chalao)"
 
 # Videos phone ke Download folder me aayein (shared storage)
 OUT="$HOME/storage/shared/Download/COPA"

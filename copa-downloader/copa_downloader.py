@@ -146,33 +146,59 @@ def collect_case(url: str, log=print):
 # yt-dlp (Python API se — taake .exe me bhi bina python ke chale)
 # --------------------------------------------------------------------------
 
+def _pip_install(pkgs, log):
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--upgrade", *pkgs],
+        check=True,
+    )
+    import importlib
+    importlib.invalidate_caches()
+
+
 def ensure_ytdlp(log=print) -> bool:
-    """yt_dlp import ho sake ye pakka karo (na ho to pip se install karo)."""
+    """yt_dlp + curl_cffi import ho saken ye pakka karo (na ho to pip se laao)."""
+    frozen = getattr(sys, "frozen", False)
+
+    # 1) yt-dlp
     try:
         import yt_dlp  # noqa: F401
-        return True
     except ImportError:
-        pass
-    if getattr(sys, "frozen", False):
-        log("yt-dlp is build me nahi hai.")
-        return False
-    log("yt-dlp install ho raha hai (pip)... thoda intezaar...")
+        if frozen:
+            log("yt-dlp is build me nahi hai.")
+            return False
+        log("yt-dlp install ho raha hai (pip)... thoda intezaar...")
+        try:
+            _pip_install(["yt-dlp"], log)
+            import yt_dlp  # noqa: F401
+        except Exception as e:
+            log(f"yt-dlp install nahi ho saka: {e}")
+            return False
+
+    # 2) curl_cffi — Vimeo ki bot-protection (impersonation) ke liye zaroori
     try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "yt-dlp"],
-            check=True,
-        )
-        import importlib
-        importlib.invalidate_caches()
-        import yt_dlp  # noqa: F401
-        return True
-    except Exception as e:
-        log(f"yt-dlp install nahi ho saka: {e}")
-        return False
+        import curl_cffi  # noqa: F401
+    except ImportError:
+        if not frozen:
+            log("curl_cffi install ho raha hai (Vimeo ke liye)...")
+            try:
+                _pip_install(["curl_cffi"], log)
+            except Exception as e:
+                log(f"⚠ curl_cffi install nahi hua: {e} — Vimeo fail kar sakta hai.")
+    return True
 
 
 def has_ffmpeg() -> bool:
     return shutil.which("ffmpeg") is not None
+
+
+def impersonate_target():
+    """Vimeo ke liye browser impersonation target (curl_cffi ho to)."""
+    try:
+        import curl_cffi  # noqa: F401
+        from yt_dlp.networking.impersonate import ImpersonateTarget
+        return ImpersonateTarget("chrome")
+    except Exception:
+        return None
 
 
 def download_one(video, index, folder: Path, log=print, stop_flag=None) -> bool:
@@ -217,10 +243,17 @@ def download_one(video, index, folder: Path, log=print, stop_flag=None) -> bool:
         "progress_hooks": [hook],
         "quiet": True,
         "no_warnings": False,
-        "retries": 5,
-        "fragment_retries": 5,
+        "retries": 10,
+        "fragment_retries": 10,
+        "extractor_retries": 5,
         "continuedl": True,
+        # Vimeo 429 (Too Many Requests) se bachne ke liye halka sleep
+        "sleep_interval": 2,
+        "max_sleep_interval": 6,
     }
+    tgt = impersonate_target()
+    if tgt is not None:
+        opts["impersonate"] = tgt      # asli Chrome jaisa dikho (Vimeo block na kare)
     if has_ffmpeg():
         opts["format"] = "bestvideo*+bestaudio/best"
         opts["merge_output_format"] = "mp4"
