@@ -23,6 +23,7 @@ android.api = 33
 android.minapi = 24
 android.archs = arm64-v8a
 android.allow_backup = True
+android.accept_sdk_license = True
 
 # Background me download chalta rahe (CPU na soye) — app minimize karne par bhi
 android.wakelock = True

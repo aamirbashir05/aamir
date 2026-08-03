@@ -1,8 +1,7 @@
 name: Build Android APK
 
 # COPA Downloader ka Android APK (Kivy + buildozer), ubuntu-22.04 par.
-# python-for-android ko 2024.1.21 (Python 3.11) par pin kiya — naya p4a
-# Python 3.14 build karta hai jiske saath Kivy 2.3.0 compile nahi hota.
+# Deterministic toolchain: p4a 2024.1.21 (Python 3.11) + build-tools 33.0.2 (aidl).
 # Pehli build ~30-45 min. Download: Actions -> run -> Artifacts -> COPA-Downloader-APK
 
 on:
@@ -17,6 +16,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  ANDROID_SDK: /home/runner/android-sdk
 
 jobs:
   build:
@@ -53,16 +55,31 @@ jobs:
             --no-deps --no-binary :all: -d /tmp/p4adl
           mkdir -p /tmp/p4a
           tar xzf /tmp/p4adl/*.tar.gz -C /tmp/p4a --strip-components=1
-          # buildozer ko yehi p4a source use karne do (apna clone na kare)
-          sed -i '/^requirements = /a p4a.source_dir = /tmp/p4a' android/buildozer.spec
-          echo "----- buildozer.spec [app] head -----"
-          grep -nE '^(requirements|p4a\.source_dir) =' android/buildozer.spec
+          # buildozer ko yeh p4a source + humara SDK use karne do
+          sed -i '/^requirements = /a p4a.source_dir = /tmp/p4a\nandroid.sdk_path = /home/runner/android-sdk' android/buildozer.spec
+          grep -nE '^(requirements|p4a\.source_dir|android\.sdk_path) =' android/buildozer.spec
+
+      - name: Android SDK (build-tools 33.0.2 = aidl maujood)
+        run: |
+          set -e
+          mkdir -p "$ANDROID_SDK/cmdline-tools"
+          curl -L -o /tmp/cmdtools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdtools.zip -d "$ANDROID_SDK/cmdline-tools"
+          mv "$ANDROID_SDK/cmdline-tools/cmdline-tools" "$ANDROID_SDK/cmdline-tools/latest"
+          SDKMANAGER="$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --sdk_root="$ANDROID_SDK" \
+            "platform-tools" "build-tools;33.0.2" "platforms;android-33" >/dev/null
+          ls "$ANDROID_SDK/build-tools/33.0.2/aidl" && echo "aidl OK"
 
       - name: Build APK
         working-directory: android
+        env:
+          ANDROIDSDK: /home/runner/android-sdk
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          buildozer android debug
+          yes | buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
