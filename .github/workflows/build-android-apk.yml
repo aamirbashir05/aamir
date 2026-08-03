@@ -73,6 +73,9 @@ jobs:
           "$SDKMANAGER" --sdk_root="$ANDROID_SDK" \
             "platform-tools" "build-tools;33.0.2" "platforms;android-33" >/dev/null
           ls "$ANDROID_SDK/build-tools/33.0.2/aidl" && echo "aidl OK"
+          # p4a 2024.1.21 sdkmanager ko purani jagah (tools/bin) me dhoondta hai
+          ln -sfn "$ANDROID_SDK/cmdline-tools/latest" "$ANDROID_SDK/tools"
+          ls "$ANDROID_SDK/tools/bin/sdkmanager" && echo "sdkmanager link OK"
 
       - name: Build APK
         working-directory: android
