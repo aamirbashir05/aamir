@@ -28,11 +28,11 @@ android.accept_sdk_license = True
 # Background me download chalta rahe (CPU na soye) — app minimize karne par bhi
 android.wakelock = True
 
-# Legacy storage (Download folder me likhne ke liye purane devices par)
-android.manifest_placeholders = usesCleartextTraffic=true
-
 # Icon (chahe to baad me apna laga sakte hain)
 # icon.filename = %(source.dir)s/icon.png
+
+# NOTE: android.manifest_placeholders hata diya — p4a use galat jagah daal
+# kar gradle 'usesCleartextTraffic' error deta tha (sab HTTPS hai, zaroorat nahi).
 
 [buildozer]
 log_level = 2
