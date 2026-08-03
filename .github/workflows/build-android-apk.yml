@@ -19,6 +19,7 @@ permissions:
 
 env:
   ANDROID_SDK: /home/runner/android-sdk
+  JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
 
 jobs:
   build:
@@ -78,7 +79,8 @@ jobs:
         env:
           ANDROIDSDK: /home/runner/android-sdk
         run: |
-          export PATH=$PATH:$HOME/.local/bin
+          export PATH=$JAVA_HOME/bin:$PATH:$HOME/.local/bin
+          java -version
           yes | buildozer android debug
 
       - name: Upload APK
