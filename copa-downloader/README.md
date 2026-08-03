@@ -2,8 +2,15 @@
 
 Ek chhota apna tool (public nahi) — sirf **[chicagocopa.org](https://www.chicagocopa.org/)**
 ke case pages ke liye. Ek ya **kai** case links do, **ek button** dabao, aur har
-case ki **saari videos** (BWC 1, BWC 2, BWC 3 …) uske apne folder me, ek-ek kar ke,
-apne aap download hoti chali jaati hain. **Bulk** — ek saath 10-20 case links bhi.
+case ki **saari videos** (BWC 1, BWC 2, BWC 3 …) **aur PDF documents** uske apne
+folder me, ek-ek kar ke, apne aap download hote chale jaate hain.
+
+**Khaas baatein**
+- 🎬 **Videos + 📄 PDF** — dono ek hi case folder me.
+- 📦 **Bulk** — ek saath 10–20 case links (har line par ek).
+- ⏸ **Pause / ▶ Resume** — jab chaho roko, dobara chalao to **wahin se aage**.
+- ⏹ **Stop** — sab band. Progress bar + live log.
+- 🎨 Professional UI, COPA blue theme.
 
 > Yeh COPA ki videos **Vimeo** par hoti hain aur COPA ne un par download allow
 > kiya hua hai. IDM inko grab nahi karta, isliye yeh tool andar-hi-andar
