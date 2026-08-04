@@ -112,6 +112,10 @@
   .res{margin-top:9px;font-size:12px;color:var(--muted)}
   .res b{color:var(--gold)}
   .enh-note{margin-top:7px;font-size:11px;color:var(--muted);line-height:1.4}
+  .ai-cfg{margin-top:8px;font-size:11px;color:var(--muted)}
+  .ai-cfg a{color:var(--gold);font-weight:700}
+  .ai-status{font-weight:700}
+  .ai-status.on{color:#34d399} .ai-status.off{color:var(--muted)}
 
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:8px 0 46px}
   .step{background:linear-gradient(180deg,#111319,#0d0f14);border:1px solid var(--line);border-radius:16px;padding:18px}
@@ -197,7 +201,8 @@
             <button data-e="ai">✨ AI Enhance</button>
           </div>
           <div class="res" id="resNote">—</div>
-          <div class="enh-note">Asli AI se sharp + clean (blurry/chhoti photo ka result behtar). Pehli baar AI model download hota hai (~kuch MB), phir tez.</div>
+          <div class="enh-note" id="enhNote">Background hatne ke baad photo HD + sharp banao.</div>
+          <div class="ai-cfg"><span id="aiStatus" class="ai-status">● …</span> · <a href="gemini-setup.html" target="_blank">⚙ Gemini setup</a></div>
         </div>
         <div class="ctl">
           <h4>Download</h4>
@@ -229,7 +234,8 @@
   import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm';
 
   const $ = s => document.querySelector(s);
-  const state = { cutout:null, working:null, original:null, bg:{type:'transparent'}, format:'png', srcName:'image', enh:'off' };
+  const state = { cutout:null, working:null, original:null, bg:{type:'transparent'}, format:'png', srcName:'image', enh:'off',
+    geminiUrl: (localStorage.getItem('altariq_gemini_url')||'') };
 
   const els = {
     dz:$('#dz'), file:$('#file'), box:$('#canvasBox'), wrap:$('#previewWrap'), img:$('#previewImg'),
@@ -381,6 +387,47 @@
 
   const tick = ()=>new Promise(r=>setTimeout(r,30));
 
+  function refreshAiStatus(){
+    const el=$('#aiStatus'), note=$('#enhNote');
+    if(state.geminiUrl){
+      el.textContent='● Gemini connected'; el.className='ai-status on';
+      if(note) note.textContent='Gemini AI se HD studio-quality result (jaisa aap chahte the).';
+    }else{
+      el.textContent='● Gemini setup nahi'; el.className='ai-status off';
+      if(note) note.textContent='Abhi client-side AI chalega. Gemini setup karo → bahut behtar result.';
+    }
+  }
+
+  // Best-quality enhance via the user's own free Gemini Worker.
+  async function geminiEnhance(){
+    setLoader(true,'Gemini AI enhance ho raha hai…');
+    els.ovSub.textContent='HD studio-quality banayi ja rahi hai (~10-25 sec)…'; els.ovBar.style.width='22%'; await tick();
+    try{
+      const src=state.original||state.cutout;
+      let c=imgToCanvas(src); const cap=1536, long=Math.max(c.width,c.height);
+      if(long>cap) c=scaleCanvas(c, cap/long);
+      const dataUrl=c.toDataURL('image/jpeg',0.92);
+      els.ovBar.style.width='42%';
+      const resp=await fetch(state.geminiUrl,{ method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ image:dataUrl, mimeType:'image/jpeg' }) });
+      const data=await resp.json().catch(()=>({}));
+      if(!resp.ok || !data.image){
+        const d=data && data.error ? (typeof data.error==='string'?data.error:JSON.stringify(data.error)) : ('HTTP '+resp.status);
+        throw new Error(d);
+      }
+      els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='80%'; await tick();
+      const gBlob=await (await fetch(data.image)).blob();
+      let cutBlob;
+      try{ cutBlob=await removeBackground(gBlob,{ output:{ format:'image/png' } }); }
+      catch(e){ cutBlob=gBlob; }   // agar bg-remove fail ho to bhi Gemini image dikhao
+      const u=URL.createObjectURL(cutBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
+      render(); showRes(); setLoader(false);
+    }catch(err){
+      console.error('gemini enhance failed', err); setLoader(false);
+      showErr('Gemini enhance fail ('+(err.message||err)+'). ⚙ Gemini setup / Worker URL aur key check karein.');
+    }
+  }
+
   // Lazily load the AI super-resolution model (ESRGAN via UpscalerJS, from CDN).
   let _upscaler=null;
   async function loadUpscaler(){
@@ -411,6 +458,8 @@
     if(level==='off'){ state.working=state.cutout; render(); showRes(); return; }
 
     hideErr();
+    if(state.geminiUrl){ return geminiEnhance(); }   // best: Gemini (if user set it up)
+
     setLoader(true,'AI enhance ho raha hai…');
     els.ovSub.textContent='Pehli baar AI model download hota hai (~kuch MB), phir tez.';
     els.ovBar.style.width='12%'; await tick();
@@ -464,6 +513,10 @@
   function setLoader(on,msg){ els.overlay.classList.toggle('show',on); if(msg) els.ovMsg.textContent=msg; }
   function showErr(m){ els.err.textContent=m; els.err.style.display='block'; }
   function hideErr(){ els.err.style.display='none'; }
+
+  // If the user set up Gemini on the setup page, pick it up here.
+  state.geminiUrl = localStorage.getItem('altariq_gemini_url')||'';
+  refreshAiStatus();
 </script>
 </body>
 </html>
