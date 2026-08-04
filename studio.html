@@ -191,15 +191,13 @@
           </div>
         </div>
         <div class="ctl">
-          <h4>✨ Enhance — HD se 8K</h4>
+          <h4>✨ AI Enhance</h4>
           <div class="fmt" id="enh">
             <button data-e="off" class="active">Off</button>
-            <button data-e="hd">HD 2×</button>
-            <button data-e="4k">4K</button>
-            <button data-e="8k">8K</button>
+            <button data-e="ai">✨ AI Enhance</button>
           </div>
           <div class="res" id="resNote">—</div>
-          <div class="enh-note">Zyada resolution + sharp edges — printing ke liye best. 8K bade PC par behtar.</div>
+          <div class="enh-note">Asli AI se sharp + clean (blurry/chhoti photo ka result behtar). Pehli baar AI model download hota hai (~kuch MB), phir tez.</div>
         </div>
         <div class="ctl">
           <h4>Download</h4>
@@ -231,7 +229,7 @@
   import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm';
 
   const $ = s => document.querySelector(s);
-  const state = { cutout:null, working:null, bg:{type:'transparent'}, format:'png', srcName:'image', enh:'off' };
+  const state = { cutout:null, working:null, original:null, bg:{type:'transparent'}, format:'png', srcName:'image', enh:'off' };
 
   const els = {
     dz:$('#dz'), file:$('#file'), box:$('#canvasBox'), wrap:$('#previewWrap'), img:$('#previewImg'),
@@ -254,6 +252,9 @@
     setLoader(true,'AI background hata raha hai…');
     els.ovBar.style.width='0%';
     try{
+      const ourl=URL.createObjectURL(file);
+      state.original = await loadImg(ourl);   // keep for AI enhance (upscale source)
+      URL.revokeObjectURL(ourl);
       const blob = await removeBackground(file, {
         progress:(key,cur,tot)=>{
           if(key && key.startsWith('fetch')){
@@ -343,7 +344,7 @@
     }, mime, state.format==='jpg'?0.95:undefined);
   });
   $('#newBtn').addEventListener('click', ()=>{
-    state.cutout=null; state.working=null; els.file.value='';
+    state.cutout=null; state.working=null; state.original=null; els.file.value='';
     resetEnhanceUI();
     els.controls.style.display='none'; els.box.style.display='none'; els.dz.style.display='block'; hideErr();
   });
@@ -378,31 +379,69 @@
     x.putImageData(id,0,0);
   }
 
+  const tick = ()=>new Promise(r=>setTimeout(r,30));
+
+  // Lazily load the AI super-resolution model (ESRGAN via UpscalerJS, from CDN).
+  let _upscaler=null;
+  async function loadUpscaler(){
+    if(_upscaler) return _upscaler;
+    const [UpMod, ModelMod] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/+esm'),
+      import('https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/4x/+esm')
+    ]);
+    const Upscaler = UpMod.default || UpMod;
+    const model = ModelMod.default || ModelMod;
+    _upscaler = new Upscaler({ model });
+    return _upscaler;
+  }
+
+  // Fallback: high-quality stepwise canvas upscale + unsharp (no AI).
+  async function canvasUpscale(src, factor){
+    const long=Math.max(src.naturalWidth,src.naturalHeight);
+    const target=Math.min(MAX_LONG, long*factor);
+    let c=imgToCanvas(src);
+    while(Math.max(c.width,c.height) < target-1){ c=scaleCanvas(c, Math.min(2, target/Math.max(c.width,c.height))); }
+    unsharp(c, 0.7);
+    return canvasToImg(c);
+  }
+
   async function enhance(level){
     state.enh=level;
     if(!state.cutout) return;
     if(level==='off'){ state.working=state.cutout; render(); showRes(); return; }
-    setLoader(true,'Enhance ho raha hai…');
-    els.ovSub.textContent='Resolution badha kar sharp banaya ja raha hai…'; els.ovBar.style.width='25%';
-    await new Promise(r=>setTimeout(r,40));   // let the loader paint
+
+    hideErr();
+    setLoader(true,'AI enhance ho raha hai…');
+    els.ovSub.textContent='Pehli baar AI model download hota hai (~kuch MB), phir tez.';
+    els.ovBar.style.width='12%'; await tick();
     try{
-      const src=state.cutout, curLong=Math.max(src.naturalWidth,src.naturalHeight);
-      let target = level==='hd' ? curLong*2 : level==='4k' ? 3840 : MAX_LONG;
-      target = Math.min(MAX_LONG, Math.max(target, curLong));   // never shrink; cap at 8K
-      let c=imgToCanvas(src);
-      while(Math.max(c.width,c.height) < target-1){
-        const s=Math.min(2, target/Math.max(c.width,c.height));
-        c=scaleCanvas(c,s);
-      }
-      els.ovBar.style.width='70%'; await new Promise(r=>setTimeout(r,20));
-      unsharp(c, 0.7);
-      state.working=await canvasToImg(c);
-      render(); showRes();
-      setLoader(false);
+      // 1) Upscale the ORIGINAL photo with AI (clean HD detail)
+      let inCanvas = imgToCanvas(state.original || state.cutout);
+      const cap=1024, long=Math.max(inCanvas.width,inCanvas.height);
+      if(long>cap) inCanvas = scaleCanvas(inCanvas, cap/long);   // keep output ~4x, memory-safe
+      els.ovBar.style.width='25%'; await tick();
+
+      const up = await loadUpscaler();
+      let hdUrl = await up.upscale(inCanvas, {
+        patchSize:64, padding:4,
+        progress:(p)=>{ els.ovBar.style.width=(25+Math.round((p||0)*45))+'%'; }
+      });
+      if(typeof hdUrl==='string' && !hdUrl.startsWith('data:')) hdUrl='data:image/png;base64,'+hdUrl;
+
+      // 2) Remove background again on the HD image → clean HD cutout
+      els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='78%'; await tick();
+      const hdBlob = await (await fetch(hdUrl)).blob();
+      const cutBlob = await removeBackground(hdBlob, { output:{ format:'image/png' } });
+      const u=URL.createObjectURL(cutBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
+
+      render(); showRes(); setLoader(false);
     }catch(err){
-      console.error(err); setLoader(false);
-      showErr('Enhance fail — image bahut bada ho gaya. Chhota target (4K/HD) try karein.');
-      state.working=state.cutout; resetEnhanceUI(); render(); showRes();
+      console.error('AI enhance failed — falling back to HQ upscale', err);
+      els.ovMsg.textContent='HD bana rahe…';
+      try{ state.working = await canvasUpscale(state.cutout, 4); }
+      catch(e2){ state.working = state.cutout; }
+      render(); showRes(); setLoader(false);
+      showErr('AI model abhi load nahi hua — filhaal HD upscale laga diya. Internet check kar ke dobara "AI Enhance" dabayein.');
     }
   }
 
