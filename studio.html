@@ -412,7 +412,12 @@
         body:JSON.stringify({ image:dataUrl, mimeType:'image/jpeg' }) });
       const data=await resp.json().catch(()=>({}));
       if(!resp.ok || !data.image){
-        const d=data && data.error ? (typeof data.error==='string'?data.error:JSON.stringify(data.error)) : ('HTTP '+resp.status);
+        let d=data && data.error ? (typeof data.error==='string'?data.error:JSON.stringify(data.error)) : ('HTTP '+resp.status);
+        if(data && data.detail){
+          const de=data.detail.error||data.detail;
+          const dm=de && de.message ? de.message : (typeof de==='string'?de:JSON.stringify(de));
+          if(dm) d+=' — '+dm;
+        }
         throw new Error(d);
       }
       els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='80%'; await tick();
