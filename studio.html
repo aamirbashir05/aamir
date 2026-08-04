@@ -181,8 +181,12 @@
 
       <div class="controls" id="controls">
         <div class="ctl">
-          <h4>Naya Background</h4>
-          <div class="swatches" id="swatches">
+          <h4>Background</h4>
+          <div class="fmt" id="bgMode">
+            <button data-bg="remove" class="active">✂ Hatao</button>
+            <button data-bg="keep">🖼 Rakho</button>
+          </div>
+          <div class="swatches" id="swatches" style="margin-top:12px">
             <button class="sw sw-t active" data-type="transparent" title="Transparent"></button>
             <button class="sw" data-type="color" data-value="#ffffff" style="background:#fff" title="White"></button>
             <button class="sw" data-type="color" data-value="#000000" style="background:#000" title="Black"></button>
@@ -193,17 +197,17 @@
               <input type="color" id="customColor" value="#e7a24c">
             </button>
           </div>
+          <div class="enh-note" id="bgNote"><b>Hatao</b> = background transparent/naya rang. <b>Rakho</b> = asli background waisa hi rahe.</div>
         </div>
         <div class="ctl">
-          <h4>✨ AI Enhance</h4>
+          <h4>⬆ Upscale / Enhance</h4>
           <div class="fmt" id="enh">
             <button data-e="off" class="active">Off</button>
-            <button data-e="ai">✨ BG hata ke</button>
-            <button data-e="ai-keep">✨ BG ke saath</button>
+            <button data-e="2">2× HD</button>
+            <button data-e="4">4× Ultra</button>
           </div>
           <div class="res" id="resNote">—</div>
-          <div class="enh-note" id="enhNote"><b>BG hata ke</b> = background hata ke HD. <b>BG ke saath</b> = background waisa hi rakh ke sirf photo HD + sharp.</div>
-          <div class="ai-cfg"><span id="aiStatus" class="ai-status">● …</span> · <a href="gemini-setup.html" target="_blank">⚙ Gemini setup</a></div>
+          <div class="enh-note">Chhoti ya blurry photo ko AI (Real-ESRGAN) se <b>bada + sharp</b> banao. Background wali ho ya bina — dono pe chalega. Pehli baar model download hoga (~kuch MB), phir tez.</div>
         </div>
         <div class="ctl">
           <h4>Download</h4>
@@ -235,14 +239,17 @@
   import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm';
 
   const $ = s => document.querySelector(s);
-  const state = { cutout:null, working:null, original:null, bg:{type:'transparent'}, format:'png', srcName:'image', enh:'off',
-    geminiUrl: (localStorage.getItem('altariq_gemini_url')||'') };
+  const state = { cutout:null, working:null, original:null,
+    bgMode:'remove', bg:{type:'transparent'}, upscale:'off', format:'png', srcName:'image' };
 
   const els = {
     dz:$('#dz'), file:$('#file'), box:$('#canvasBox'), wrap:$('#previewWrap'), img:$('#previewImg'),
     overlay:$('#overlay'), ovMsg:$('#ovMsg'), ovBar:$('#ovBar'), ovSub:$('#ovSub'),
     controls:$('#controls'), err:$('#err'), custom:$('#customColor'), resNote:$('#resNote')
   };
+
+  // current base subject depends on background mode
+  function currentSubject(){ return state.bgMode==='keep' ? (state.original||state.cutout) : (state.cutout||state.original); }
 
   // ---- upload ----
   els.file.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
@@ -276,9 +283,10 @@
       });
       const url = URL.createObjectURL(blob);
       state.cutout = await loadImg(url);
-      state.working = state.cutout;
       URL.revokeObjectURL(url);
-      resetEnhanceUI();
+      state.bgMode='remove'; state.bg={type:'transparent'}; state.upscale='off';
+      state.working = currentSubject();
+      resetControlsUI();
       render(); showRes();
       els.controls.style.display='flex';
       setLoader(false);
@@ -295,21 +303,33 @@
 
   // ---- render composite ----
   function composite(){
-    const subj = state.working || state.cutout;
+    const subj = state.working || currentSubject();
     const c = document.createElement('canvas');
     c.width = subj.naturalWidth; c.height = subj.naturalHeight;
     const ctx = c.getContext('2d');
-    if(state.bg.type==='color'){ ctx.fillStyle=state.bg.value; ctx.fillRect(0,0,c.width,c.height); }
+    if(state.bgMode==='remove' && state.bg.type==='color'){ ctx.fillStyle=state.bg.value; ctx.fillRect(0,0,c.width,c.height); }
     ctx.drawImage(subj,0,0);
     return c;
   }
   function render(){
-    const transparent = state.bg.type==='transparent';
+    const transparent = (state.bgMode==='remove' && state.bg.type==='transparent');
     els.wrap.classList.toggle('checker', transparent);
     els.img.src = composite().toDataURL('image/png');
   }
 
-  // ---- background swatches ----
+  // ---- background mode: Hatao / Rakho ----
+  $('#bgMode').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    $('#bgMode').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    state.bgMode = b.dataset.bg;
+    $('#swatches').style.display = state.bgMode==='remove' ? 'flex' : 'none';
+    // background badalne par upscale reset (subject badal gaya)
+    state.upscale='off'; setEnhActive('off');
+    state.working = currentSubject();
+    render(); showRes();
+  }));
+
+  // ---- background colour swatches (sirf "Hatao" mode me) ----
   $('#swatches').querySelectorAll('.sw').forEach(sw=>{
     sw.addEventListener('click', e=>{
       if(sw.dataset.type==='custom'){ return; } // handled by input
@@ -352,12 +372,12 @@
   });
   $('#newBtn').addEventListener('click', ()=>{
     state.cutout=null; state.working=null; state.original=null; els.file.value='';
-    resetEnhanceUI();
+    state.bgMode='remove'; state.bg={type:'transparent'}; state.upscale='off';
+    resetControlsUI();
     els.controls.style.display='none'; els.box.style.display='none'; els.dz.style.display='block'; hideErr();
   });
 
-  // ---- Enhance: high-quality upscale (up to 8K) + sharpen, keeps transparency ----
-  const MAX_LONG = 7680;                 // 8K cap on the longest side
+  // ---- Upscale / Enhance helpers (canvas + sharpen, alpha preserved) ----
   const SHARPEN_MAX_PX = 16000000;       // skip JS sharpen above ~16MP (mobile memory safety)
 
   function imgToCanvas(img){ const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
@@ -388,149 +408,111 @@
 
   const tick = ()=>new Promise(r=>setTimeout(r,30));
 
-  function refreshAiStatus(){
-    const el=$('#aiStatus'), note=$('#enhNote');
-    if(state.geminiUrl){
-      el.textContent='● Gemini connected'; el.className='ai-status on';
-      if(note) note.textContent='Gemini AI se HD studio-quality result (jaisa aap chahte the).';
-    }else{
-      el.textContent='● Gemini setup nahi'; el.className='ai-status off';
-      if(note) note.textContent='Abhi client-side AI chalega. Gemini setup karo → bahut behtar result.';
-    }
-  }
+  const MAX_OUT = 3200;   // mobile-safe: final longest side cap
 
-  // Prompts: BG hatane wale ke liye white studio; BG rakhne wale ke liye original bg preserve.
-  const PROMPT_CUT =
-    "Enhance and restore this product photo into a sharp, high-resolution, professional " +
-    "studio product photograph. Keep the product exactly the same — identical shape, colours, " +
-    "text, logos and hardware. Clean, evenly lit, on a pure white seamless studio background. " +
-    "Ultra sharp, fine detail, no blur, no noise, e-commerce catalogue quality.";
-  const PROMPT_KEEP =
-    "Enhance this photo into a sharp, high-resolution, professional image. Keep everything " +
-    "exactly the same including the original background — do NOT change, replace or remove the " +
-    "background, and keep all subjects, colours, text and logos identical. Only improve sharpness, " +
-    "lighting, clarity and fine detail. No blur, no noise, natural realistic look.";
-
-  // Best-quality enhance via the user's own free Gemini Worker.
-  // keepBg=true  -> background waisa hi rahe, sirf enhance (bg remove nahi).
-  async function geminiEnhance(keepBg){
-    setLoader(true,'Gemini AI enhance ho raha hai…');
-    els.ovSub.textContent='HD studio-quality banayi ja rahi hai (~10-25 sec)…'; els.ovBar.style.width='22%'; await tick();
-    try{
-      const src=state.original||state.cutout;
-      let c=imgToCanvas(src); const cap=1536, long=Math.max(c.width,c.height);
-      if(long>cap) c=scaleCanvas(c, cap/long);
-      const dataUrl=c.toDataURL('image/jpeg',0.92);
-      els.ovBar.style.width='42%';
-      const resp=await fetch(state.geminiUrl,{ method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ image:dataUrl, mimeType:'image/jpeg', prompt:(keepBg?PROMPT_KEEP:PROMPT_CUT) }) });
-      const data=await resp.json().catch(()=>({}));
-      if(!resp.ok || !data.image){
-        let d=data && data.error ? (typeof data.error==='string'?data.error:JSON.stringify(data.error)) : ('HTTP '+resp.status);
-        if(data && data.detail){
-          const de=data.detail.error||data.detail;
-          const dm=de && de.message ? de.message : (typeof de==='string'?de:JSON.stringify(de));
-          if(dm) d+=' — '+dm;
-        }
-        throw new Error(d);
-      }
-      const gBlob=await (await fetch(data.image)).blob();
-      let outBlob=gBlob;
-      if(!keepBg){
-        els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='80%'; await tick();
-        try{ outBlob=await removeBackground(gBlob,{ output:{ format:'image/png' } }); }
-        catch(e){ outBlob=gBlob; }   // agar bg-remove fail ho to bhi Gemini image dikhao
-      }
-      const u=URL.createObjectURL(outBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
-      render(); showRes(); setLoader(false);
-    }catch(err){
-      console.error('gemini enhance failed', err); setLoader(false);
-      showErr('Gemini enhance fail ('+(err.message||err)+'). ⚙ Gemini setup / Worker URL aur key check karein.');
-    }
-  }
-
-  // Lazily load the AI super-resolution model (ESRGAN via UpscalerJS, from CDN).
+  // Lazily load the AI super-resolution model (Real-ESRGAN via UpscalerJS, from CDN).
+  // Better model pehle, na chale to halka model — taaki hamesha kuch na kuch chale.
   let _upscaler=null;
   async function loadUpscaler(){
     if(_upscaler) return _upscaler;
-    const [UpMod, ModelMod] = await Promise.all([
-      import('https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/+esm'),
-      import('https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/4x/+esm')
-    ]);
+    const UpMod = await import('https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/+esm');
     const Upscaler = UpMod.default || UpMod;
-    const model = ModelMod.default || ModelMod;
-    _upscaler = new Upscaler({ model });
-    return _upscaler;
+    const models = [
+      'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-medium@1.0.0-beta.19/4x/+esm',
+      'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/4x/+esm'
+    ];
+    let lastErr;
+    for(const url of models){
+      try{ const M=await import(url); const model=M.default||M; _upscaler=new Upscaler({ model }); return _upscaler; }
+      catch(e){ lastErr=e; }
+    }
+    throw lastErr || new Error('upscaler model load fail');
   }
 
   // Fallback: high-quality stepwise canvas upscale + unsharp (no AI).
   async function canvasUpscale(src, factor){
     const long=Math.max(src.naturalWidth,src.naturalHeight);
-    const target=Math.min(MAX_LONG, long*factor);
+    const target=Math.min(MAX_OUT, long*factor);
     let c=imgToCanvas(src);
     while(Math.max(c.width,c.height) < target-1){ c=scaleCanvas(c, Math.min(2, target/Math.max(c.width,c.height))); }
     unsharp(c, 0.7);
     return canvasToImg(c);
   }
 
+  // Upscale / Enhance — independent of background. ESRGAN hamesha ORIGINAL par
+  // chalta hai (best detail); "Hatao" mode me HD image ka phir se background hata dete hain.
   async function enhance(level){
-    state.enh=level;
-    if(!state.cutout) return;
-    if(level==='off'){ state.working=state.cutout; render(); showRes(); return; }
-    const keepBg = (level==='ai-keep');   // BG ke saath = background waisa hi rahe
+    state.upscale=level;
+    const src = state.original || state.cutout;
+    if(!src) return;
+    if(level==='off'){ state.working = currentSubject(); render(); showRes(); return; }
+    const factor = level==='4' ? 4 : 2;
+    const removeBg = (state.bgMode==='remove');
 
     hideErr();
-    if(state.geminiUrl){ return geminiEnhance(keepBg); }   // best: Gemini (if user set it up)
-
-    setLoader(true,'AI enhance ho raha hai…');
+    setLoader(true,'AI se HD banaya ja raha hai…');
     els.ovSub.textContent='Pehli baar AI model download hota hai (~kuch MB), phir tez.';
-    els.ovBar.style.width='12%'; await tick();
+    els.ovBar.style.width='10%'; await tick();
     try{
-      // 1) Upscale the ORIGINAL photo with AI (clean HD detail)
-      let inCanvas = imgToCanvas(state.original || state.cutout);
-      const cap=1024, long=Math.max(inCanvas.width,inCanvas.height);
-      if(long>cap) inCanvas = scaleCanvas(inCanvas, cap/long);   // keep output ~4x, memory-safe
-      els.ovBar.style.width='25%'; await tick();
+      // input ko cap karo taaki output MAX_OUT se zyada na ho (mobile safe)
+      let inC = imgToCanvas(src);
+      const inCap = Math.floor(MAX_OUT/4), inLong=Math.max(inC.width,inC.height);
+      if(inLong>inCap) inC = scaleCanvas(inC, inCap/inLong);
+      els.ovBar.style.width='22%'; await tick();
 
       const up = await loadUpscaler();
-      let hdUrl = await up.upscale(inCanvas, {
-        patchSize:64, padding:4,
-        progress:(p)=>{ els.ovBar.style.width=(25+Math.round((p||0)*45))+'%'; }
-      });
-      if(typeof hdUrl==='string' && !hdUrl.startsWith('data:')) hdUrl='data:image/png;base64,'+hdUrl;
+      let outUrl = await up.upscale(inC, { patchSize:64, padding:4,
+        progress:(p)=>{ els.ovBar.style.width=(22+Math.round((p||0)*55))+'%'; } });
+      if(typeof outUrl==='string' && !outUrl.startsWith('data:')) outUrl='data:image/png;base64,'+outUrl;
+      let outC = imgToCanvas(await loadImg(outUrl));   // native 4x result
 
-      const hdBlob = await (await fetch(hdUrl)).blob();
-      let outBlob=hdBlob;
-      if(!keepBg){
-        // 2) Remove background again on the HD image → clean HD cutout
-        els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='78%'; await tick();
-        outBlob = await removeBackground(hdBlob, { output:{ format:'image/png' } });
+      // requested factor (original ke hisaab se) tak fit karo
+      const wantLong = Math.min(MAX_OUT, Math.max(src.naturalWidth,src.naturalHeight)*factor);
+      if(Math.max(outC.width,outC.height) > wantLong) outC = scaleCanvas(outC, wantLong/Math.max(outC.width,outC.height));
+      unsharp(outC, 0.5);
+
+      if(removeBg){
+        els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='85%'; await tick();
+        const hdBlob = await new Promise(r=>outC.toBlob(r,'image/png'));
+        const cutBlob = await removeBackground(hdBlob, { output:{ format:'image/png' } });
+        const u=URL.createObjectURL(cutBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
+      }else{
+        state.working = await canvasToImg(outC);
       }
-      const u=URL.createObjectURL(outBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
-
       render(); showRes(); setLoader(false);
     }catch(err){
-      console.error('AI enhance failed — falling back to HQ upscale', err);
+      console.error('AI upscale failed — falling back to HQ upscale', err);
       els.ovMsg.textContent='HD bana rahe…';
-      try{ state.working = await canvasUpscale(keepBg ? (state.original||state.cutout) : state.cutout, 4); }
-      catch(e2){ state.working = keepBg ? (state.original||state.cutout) : state.cutout; }
+      try{
+        const c = await canvasUpscale(src, factor);
+        if(removeBg){
+          const hb=await new Promise(r=>imgToCanvas(c).toBlob(r,'image/png'));
+          const cb=await removeBackground(hb,{ output:{ format:'image/png' } });
+          const u=URL.createObjectURL(cb); state.working=await loadImg(u); URL.revokeObjectURL(u);
+        }else state.working=c;
+      }catch(e2){ state.working = currentSubject(); }
       render(); showRes(); setLoader(false);
-      showErr('AI model abhi load nahi hua — filhaal HD upscale laga diya. Internet check kar ke dobara "AI Enhance" dabayein.');
+      showErr('AI model load nahi hua — filhaal high-quality upscale laga diya. Internet check karke dobara try karein.');
     }
   }
 
+  function setEnhActive(val){
+    const btns=$('#enh') && $('#enh').querySelectorAll('button');
+    if(btns) btns.forEach(x=>x.classList.toggle('active', x.dataset.e===val));
+  }
   $('#enh').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    $('#enh').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active'); enhance(b.dataset.e);
+    setEnhActive(b.dataset.e); enhance(b.dataset.e);
   }));
 
-  function resetEnhanceUI(){
-    state.enh='off';
-    const btns=$('#enh') && $('#enh').querySelectorAll('button');
-    if(btns) btns.forEach(x=>x.classList.toggle('active', x.dataset.e==='off'));
+  function resetControlsUI(){
+    state.upscale='off'; setEnhActive('off');
+    $('#bgMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x.dataset.bg==='remove'));
+    $('#swatches').style.display='flex';
+    const sws=$('#swatches').querySelectorAll('.sw');
+    sws.forEach(x=>x.classList.remove('active')); if(sws[0]) sws[0].classList.add('active');
   }
   function showRes(){
-    const im=state.working||state.cutout;
+    const im=state.working||currentSubject();
     els.resNote.innerHTML = im ? ('Output: <b>'+im.naturalWidth+' × '+im.naturalHeight+' px</b>') : '—';
   }
 
@@ -538,10 +520,6 @@
   function setLoader(on,msg){ els.overlay.classList.toggle('show',on); if(msg) els.ovMsg.textContent=msg; }
   function showErr(m){ els.err.textContent=m; els.err.style.display='block'; }
   function hideErr(){ els.err.style.display='none'; }
-
-  // If the user set up Gemini on the setup page, pick it up here.
-  state.geminiUrl = localStorage.getItem('altariq_gemini_url')||'';
-  refreshAiStatus();
 </script>
 </body>
 </html>
