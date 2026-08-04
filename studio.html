@@ -208,10 +208,11 @@
               <button data-fmt="jpg">JPG</button>
             </div>
             <button class="btn btn-g" id="downloadBtn">⬇ Download</button>
+            <button class="btn btn-ghost" id="upscaleBtn">⬆ Upscale karein</button>
             <button class="btn btn-ghost" id="newBtn">↺ Nayi tasveer</button>
           </div>
           <div class="res" id="resNote">—</div>
-          <div class="enh-note">Photo ko <b>bada + sharp</b> (upscale) karna hai? <a href="upscale.html" style="color:var(--gold);font-weight:800">⬆ Image Upscaler kholein →</a></div>
+          <div class="enh-note"><b>⬆ Upscale karein</b> dabao → ye photo download hoke Upscaler khul jayega, wahan upload karke HD bana lo.</div>
         </div>
       </div>
     </section>
@@ -342,7 +343,7 @@
     $('#fmt').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active'); state.format=b.dataset.fmt;
   }));
-  $('#downloadBtn').addEventListener('click', ()=>{
+  function downloadCurrent(){
     if(!state.cutout) return;
     let canvas = composite();
     let mime='image/png', ext='png';
@@ -360,6 +361,13 @@
       a.download = state.srcName+'_altariq.'+ext;
       a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
     }, mime, state.format==='jpg'?0.95:undefined);
+  }
+  $('#downloadBtn').addEventListener('click', downloadCurrent);
+  // BG remove karke seedha upscale: photo download karo + Upscaler naya tab me kholo
+  $('#upscaleBtn').addEventListener('click', ()=>{
+    if(!state.cutout){ window.open('upscale.html','_blank','noopener'); return; }
+    downloadCurrent();
+    setTimeout(()=>window.open('upscale.html','_blank','noopener'), 400);
   });
   $('#newBtn').addEventListener('click', ()=>{
     state.cutout=null; state.working=null; state.original=null; els.file.value='';
