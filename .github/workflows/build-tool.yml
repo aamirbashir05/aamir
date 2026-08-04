@@ -1,0 +1,73 @@
+name: Build Windows EXE — AlTariq Photoroom Pro
+
+on:
+  workflow_dispatch:            # allows manual "Run workflow" from the Actions tab
+  push:
+    branches: [ "claude/photoroom-exploration-pkxmsy" ]
+    paths:
+      - "tool/**"
+      - ".github/workflows/build-tool.yml"
+
+permissions:
+  contents: write               # needed to publish the exe to Releases
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: tool
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller==6.11.1
+
+      - name: Cache AI model
+        uses: actions/cache@v4
+        with:
+          path: tool/models
+          key: rembg-isnet-general-use-v1
+
+      - name: Download offline AI model
+        working-directory: tool
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path models | Out-Null
+          $env:U2NET_HOME = "$PWD\models"
+          python -c "from rembg import new_session; new_session('isnet-general-use')"
+          Get-ChildItem models
+
+      - name: Build EXE
+        working-directory: tool
+        run: pyinstaller --noconfirm --clean altariq_photoroom_pro.spec
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlTariqPhotoroomPro-Windows
+          path: tool/dist/AlTariqPhotoroomPro.exe
+          if-no-files-found: error
+
+      - name: Publish to Releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "altariq-photoroom-pro"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag `
+              --repo $env:GITHUB_REPOSITORY `
+              --title "AlTariq Photoroom Pro" `
+              --notes "Offline AI background remover for Al Tariq Printers. Download **AlTariqPhotoroomPro.exe** below and double-click to run (Windows 10/11)."
+          }
+          gh release upload $tag tool/dist/AlTariqPhotoroomPro.exe --repo $env:GITHUB_REPOSITORY --clobber
+          Write-Host "Published $tag"
