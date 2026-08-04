@@ -109,6 +109,9 @@
   .fmt{display:flex;background:#0e0f14;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px}
   .fmt button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit}
   .fmt button.active{background:var(--grad-gold);color:#241a08}
+  .res{margin-top:9px;font-size:12px;color:var(--muted)}
+  .res b{color:var(--gold)}
+  .enh-note{margin-top:7px;font-size:11px;color:var(--muted);line-height:1.4}
 
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:8px 0 46px}
   .step{background:linear-gradient(180deg,#111319,#0d0f14);border:1px solid var(--line);border-radius:16px;padding:18px}
@@ -188,6 +191,17 @@
           </div>
         </div>
         <div class="ctl">
+          <h4>✨ Enhance — HD se 8K</h4>
+          <div class="fmt" id="enh">
+            <button data-e="off" class="active">Off</button>
+            <button data-e="hd">HD 2×</button>
+            <button data-e="4k">4K</button>
+            <button data-e="8k">8K</button>
+          </div>
+          <div class="res" id="resNote">—</div>
+          <div class="enh-note">Zyada resolution + sharp edges — printing ke liye best. 8K bade PC par behtar.</div>
+        </div>
+        <div class="ctl">
           <h4>Download</h4>
           <div class="btns">
             <div class="fmt" id="fmt">
@@ -217,12 +231,12 @@
   import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm';
 
   const $ = s => document.querySelector(s);
-  const state = { cutout:null, bg:{type:'transparent'}, format:'png', srcName:'image' };
+  const state = { cutout:null, working:null, bg:{type:'transparent'}, format:'png', srcName:'image', enh:'off' };
 
   const els = {
     dz:$('#dz'), file:$('#file'), box:$('#canvasBox'), wrap:$('#previewWrap'), img:$('#previewImg'),
     overlay:$('#overlay'), ovMsg:$('#ovMsg'), ovBar:$('#ovBar'), ovSub:$('#ovSub'),
-    controls:$('#controls'), err:$('#err'), custom:$('#customColor')
+    controls:$('#controls'), err:$('#err'), custom:$('#customColor'), resNote:$('#resNote')
   };
 
   // ---- upload ----
@@ -254,8 +268,10 @@
       });
       const url = URL.createObjectURL(blob);
       state.cutout = await loadImg(url);
+      state.working = state.cutout;
       URL.revokeObjectURL(url);
-      render();
+      resetEnhanceUI();
+      render(); showRes();
       els.controls.style.display='flex';
       setLoader(false);
     }catch(err){
@@ -271,11 +287,12 @@
 
   // ---- render composite ----
   function composite(){
+    const subj = state.working || state.cutout;
     const c = document.createElement('canvas');
-    c.width = state.cutout.naturalWidth; c.height = state.cutout.naturalHeight;
+    c.width = subj.naturalWidth; c.height = subj.naturalHeight;
     const ctx = c.getContext('2d');
     if(state.bg.type==='color'){ ctx.fillStyle=state.bg.value; ctx.fillRect(0,0,c.width,c.height); }
-    ctx.drawImage(state.cutout,0,0);
+    ctx.drawImage(subj,0,0);
     return c;
   }
   function render(){
@@ -315,7 +332,7 @@
       // JPG has no transparency — flatten on white (or chosen colour)
       if(state.bg.type==='transparent'){
         const c=document.createElement('canvas'); c.width=canvas.width;c.height=canvas.height;
-        const x=c.getContext('2d'); x.fillStyle='#ffffff'; x.fillRect(0,0,c.width,c.height); x.drawImage(state.cutout,0,0); canvas=c;
+        const x=c.getContext('2d'); x.fillStyle='#ffffff'; x.fillRect(0,0,c.width,c.height); x.drawImage(canvas,0,0); canvas=c;
       }
     }
     canvas.toBlob(blob=>{
@@ -326,9 +343,83 @@
     }, mime, state.format==='jpg'?0.95:undefined);
   });
   $('#newBtn').addEventListener('click', ()=>{
-    state.cutout=null; els.file.value='';
+    state.cutout=null; state.working=null; els.file.value='';
+    resetEnhanceUI();
     els.controls.style.display='none'; els.box.style.display='none'; els.dz.style.display='block'; hideErr();
   });
+
+  // ---- Enhance: high-quality upscale (up to 8K) + sharpen, keeps transparency ----
+  const MAX_LONG = 7680;                 // 8K cap on the longest side
+  const SHARPEN_MAX_PX = 16000000;       // skip JS sharpen above ~16MP (mobile memory safety)
+
+  function imgToCanvas(img){ const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
+    c.getContext('2d').drawImage(img,0,0); return c; }
+  function scaleCanvas(src, scale){
+    const c=document.createElement('canvas'); c.width=Math.round(src.width*scale); c.height=Math.round(src.height*scale);
+    const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
+    x.drawImage(src,0,0,c.width,c.height); return c;
+  }
+  function canvasToImg(c){ return loadImg(c.toDataURL('image/png')); }
+
+  // unsharp mask (RGB only, alpha preserved) via a 3-tap separable box blur
+  function unsharp(canvas, amount){
+    const x=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+    if(w*h > SHARPEN_MAX_PX) return;      // too big — upscale only
+    const id=x.getImageData(0,0,w,h), d=id.data, n=d.length;
+    const tmp=new Uint8ClampedArray(n), blur=new Uint8ClampedArray(n);
+    for(let y=0;y<h;y++){ for(let xx=0;xx<w;xx++){ const i=(y*w+xx)*4;
+      for(let c=0;c<3;c++){ const a=xx>0?d[i-4+c]:d[i+c], b=d[i+c], e=xx<w-1?d[i+4+c]:d[i+c]; tmp[i+c]=(a+b+e)/3; }
+    }}
+    const r=w*4;
+    for(let y=0;y<h;y++){ for(let xx=0;xx<w;xx++){ const i=(y*w+xx)*4;
+      for(let c=0;c<3;c++){ const a=y>0?tmp[i-r+c]:tmp[i+c], b=tmp[i+c], e=y<h-1?tmp[i+r+c]:tmp[i+c]; blur[i+c]=(a+b+e)/3; }
+    }}
+    for(let i=0;i<n;i+=4){ for(let c=0;c<3;c++){ const v=d[i+c]+amount*(d[i+c]-blur[i+c]); d[i+c]=v<0?0:v>255?255:v; } }
+    x.putImageData(id,0,0);
+  }
+
+  async function enhance(level){
+    state.enh=level;
+    if(!state.cutout) return;
+    if(level==='off'){ state.working=state.cutout; render(); showRes(); return; }
+    setLoader(true,'Enhance ho raha hai…');
+    els.ovSub.textContent='Resolution badha kar sharp banaya ja raha hai…'; els.ovBar.style.width='25%';
+    await new Promise(r=>setTimeout(r,40));   // let the loader paint
+    try{
+      const src=state.cutout, curLong=Math.max(src.naturalWidth,src.naturalHeight);
+      let target = level==='hd' ? curLong*2 : level==='4k' ? 3840 : MAX_LONG;
+      target = Math.min(MAX_LONG, Math.max(target, curLong));   // never shrink; cap at 8K
+      let c=imgToCanvas(src);
+      while(Math.max(c.width,c.height) < target-1){
+        const s=Math.min(2, target/Math.max(c.width,c.height));
+        c=scaleCanvas(c,s);
+      }
+      els.ovBar.style.width='70%'; await new Promise(r=>setTimeout(r,20));
+      unsharp(c, 0.7);
+      state.working=await canvasToImg(c);
+      render(); showRes();
+      setLoader(false);
+    }catch(err){
+      console.error(err); setLoader(false);
+      showErr('Enhance fail — image bahut bada ho gaya. Chhota target (4K/HD) try karein.');
+      state.working=state.cutout; resetEnhanceUI(); render(); showRes();
+    }
+  }
+
+  $('#enh').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    $('#enh').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); enhance(b.dataset.e);
+  }));
+
+  function resetEnhanceUI(){
+    state.enh='off';
+    const btns=$('#enh') && $('#enh').querySelectorAll('button');
+    if(btns) btns.forEach(x=>x.classList.toggle('active', x.dataset.e==='off'));
+  }
+  function showRes(){
+    const im=state.working||state.cutout;
+    els.resNote.innerHTML = im ? ('Output: <b>'+im.naturalWidth+' × '+im.naturalHeight+' px</b>') : '—';
+  }
 
   // ---- helpers ----
   function setLoader(on,msg){ els.overlay.classList.toggle('show',on); if(msg) els.ovMsg.textContent=msg; }
