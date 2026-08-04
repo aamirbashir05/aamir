@@ -106,7 +106,7 @@
   .btn:active{transform:translateY(1px)}
   .btn-g{background:var(--grad-gold);color:#241a08;box-shadow:0 8px 22px rgba(231,162,76,.32),inset 0 1px 0 rgba(255,255,255,.45)}
   .btn-ghost{background:rgba(231,162,76,.08);border:1px solid var(--line);color:var(--gold)}
-  .fmt{display:flex;background:#0e0f14;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px}
+  .fmt{display:flex;flex-wrap:wrap;background:#0e0f14;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px}
   .fmt button{border:none;background:transparent;color:var(--muted);font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:inherit}
   .fmt button.active{background:var(--grad-gold);color:#241a08}
   .res{margin-top:9px;font-size:12px;color:var(--muted)}
@@ -198,10 +198,11 @@
           <h4>✨ AI Enhance</h4>
           <div class="fmt" id="enh">
             <button data-e="off" class="active">Off</button>
-            <button data-e="ai">✨ AI Enhance</button>
+            <button data-e="ai">✨ BG hata ke</button>
+            <button data-e="ai-keep">✨ BG ke saath</button>
           </div>
           <div class="res" id="resNote">—</div>
-          <div class="enh-note" id="enhNote">Background hatne ke baad photo HD + sharp banao.</div>
+          <div class="enh-note" id="enhNote"><b>BG hata ke</b> = background hata ke HD. <b>BG ke saath</b> = background waisa hi rakh ke sirf photo HD + sharp.</div>
           <div class="ai-cfg"><span id="aiStatus" class="ai-status">● …</span> · <a href="gemini-setup.html" target="_blank">⚙ Gemini setup</a></div>
         </div>
         <div class="ctl">
@@ -398,8 +399,21 @@
     }
   }
 
+  // Prompts: BG hatane wale ke liye white studio; BG rakhne wale ke liye original bg preserve.
+  const PROMPT_CUT =
+    "Enhance and restore this product photo into a sharp, high-resolution, professional " +
+    "studio product photograph. Keep the product exactly the same — identical shape, colours, " +
+    "text, logos and hardware. Clean, evenly lit, on a pure white seamless studio background. " +
+    "Ultra sharp, fine detail, no blur, no noise, e-commerce catalogue quality.";
+  const PROMPT_KEEP =
+    "Enhance this photo into a sharp, high-resolution, professional image. Keep everything " +
+    "exactly the same including the original background — do NOT change, replace or remove the " +
+    "background, and keep all subjects, colours, text and logos identical. Only improve sharpness, " +
+    "lighting, clarity and fine detail. No blur, no noise, natural realistic look.";
+
   // Best-quality enhance via the user's own free Gemini Worker.
-  async function geminiEnhance(){
+  // keepBg=true  -> background waisa hi rahe, sirf enhance (bg remove nahi).
+  async function geminiEnhance(keepBg){
     setLoader(true,'Gemini AI enhance ho raha hai…');
     els.ovSub.textContent='HD studio-quality banayi ja rahi hai (~10-25 sec)…'; els.ovBar.style.width='22%'; await tick();
     try{
@@ -409,7 +423,7 @@
       const dataUrl=c.toDataURL('image/jpeg',0.92);
       els.ovBar.style.width='42%';
       const resp=await fetch(state.geminiUrl,{ method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ image:dataUrl, mimeType:'image/jpeg' }) });
+        body:JSON.stringify({ image:dataUrl, mimeType:'image/jpeg', prompt:(keepBg?PROMPT_KEEP:PROMPT_CUT) }) });
       const data=await resp.json().catch(()=>({}));
       if(!resp.ok || !data.image){
         let d=data && data.error ? (typeof data.error==='string'?data.error:JSON.stringify(data.error)) : ('HTTP '+resp.status);
@@ -420,12 +434,14 @@
         }
         throw new Error(d);
       }
-      els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='80%'; await tick();
       const gBlob=await (await fetch(data.image)).blob();
-      let cutBlob;
-      try{ cutBlob=await removeBackground(gBlob,{ output:{ format:'image/png' } }); }
-      catch(e){ cutBlob=gBlob; }   // agar bg-remove fail ho to bhi Gemini image dikhao
-      const u=URL.createObjectURL(cutBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
+      let outBlob=gBlob;
+      if(!keepBg){
+        els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='80%'; await tick();
+        try{ outBlob=await removeBackground(gBlob,{ output:{ format:'image/png' } }); }
+        catch(e){ outBlob=gBlob; }   // agar bg-remove fail ho to bhi Gemini image dikhao
+      }
+      const u=URL.createObjectURL(outBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
       render(); showRes(); setLoader(false);
     }catch(err){
       console.error('gemini enhance failed', err); setLoader(false);
@@ -461,9 +477,10 @@
     state.enh=level;
     if(!state.cutout) return;
     if(level==='off'){ state.working=state.cutout; render(); showRes(); return; }
+    const keepBg = (level==='ai-keep');   // BG ke saath = background waisa hi rahe
 
     hideErr();
-    if(state.geminiUrl){ return geminiEnhance(); }   // best: Gemini (if user set it up)
+    if(state.geminiUrl){ return geminiEnhance(keepBg); }   // best: Gemini (if user set it up)
 
     setLoader(true,'AI enhance ho raha hai…');
     els.ovSub.textContent='Pehli baar AI model download hota hai (~kuch MB), phir tez.';
@@ -482,18 +499,21 @@
       });
       if(typeof hdUrl==='string' && !hdUrl.startsWith('data:')) hdUrl='data:image/png;base64,'+hdUrl;
 
-      // 2) Remove background again on the HD image → clean HD cutout
-      els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='78%'; await tick();
       const hdBlob = await (await fetch(hdUrl)).blob();
-      const cutBlob = await removeBackground(hdBlob, { output:{ format:'image/png' } });
-      const u=URL.createObjectURL(cutBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
+      let outBlob=hdBlob;
+      if(!keepBg){
+        // 2) Remove background again on the HD image → clean HD cutout
+        els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='78%'; await tick();
+        outBlob = await removeBackground(hdBlob, { output:{ format:'image/png' } });
+      }
+      const u=URL.createObjectURL(outBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
 
       render(); showRes(); setLoader(false);
     }catch(err){
       console.error('AI enhance failed — falling back to HQ upscale', err);
       els.ovMsg.textContent='HD bana rahe…';
-      try{ state.working = await canvasUpscale(state.cutout, 4); }
-      catch(e2){ state.working = state.cutout; }
+      try{ state.working = await canvasUpscale(keepBg ? (state.original||state.cutout) : state.cutout, 4); }
+      catch(e2){ state.working = keepBg ? (state.original||state.cutout) : state.cutout; }
       render(); showRes(); setLoader(false);
       showErr('AI model abhi load nahi hua — filhaal HD upscale laga diya. Internet check kar ke dobara "AI Enhance" dabayein.');
     }
