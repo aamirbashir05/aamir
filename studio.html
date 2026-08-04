@@ -137,7 +137,8 @@
         <b>Al Tariq Printers</b><span>AI Background Remover</span>
       </span>
     </a>
-    <a class="back" href="index.html">← Website</a>
+    <a class="back" href="upscale.html" style="margin-left:auto">⬆ Upscaler</a>
+    <a class="back" href="index.html" style="margin-left:10px">← Website</a>
   </div></nav>
 
   <div class="wrap">
@@ -200,16 +201,6 @@
           <div class="enh-note" id="bgNote"><b>Hatao</b> = background transparent/naya rang. <b>Rakho</b> = asli background waisa hi rahe.</div>
         </div>
         <div class="ctl">
-          <h4>⬆ Upscale / Enhance</h4>
-          <div class="fmt" id="enh">
-            <button data-e="off" class="active">Off</button>
-            <button data-e="2">2× HD</button>
-            <button data-e="4">4× Ultra</button>
-          </div>
-          <div class="res" id="resNote">—</div>
-          <div class="enh-note">Chhoti ya blurry photo ko AI (Real-ESRGAN) se <b>bada + sharp</b> banao. Background wali ho ya bina — dono pe chalega. Pehli baar model download hoga (~kuch MB), phir tez.</div>
-        </div>
-        <div class="ctl">
           <h4>Download</h4>
           <div class="btns">
             <div class="fmt" id="fmt">
@@ -219,6 +210,8 @@
             <button class="btn btn-g" id="downloadBtn">⬇ Download</button>
             <button class="btn btn-ghost" id="newBtn">↺ Nayi tasveer</button>
           </div>
+          <div class="res" id="resNote">—</div>
+          <div class="enh-note">Photo ko <b>bada + sharp</b> (upscale) karna hai? <a href="upscale.html" style="color:var(--gold);font-weight:800">⬆ Image Upscaler kholein →</a></div>
         </div>
       </div>
     </section>
@@ -240,7 +233,7 @@
 
   const $ = s => document.querySelector(s);
   const state = { cutout:null, working:null, original:null,
-    bgMode:'remove', bg:{type:'transparent'}, upscale:'off', format:'png', srcName:'image' };
+    bgMode:'remove', bg:{type:'transparent'}, format:'png', srcName:'image' };
 
   const els = {
     dz:$('#dz'), file:$('#file'), box:$('#canvasBox'), wrap:$('#previewWrap'), img:$('#previewImg'),
@@ -284,7 +277,7 @@
       const url = URL.createObjectURL(blob);
       state.cutout = await loadImg(url);
       URL.revokeObjectURL(url);
-      state.bgMode='remove'; state.bg={type:'transparent'}; state.upscale='off';
+      state.bgMode='remove'; state.bg={type:'transparent'};
       state.working = currentSubject();
       resetControlsUI();
       render(); showRes();
@@ -323,8 +316,6 @@
     b.classList.add('active');
     state.bgMode = b.dataset.bg;
     $('#swatches').style.display = state.bgMode==='remove' ? 'flex' : 'none';
-    // background badalne par upscale reset (subject badal gaya)
-    state.upscale='off'; setEnhActive('off');
     state.working = currentSubject();
     render(); showRes();
   }));
@@ -372,140 +363,12 @@
   });
   $('#newBtn').addEventListener('click', ()=>{
     state.cutout=null; state.working=null; state.original=null; els.file.value='';
-    state.bgMode='remove'; state.bg={type:'transparent'}; state.upscale='off';
+    state.bgMode='remove'; state.bg={type:'transparent'};
     resetControlsUI();
     els.controls.style.display='none'; els.box.style.display='none'; els.dz.style.display='block'; hideErr();
   });
 
-  // ---- Upscale / Enhance helpers (canvas + sharpen, alpha preserved) ----
-  const SHARPEN_MAX_PX = 16000000;       // skip JS sharpen above ~16MP (mobile memory safety)
-
-  function imgToCanvas(img){ const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
-    c.getContext('2d').drawImage(img,0,0); return c; }
-  function scaleCanvas(src, scale){
-    const c=document.createElement('canvas'); c.width=Math.round(src.width*scale); c.height=Math.round(src.height*scale);
-    const x=c.getContext('2d'); x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
-    x.drawImage(src,0,0,c.width,c.height); return c;
-  }
-  function canvasToImg(c){ return loadImg(c.toDataURL('image/png')); }
-
-  // unsharp mask (RGB only, alpha preserved) via a 3-tap separable box blur
-  function unsharp(canvas, amount){
-    const x=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
-    if(w*h > SHARPEN_MAX_PX) return;      // too big — upscale only
-    const id=x.getImageData(0,0,w,h), d=id.data, n=d.length;
-    const tmp=new Uint8ClampedArray(n), blur=new Uint8ClampedArray(n);
-    for(let y=0;y<h;y++){ for(let xx=0;xx<w;xx++){ const i=(y*w+xx)*4;
-      for(let c=0;c<3;c++){ const a=xx>0?d[i-4+c]:d[i+c], b=d[i+c], e=xx<w-1?d[i+4+c]:d[i+c]; tmp[i+c]=(a+b+e)/3; }
-    }}
-    const r=w*4;
-    for(let y=0;y<h;y++){ for(let xx=0;xx<w;xx++){ const i=(y*w+xx)*4;
-      for(let c=0;c<3;c++){ const a=y>0?tmp[i-r+c]:tmp[i+c], b=tmp[i+c], e=y<h-1?tmp[i+r+c]:tmp[i+c]; blur[i+c]=(a+b+e)/3; }
-    }}
-    for(let i=0;i<n;i+=4){ for(let c=0;c<3;c++){ const v=d[i+c]+amount*(d[i+c]-blur[i+c]); d[i+c]=v<0?0:v>255?255:v; } }
-    x.putImageData(id,0,0);
-  }
-
-  const tick = ()=>new Promise(r=>setTimeout(r,30));
-
-  const MAX_OUT = 3200;   // mobile-safe: final longest side cap
-
-  // Lazily load the AI super-resolution model (Real-ESRGAN via UpscalerJS, from CDN).
-  // Better model pehle, na chale to halka model — taaki hamesha kuch na kuch chale.
-  let _upscaler=null;
-  async function loadUpscaler(){
-    if(_upscaler) return _upscaler;
-    const UpMod = await import('https://cdn.jsdelivr.net/npm/upscaler@1.0.0-beta.19/+esm');
-    const Upscaler = UpMod.default || UpMod;
-    const models = [
-      'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-medium@1.0.0-beta.19/4x/+esm',
-      'https://cdn.jsdelivr.net/npm/@upscalerjs/esrgan-slim@1.0.0-beta.19/4x/+esm'
-    ];
-    let lastErr;
-    for(const url of models){
-      try{ const M=await import(url); const model=M.default||M; _upscaler=new Upscaler({ model }); return _upscaler; }
-      catch(e){ lastErr=e; }
-    }
-    throw lastErr || new Error('upscaler model load fail');
-  }
-
-  // Fallback: high-quality stepwise canvas upscale + unsharp (no AI).
-  async function canvasUpscale(src, factor){
-    const long=Math.max(src.naturalWidth,src.naturalHeight);
-    const target=Math.min(MAX_OUT, long*factor);
-    let c=imgToCanvas(src);
-    while(Math.max(c.width,c.height) < target-1){ c=scaleCanvas(c, Math.min(2, target/Math.max(c.width,c.height))); }
-    unsharp(c, 0.7);
-    return canvasToImg(c);
-  }
-
-  // Upscale / Enhance — independent of background. ESRGAN hamesha ORIGINAL par
-  // chalta hai (best detail); "Hatao" mode me HD image ka phir se background hata dete hain.
-  async function enhance(level){
-    state.upscale=level;
-    const src = state.original || state.cutout;
-    if(!src) return;
-    if(level==='off'){ state.working = currentSubject(); render(); showRes(); return; }
-    const factor = level==='4' ? 4 : 2;
-    const removeBg = (state.bgMode==='remove');
-
-    hideErr();
-    setLoader(true,'AI se HD banaya ja raha hai…');
-    els.ovSub.textContent='Pehli baar AI model download hota hai (~kuch MB), phir tez.';
-    els.ovBar.style.width='10%'; await tick();
-    try{
-      // input ko cap karo taaki output MAX_OUT se zyada na ho (mobile safe)
-      let inC = imgToCanvas(src);
-      const inCap = Math.floor(MAX_OUT/4), inLong=Math.max(inC.width,inC.height);
-      if(inLong>inCap) inC = scaleCanvas(inC, inCap/inLong);
-      els.ovBar.style.width='22%'; await tick();
-
-      const up = await loadUpscaler();
-      let outUrl = await up.upscale(inC, { patchSize:64, padding:4,
-        progress:(p)=>{ els.ovBar.style.width=(22+Math.round((p||0)*55))+'%'; } });
-      if(typeof outUrl==='string' && !outUrl.startsWith('data:')) outUrl='data:image/png;base64,'+outUrl;
-      let outC = imgToCanvas(await loadImg(outUrl));   // native 4x result
-
-      // requested factor (original ke hisaab se) tak fit karo
-      const wantLong = Math.min(MAX_OUT, Math.max(src.naturalWidth,src.naturalHeight)*factor);
-      if(Math.max(outC.width,outC.height) > wantLong) outC = scaleCanvas(outC, wantLong/Math.max(outC.width,outC.height));
-      unsharp(outC, 0.5);
-
-      if(removeBg){
-        els.ovMsg.textContent='Background saaf kar rahe…'; els.ovBar.style.width='85%'; await tick();
-        const hdBlob = await new Promise(r=>outC.toBlob(r,'image/png'));
-        const cutBlob = await removeBackground(hdBlob, { output:{ format:'image/png' } });
-        const u=URL.createObjectURL(cutBlob); state.working=await loadImg(u); URL.revokeObjectURL(u);
-      }else{
-        state.working = await canvasToImg(outC);
-      }
-      render(); showRes(); setLoader(false);
-    }catch(err){
-      console.error('AI upscale failed — falling back to HQ upscale', err);
-      els.ovMsg.textContent='HD bana rahe…';
-      try{
-        const c = await canvasUpscale(src, factor);
-        if(removeBg){
-          const hb=await new Promise(r=>imgToCanvas(c).toBlob(r,'image/png'));
-          const cb=await removeBackground(hb,{ output:{ format:'image/png' } });
-          const u=URL.createObjectURL(cb); state.working=await loadImg(u); URL.revokeObjectURL(u);
-        }else state.working=c;
-      }catch(e2){ state.working = currentSubject(); }
-      render(); showRes(); setLoader(false);
-      showErr('AI model load nahi hua — filhaal high-quality upscale laga diya. Internet check karke dobara try karein.');
-    }
-  }
-
-  function setEnhActive(val){
-    const btns=$('#enh') && $('#enh').querySelectorAll('button');
-    if(btns) btns.forEach(x=>x.classList.toggle('active', x.dataset.e===val));
-  }
-  $('#enh').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    setEnhActive(b.dataset.e); enhance(b.dataset.e);
-  }));
-
   function resetControlsUI(){
-    state.upscale='off'; setEnhActive('off');
     $('#bgMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x.dataset.bg==='remove'));
     $('#swatches').style.display='flex';
     const sws=$('#swatches').querySelectorAll('.sw');
