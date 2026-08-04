@@ -19,6 +19,7 @@ Andar `yt-dlp` use hota hai (Vimeo videos ko sahi tarah grab karne ke liye).
 
 import os
 import re
+import ssl
 import sys
 import html
 import time
@@ -30,6 +31,47 @@ import urllib.parse
 import urllib.request
 import urllib.error
 from pathlib import Path
+
+# Android/kahin bhi HTTPS ke liye certifi ka CA bundle (warna SSL verify fail)
+IS_ANDROID = ("ANDROID_ARGUMENT" in os.environ) or (
+    "ANDROID_ROOT" in os.environ and "com.termux" not in sys.prefix
+)
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("SSL_CERT_DIR", os.path.dirname(certifi.where()))
+except Exception:
+    pass
+
+_SSL_CTX = None
+_SSL_INSECURE = False
+
+
+def get_ssl_context():
+    """HTTPS ke liye SSL context — certifi CA se; Android par CA na mile to relax."""
+    global _SSL_CTX, _SSL_INSECURE
+    if _SSL_CTX is not None:
+        return _SSL_CTX
+    cafile = None
+    try:
+        import certifi
+        p = certifi.where()
+        if os.path.exists(p):
+            cafile = p
+    except Exception:
+        cafile = None
+    try:
+        ctx = ssl.create_default_context(cafile=cafile)
+        if cafile is None and IS_ANDROID:
+            # Android par koi CA bundle nahi -> verify off (personal tool, public videos)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            _SSL_INSECURE = True
+    except Exception:
+        ctx = ssl._create_unverified_context()
+        _SSL_INSECURE = True
+    _SSL_CTX = ctx
+    return ctx
 
 # --------------------------------------------------------------------------
 # Config
@@ -133,7 +175,7 @@ class Control:
 
 def fetch_html(url: str, timeout: int = 30) -> str:
     req = urllib.request.Request(url, headers=BROWSER_HEADERS)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=get_ssl_context()) as resp:
         raw = resp.read()
     charset = "utf-8"
     m = re.search(r"charset=([\w-]+)", resp.headers.get("Content-Type", ""))
@@ -220,10 +262,6 @@ def _pip_install(pkgs, log):
     subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", *pkgs], check=True)
     import importlib
     importlib.invalidate_caches()
-
-
-IS_ANDROID = ("ANDROID_ARGUMENT" in os.environ) or ("ANDROID_ROOT" in os.environ
-                                                    and "com.termux" not in sys.prefix)
 
 
 def ensure_ytdlp(log=print) -> bool:
@@ -353,6 +391,8 @@ def download_one(video, index, folder: Path, log, control, imp_target):
     }
     if imp_target is not None:
         opts["impersonate"] = imp_target
+    if _SSL_INSECURE:
+        opts["nocheckcertificate"] = True   # Android par CA na mile to bhi chale
 
     # SPEED (progressive/single files): aria2c se 16-connection (IDM jaisi).
     # HLS/DASH pehle se concurrent_fragment_downloads=16 se tez hai (native).
@@ -405,7 +445,8 @@ def download_pdf(url, folder: Path, log, control):
         return True
     try:
         req = urllib.request.Request(url, headers=BROWSER_HEADERS)
-        with urllib.request.urlopen(req, timeout=90) as r, open(dest, "wb") as f:
+        with urllib.request.urlopen(req, timeout=90, context=get_ssl_context()) as r, \
+                open(dest, "wb") as f:
             shutil.copyfileobj(r, f)
         log(f"   ✔ PDF: {name}")
         return True
