@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   ANDROID_SDK: /home/runner/android-sdk
@@ -86,9 +86,21 @@ jobs:
           java -version
           yes | buildozer android debug
 
-      - name: Upload APK
+      - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: COPA-Downloader-APK
           path: android/bin/*.apk
           if-no-files-found: error
+
+      - name: Publish to permanent Release (kabhi expire na ho)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(ls android/bin/*.apk | head -1)
+          cp "$APK" COPA-Downloader.apk
+          gh release view latest \
+            || gh release create latest --target "$GITHUB_SHA" \
+                 --title "COPA Downloader (latest)" \
+                 --notes "Windows EXE + Android APK. Hamesha yahin latest milega (login ki zaroorat nahi)."
+          gh release upload latest COPA-Downloader.apk --clobber
