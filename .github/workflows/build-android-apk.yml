@@ -1,0 +1,106 @@
+name: Build Android APK
+
+# COPA Downloader ka Android APK (Kivy + buildozer), ubuntu-22.04 par.
+# Deterministic toolchain: p4a 2024.1.21 (Python 3.11) + build-tools 33.0.2 (aidl).
+# Pehli build ~30-45 min. Download: Actions -> run -> Artifacts -> COPA-Downloader-APK
+
+on:
+  push:
+    branches:
+      - claude/chicago-copa-downloader-jvwb19
+    paths:
+      - "android/**"
+      - "copa-downloader/copa_downloader.py"
+      - ".github/workflows/build-android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  ANDROID_SDK: /home/runner/android-sdk
+  JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Core logic android/ me copy karo
+        run: cp copa-downloader/copa_downloader.py android/copa_downloader.py
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: System dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
+            pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+            build-essential ccache libltdl-dev
+
+      - name: Python build tools (stable combo)
+        run: |
+          python -m pip install --upgrade pip
+          pip install "Cython==0.29.36" virtualenv "buildozer==1.5.0" \
+            "python-for-android==2024.1.21"
+
+      - name: Pinned python-for-android source (2024.1.21 = Python 3.11)
+        run: |
+          python -m pip download "python-for-android==2024.1.21" \
+            --no-deps --no-binary :all: -d /tmp/p4adl
+          mkdir -p /tmp/p4a
+          tar xzf /tmp/p4adl/*.tar.gz -C /tmp/p4a --strip-components=1
+          # buildozer ko yeh p4a source + humara SDK use karne do
+          sed -i '/^requirements = /a p4a.source_dir = /tmp/p4a\nandroid.sdk_path = /home/runner/android-sdk' android/buildozer.spec
+          grep -nE '^(requirements|p4a\.source_dir|android\.sdk_path) =' android/buildozer.spec
+
+      - name: Android SDK (build-tools 33.0.2 = aidl maujood)
+        run: |
+          set -e
+          mkdir -p "$ANDROID_SDK/cmdline-tools"
+          curl -L -o /tmp/cmdtools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdtools.zip -d "$ANDROID_SDK/cmdline-tools"
+          mv "$ANDROID_SDK/cmdline-tools/cmdline-tools" "$ANDROID_SDK/cmdline-tools/latest"
+          SDKMANAGER="$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" --sdk_root="$ANDROID_SDK" \
+            "platform-tools" "build-tools;33.0.2" "platforms;android-33" >/dev/null
+          ls "$ANDROID_SDK/build-tools/33.0.2/aidl" && echo "aidl OK"
+          # p4a 2024.1.21 sdkmanager ko purani jagah (tools/bin) me dhoondta hai
+          ln -sfn "$ANDROID_SDK/cmdline-tools/latest" "$ANDROID_SDK/tools"
+          ls "$ANDROID_SDK/tools/bin/sdkmanager" && echo "sdkmanager link OK"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          ANDROIDSDK: /home/runner/android-sdk
+        run: |
+          export PATH=$JAVA_HOME/bin:$PATH:$HOME/.local/bin
+          java -version
+          yes | buildozer android debug
+
+      - name: Upload APK (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: COPA-Downloader-APK
+          path: android/bin/*.apk
+          if-no-files-found: error
+
+      - name: Publish to permanent Release (kabhi expire na ho)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(ls android/bin/*.apk | head -1)
+          cp "$APK" COPA-Downloader.apk
+          gh release view latest \
+            || gh release create latest --target "$GITHUB_SHA" \
+                 --title "COPA Downloader (latest)" \
+                 --notes "Windows EXE + Android APK. Hamesha yahin latest milega (login ki zaroorat nahi)."
+          gh release upload latest COPA-Downloader.apk --clobber
