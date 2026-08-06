@@ -1,0 +1,7 @@
+build/
+dist/
+__pycache__/
+*.pyc
+# Downloaded AI model is large; CI fetches it during build.
+models/*
+!models/.gitkeep

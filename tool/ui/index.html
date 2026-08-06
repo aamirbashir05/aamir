@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlTariq Photoroom Pro</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ===== Top bar ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="mark.png" class="brand-mark" alt="Al Tariq" />
+      <div class="brand-text">
+        <h1>AlTariq Photoroom Pro</h1>
+        <p>AI Background Studio · Al Tariq Printers</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="modelPill" class="pill pill-loading">
+        <span class="dot"></span> AI model load ho raha hai…
+      </span>
+    </div>
+  </header>
+
+  <!-- ===== Main layout ===== -->
+  <main class="layout">
+    <!-- Left: image queue -->
+    <aside class="queue">
+      <button id="addBtn" class="btn btn-orange btn-block">
+        <span class="ico">＋</span> Tasveer Add Karein
+      </button>
+      <div class="queue-tools hidden" id="queueTools">
+        <button id="removeAllBtn" class="btn btn-ghost btn-sm">✂ Sab ka BG hatao</button>
+      </div>
+      <div id="thumbs" class="thumbs"></div>
+      <div id="queueEmpty" class="queue-empty">
+        <p>Yahan aapki added tasveerein aayengi</p>
+      </div>
+    </aside>
+
+    <!-- Center: stage -->
+    <section class="stage">
+      <div id="dropzone" class="dropzone">
+        <img src="logo.png" class="dz-logo" alt="Al Tariq Printers" />
+        <h2>Background ek click mein hatao</h2>
+        <p>Photoroom se behtar — <b>full quality</b>, HD edges, offline, bina kisi fees ke.</p>
+        <button id="dropAddBtn" class="btn btn-orange btn-lg">Tasveer Chunein</button>
+        <span class="dz-hint">PNG · JPG · WEBP — ek ya kai saath</span>
+      </div>
+
+      <div id="workspace" class="workspace hidden">
+        <div class="stage-head">
+          <div id="stageTitle" class="stage-title">—</div>
+          <div class="compare">
+            <button id="toggleCompare" class="btn btn-ghost btn-sm">👁 Original dekhein</button>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <div id="canvas" class="canvas checker">
+            <img id="previewImg" alt="preview" />
+            <div id="spinner" class="spinner hidden"><span></span>Process ho raha hai…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: controls -->
+    <aside class="panel">
+      <div class="panel-scroll">
+        <!-- Cutout -->
+        <div class="card">
+          <div class="card-title">1 · Cutout</div>
+          <button id="cutBtn" class="btn btn-orange btn-block" disabled>✂ Background Hatao</button>
+          <label class="switch-row">
+            <span>HD Edges (baal/soft kinare saaf)</span>
+            <input type="checkbox" id="hdEdges" checked />
+          </label>
+        </div>
+
+        <!-- Background -->
+        <div class="card">
+          <div class="card-title">2 · Naya Background</div>
+          <div id="bgSwatches" class="swatches">
+            <button class="sw sw-transparent active" data-type="transparent" title="Transparent"></button>
+            <button class="sw" data-type="color" data-value="#ffffff" style="background:#fff" title="White"></button>
+            <button class="sw" data-type="color" data-value="#000000" style="background:#000" title="Black"></button>
+            <button class="sw" data-type="color" data-value="#e7a24c" style="background:#e7a24c" title="Al Tariq Orange"></button>
+            <button class="sw" data-type="color" data-value="#f4f2ee" style="background:#f4f2ee" title="Studio"></button>
+            <button class="sw" data-type="color" data-value="#0b0c10" style="background:#0b0c10" title="Dark"></button>
+            <button class="sw sw-grad" data-type="gradient" data-from="#f8da98" data-to="#c9851f" title="Gold Gradient"></button>
+            <button class="sw sw-grad2" data-type="gradient" data-from="#dfe7ef" data-to="#9aa7b4" title="Grey Studio"></button>
+          </div>
+          <div class="row">
+            <label class="mini-btn">
+              🎨 Custom color
+              <input type="color" id="customColor" value="#e7a24c" />
+            </label>
+            <button id="bgImageBtn" class="mini-btn">🖼 Apni image</button>
+          </div>
+          <div id="bgImageInfo" class="bg-image-info hidden">
+            <img id="bgImageThumb" alt="" /> <span id="bgImageName"></span>
+            <button id="bgImageClear" class="x">✕</button>
+          </div>
+        </div>
+
+        <!-- Size -->
+        <div class="card">
+          <div class="card-title">3 · Size / Export</div>
+          <select id="presetSel" class="select"></select>
+          <div class="seg" id="formatSeg">
+            <button class="seg-btn active" data-fmt="png">PNG (transparent)</button>
+            <button class="seg-btn" data-fmt="jpg">JPG</button>
+          </div>
+          <div class="row export-dir">
+            <span id="exportDir" class="dir">—</span>
+            <button id="changeDirBtn" class="mini-btn">📁</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer actions -->
+      <div class="panel-foot">
+        <button id="exportBtn" class="btn btn-orange btn-block" disabled>⬇ Save Karein</button>
+        <button id="exportAllBtn" class="btn btn-gold-outline btn-block">⬇ Sab Export Karein</button>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
