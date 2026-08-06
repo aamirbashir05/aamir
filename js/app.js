@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v53'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v54'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -833,72 +833,126 @@ function parseNameAmount(str) {
   if (!m || !m[1].trim()) return null;
   return { name: m[1].trim(), amount: parseFloat(m[2].replace(/,/g, '')) };
 }
-// Poora naam lazmi nahi — "Kohistan Press" bhi "Hamza Kohistan Press" ko dhoond le
-function findCustomerFuzzy(typed) {
+function normName(s) { return (s || '').toLowerCase().replace(/[^a-z0-9\s]/gi, ' ').replace(/\s+/g, ' ').trim(); }
+// Customer index — har lafz ka wazan (kam customers me aane wala lafz zyada ahem,
+// jaise "Aslam"; "Al"/"Press" jaise aam lafz ka wazan kam). Is se aik lafz b match
+// kare to sahi customer mil jata hai, aur aam lafz galat match nahi karate.
+function buildCustIndex() {
   const custs = Store.getCustomers();
-  const t = (typed || '').trim().toLowerCase();
-  if (!t) return null;
-  let hit = custs.filter(c => c.name.trim().toLowerCase() === t);       // 1. bilkul same
-  if (hit.length === 1) return hit[0];
-  hit = custs.filter(c => { const n = c.name.toLowerCase(); return n.includes(t) || t.includes(n); }); // 2. aik doosre me shaamil
-  if (hit.length === 1) return hit[0];
-  if (hit.length > 1) { const cont = hit.filter(c => c.name.toLowerCase().includes(t)); if (cont.length === 1) return cont[0]; return { ambiguous: hit.map(c => c.name) }; }
-  const words = t.split(/\s+/).filter(Boolean);                          // 3. saare lafz naam me mojood
-  hit = custs.filter(c => { const n = c.name.toLowerCase(); return words.every(w => n.includes(w)); });
-  if (hit.length === 1) return hit[0];
-  if (hit.length > 1) return { ambiguous: hit.map(c => c.name) };
-  return null;
+  const df = {};
+  const items = custs.map(c => {
+    const toks = [...new Set(normName(c.name).split(' ').filter(w => w.length >= 2))];
+    toks.forEach(w => df[w] = (df[w] || 0) + 1);
+    return { c, toks: new Set(toks) };
+  });
+  const N = custs.length || 1;
+  return { items, weight: w => Math.log((N + 1) / ((df[w] || 0) + 1)) + 0.1 };
 }
-// Har line: "(tafseel) - (customer + raqam)" YA sirf "customer raqam"
+// Behtareen match dhoondo — saaf jeet ho to id do, warna candidates (user chun le)
+function matchCustomer(typed, idx) {
+  const t = normName(typed); if (!t) return { custId: null, candidates: [] };
+  const exact = idx.items.find(it => normName(it.c.name) === t);
+  if (exact) return { custId: exact.c.id, candidates: [] };
+  const tToks = [...new Set(t.split(' ').filter(w => w.length >= 2))];
+  const scored = idx.items.map(it => {
+    let sc = 0; tToks.forEach(w => { if (it.toks.has(w)) sc += idx.weight(w); });
+    const cn = normName(it.c.name); if (cn.includes(t) || t.includes(cn)) sc += 3;
+    return { c: it.c, sc };
+  }).filter(x => x.sc > 0).sort((a, b) => b.sc - a.sc);
+  if (!scored.length) return { custId: null, candidates: [] };
+  if (scored.length === 1 || scored[0].sc >= scored[1].sc * 1.35 + 1e-9) return { custId: scored[0].c.id, candidates: [] };
+  return { custId: null, candidates: scored.slice(0, 5).map(x => x.c) };
+}
+// Har line: "(tafseel) - (customer + raqam)" YA sirf "customer raqam". Bracket tooti
+// bhi ho to aakhri " - " se customer+raqam alag kar lete hain.
 function parseBulkLines(text) {
   const out = [];
   (text || '').split('\n').forEach(raw => {
     const line = raw.trim(); if (!line) return;
-    const groups = [...line.matchAll(/\(([^)]*)\)/g)].map(m => m[1].trim());
     let detail = '', naStr = line;
-    if (groups.length >= 2) { detail = groups[0]; naStr = groups[groups.length - 1]; }
-    else if (groups.length === 1) { naStr = groups[0]; }
+    const di = line.lastIndexOf(' - ');
+    if (di >= 0) { detail = line.slice(0, di); naStr = line.slice(di + 3); }
+    else {
+      const g = [...line.matchAll(/\(([^)]*)\)/g)].map(m => m[1].trim());
+      if (g.length >= 2) { detail = g[0]; naStr = g[g.length - 1]; }
+      else if (g.length === 1) naStr = g[0];
+    }
+    detail = detail.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
     const na = parseNameAmount(naStr);
-    if (!na) { out.push({ raw: line, name: naStr, detail, amount: 0, cust: null, bad: true, reason: 'raqam nahi mili' }); return; }
-    const found = findCustomerFuzzy(na.name);
-    let cust = null, reason = '';
-    if (found && found.id) cust = found;
-    else if (found && found.ambiguous) reason = 'kai naam milte hain (' + found.ambiguous.slice(0, 3).join(', ') + ') — thora poora likhein';
-    else reason = 'naam nahi mila';
-    out.push({ raw: line, name: na.name, detail, amount: na.amount, cust, bad: !cust || !na.amount || na.amount <= 0, reason: cust ? '' : reason });
+    out.push({ raw: line, detail, name: na ? na.name : naStr.replace(/[()]/g, ' ').trim(), amount: na ? na.amount : 0 });
   });
   return out;
 }
+let bulkRows = [];
 $('#bulkPreview').addEventListener('click', () => {
-  const rows = parseBulkLines($('#bulkText').value);
-  if (!rows.length) { toast('Kuch paste to karein'); return; }
-  const ok = rows.filter(r => !r.bad), bad = rows.filter(r => r.bad);
-  const okTotal = ok.reduce((s, r) => s + r.amount, 0);
-  const typeLbl = bulkType === 'debit' ? 'Maal/Kaam' : 'Payment';
-  let html = `<div class="bulk-sum"><div class="ok"><b>${ok.length}</b><span>Milay (${typeLbl})</span></div>`
-    + (bad.length ? `<div class="bad"><b>${bad.length}</b><span>Naam nahi mila</span></div>` : '')
-    + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div></div>`;
-  html += ok.map(r => `<div class="bulk-row"><div class="bcol"><span class="bname">${esc(r.cust.name)}</span>${r.detail ? `<span class="bdet">${esc(r.detail)}</span>` : ''}</div><span class="bamt ${bulkType === 'debit' ? 'neg' : 'pos'}">${fmtMoney(r.amount)}</span></div>`).join('');
-  if (bad.length) html += `<div class="bulk-note">⚠️ Ye lines match nahi huin — theek kar ke dobara Aage barhein:</div>`
-    + bad.map(r => `<div class="bulk-row miss"><div class="bcol"><span class="bname">${esc(r.raw)}</span>${r.reason ? `<span class="bdet">${esc(r.reason)}</span>` : ''}</div></div>`).join('');
-  if (ok.length) {
-    const dLbl = workDate ? fmtDate(workDate) : 'Aaj';
-    html += `<div class="bulk-note">Date: <b>${dLbl}</b>. Save karne par sab ${ok.length} entries add ho jayengi.</div>`;
-    html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px">✅ Sab ${ok.length} entries Save karein</button>`;
-  }
-  const res = $('#bulkResult'); res.innerHTML = html;
-  const sv = $('#bulkSave');
-  if (sv) sv.addEventListener('click', () => bulkSave(ok));
+  const parsed = parseBulkLines($('#bulkText').value);
+  if (!parsed.length) { toast('Kuch paste to karein'); return; }
+  const idx = buildCustIndex();
+  bulkRows = parsed.map(r => {
+    const m = r.amount > 0 ? matchCustomer(r.name, idx) : { custId: null, candidates: [] };
+    return { raw: r.raw, detail: r.detail, name: r.name, amount: r.amount, custId: m.custId, candidates: m.candidates };
+  });
+  renderBulkPreview();
 });
+function renderBulkPreview() {
+  const okRows = bulkRows.filter(r => r.custId && r.amount > 0);
+  const need = bulkRows.filter(r => !(r.custId && r.amount > 0));
+  const okTotal = okRows.reduce((s, r) => s + r.amount, 0);
+  const typeLbl = bulkType === 'debit' ? 'Maal/Kaam' : 'Payment';
+  let html = `<div class="bulk-sum"><div class="ok"><b>${okRows.length}</b><span>Tayyar (${typeLbl})</span></div>`
+    + (need.length ? `<div class="bad"><b>${need.length}</b><span>Customer chunein</span></div>` : '')
+    + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div></div>`;
+  html += bulkRows.map((r, i) => {
+    const cust = r.custId ? Store.getCustomer(r.custId) : null;
+    const amtHtml = r.amount > 0 ? `<span class="bamt ${bulkType === 'debit' ? 'neg' : 'pos'}">${fmtMoney(r.amount)}</span>` : `<span class="bamt neg">?</span>`;
+    const who = cust ? `<span class="bname">${esc(cust.name)}</span>` : `<span class="bname" style="color:var(--red)">${esc(r.name || r.raw)}</span>`;
+    const sub = r.detail ? esc(r.detail) : (cust ? '' : (r.amount > 0 ? 'customer chunein →' : 'raqam nahi mili'));
+    const det = sub ? `<span class="bdet">${sub}</span>` : '';
+    const pickBtn = `<button class="bwa ${cust ? 'done' : ''}" data-pick="${i}">${cust ? '✎' : '🔍 Chunein'}</button>`;
+    return `<div class="bulk-row ${cust ? '' : 'miss'}"><div class="bcol">${who}${det}</div>${amtHtml}${pickBtn}</div>`;
+  }).join('');
+  const dLbl = workDate ? fmtDate(workDate) : 'Aaj';
+  html += `<div class="bulk-note">Date: <b>${dLbl}</b>.${need.length ? ' Jo "Chunein" par hain unhe tap kar ke customer laga lein.' : ''}</div>`;
+  html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px"${okRows.length ? '' : ' disabled'}>✅ ${okRows.length} entries Save karein</button>`;
+  const res = $('#bulkResult'); res.innerHTML = html;
+  $$('#bulkResult [data-pick]').forEach(b => b.addEventListener('click', () => openAssign(+b.dataset.pick)));
+  const sv = $('#bulkSave');
+  if (sv && okRows.length) sv.addEventListener('click', () => bulkSave(bulkRows.filter(r => r.custId && r.amount > 0)));
+}
+// Kisi line ke liye customer khud chunein (search ya top candidates se)
+let assignIdx = -1;
+function openAssign(i) {
+  assignIdx = i;
+  const r = bulkRows[i];
+  $('#assignFor').innerHTML = `<b>${esc(r.raw)}</b>`;
+  $('#assignSearch').value = '';
+  renderAssign('', r.candidates);
+  openModal('assignModal');
+  setTimeout(() => $('#assignSearch').focus(), 200);
+}
+function renderAssign(q, candidates) {
+  const f = (q || '').trim().toLowerCase();
+  let list;
+  if (!f && candidates && candidates.length) list = candidates;
+  else list = Store.getCustomers().filter(c => !f || c.name.toLowerCase().includes(f) || (c.phone || '').replace(/\s/g, '').includes(f)).slice(0, 60);
+  const drop = $('#assignDrop');
+  drop.innerHTML = list.length ? list.map(c => `<div class="cust-opt" data-id="${c.id}">${esc(c.name)}${c.phone ? '<span>' + esc(c.phone) + '</span>' : ''}</div>`).join('') : '<div class="cust-empty">Koi customer nahi mila</div>';
+  $$('#assignDrop .cust-opt').forEach(el => el.addEventListener('click', () => {
+    if (bulkRows[assignIdx]) { bulkRows[assignIdx].custId = el.dataset.id; bulkRows[assignIdx].candidates = []; }
+    closeModal('assignModal'); renderBulkPreview();
+  }));
+}
+$('#assignSearch') && $('#assignSearch').addEventListener('input', () => renderAssign($('#assignSearch').value, (bulkRows[assignIdx] || {}).candidates));
 async function bulkSave(rows) {
   const date = (workDate || new Date().toISOString().slice(0, 10)) + 'T' + new Date().toTimeString().slice(0, 8);
   const iso = new Date(date).toISOString();
   await Store.forceSnapshot('pre-bulk'); // safety net — bulk se pehle backup
   const done = [];
   for (const r of rows) {
-    Store.addPartyTxn('customer', r.cust.id, { amount: r.amount, type: bulkType, note: r.detail || '', date: iso });
-    republishIfShared(Store.getCustomer(r.cust.id));
-    done.push({ cust: r.cust, amount: r.amount, detail: r.detail || '' });
+    const c = Store.getCustomer(r.custId); if (!c) continue;
+    Store.addPartyTxn('customer', c.id, { amount: r.amount, type: bulkType, note: r.detail || '', date: iso });
+    republishIfShared(c);
+    done.push({ cust: c, amount: r.amount, detail: r.detail || '' });
   }
   toast('✅ ' + done.length + ' entries save ho gayin');
   if (activeNav === 'accounts') renderAccounts();
