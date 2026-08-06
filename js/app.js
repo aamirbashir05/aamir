@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v51'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v52'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -825,18 +825,47 @@ $('#bulkDebit') && $('#bulkDebit').addEventListener('click', () => setBulkType('
 $('#bulkCredit') && $('#bulkCredit').addEventListener('click', () => setBulkType('credit'));
 
 // har line: "naam ... raqam" — aakhri number raqam, baqi naam
-function parseBulkLines(text) {
+// "Kohistan Press 1000rs" -> { name:'Kohistan Press', amount:1000 }
+function parseNameAmount(str) {
+  const s = (str || '').replace(/[()]/g, ' ').trim();
+  // naam ... raqam [rs/rupees/pkr/-] — raqam ke sath juri currency (1000rs) bhi chalti hai
+  const m = s.match(/^(.*?)[\s:\-–—=]*?([\d][\d,]*(?:\.\d+)?)\s*(?:rs|rupees|rupay|rupaye|pkr|\/-|\/=|\/)?\.?\s*$/i);
+  if (!m || !m[1].trim()) return null;
+  return { name: m[1].trim(), amount: parseFloat(m[2].replace(/,/g, '')) };
+}
+// Poora naam lazmi nahi — "Kohistan Press" bhi "Hamza Kohistan Press" ko dhoond le
+function findCustomerFuzzy(typed) {
   const custs = Store.getCustomers();
-  const byName = {}; custs.forEach(c => { byName[c.name.trim().toLowerCase()] = c; });
+  const t = (typed || '').trim().toLowerCase();
+  if (!t) return null;
+  let hit = custs.filter(c => c.name.trim().toLowerCase() === t);       // 1. bilkul same
+  if (hit.length === 1) return hit[0];
+  hit = custs.filter(c => { const n = c.name.toLowerCase(); return n.includes(t) || t.includes(n); }); // 2. aik doosre me shaamil
+  if (hit.length === 1) return hit[0];
+  if (hit.length > 1) { const cont = hit.filter(c => c.name.toLowerCase().includes(t)); if (cont.length === 1) return cont[0]; return { ambiguous: hit.map(c => c.name) }; }
+  const words = t.split(/\s+/).filter(Boolean);                          // 3. saare lafz naam me mojood
+  hit = custs.filter(c => { const n = c.name.toLowerCase(); return words.every(w => n.includes(w)); });
+  if (hit.length === 1) return hit[0];
+  if (hit.length > 1) return { ambiguous: hit.map(c => c.name) };
+  return null;
+}
+// Har line: "(tafseel) - (customer + raqam)" YA sirf "customer raqam"
+function parseBulkLines(text) {
   const out = [];
   (text || '').split('\n').forEach(raw => {
     const line = raw.trim(); if (!line) return;
-    const m = line.match(/^(.*?)[\s:\-–—=]*?([\d][\d,]*(?:\.\d+)?)\s*$/);
-    if (!m || !m[1].trim()) { out.push({ raw: line, name: line, amount: 0, cust: null, bad: true }); return; }
-    const name = m[1].trim();
-    const amount = parseFloat(m[2].replace(/,/g, ''));
-    const cust = byName[name.toLowerCase()] || null;
-    out.push({ raw: line, name, amount, cust, bad: !cust || !amount || amount <= 0 });
+    const groups = [...line.matchAll(/\(([^)]*)\)/g)].map(m => m[1].trim());
+    let detail = '', naStr = line;
+    if (groups.length >= 2) { detail = groups[0]; naStr = groups[groups.length - 1]; }
+    else if (groups.length === 1) { naStr = groups[0]; }
+    const na = parseNameAmount(naStr);
+    if (!na) { out.push({ raw: line, name: naStr, detail, amount: 0, cust: null, bad: true, reason: 'raqam nahi mili' }); return; }
+    const found = findCustomerFuzzy(na.name);
+    let cust = null, reason = '';
+    if (found && found.id) cust = found;
+    else if (found && found.ambiguous) reason = 'kai naam milte hain (' + found.ambiguous.slice(0, 3).join(', ') + ') — thora poora likhein';
+    else reason = 'naam nahi mila';
+    out.push({ raw: line, name: na.name, detail, amount: na.amount, cust, bad: !cust || !na.amount || na.amount <= 0, reason: cust ? '' : reason });
   });
   return out;
 }
@@ -849,9 +878,9 @@ $('#bulkPreview').addEventListener('click', () => {
   let html = `<div class="bulk-sum"><div class="ok"><b>${ok.length}</b><span>Milay (${typeLbl})</span></div>`
     + (bad.length ? `<div class="bad"><b>${bad.length}</b><span>Naam nahi mila</span></div>` : '')
     + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div></div>`;
-  html += ok.map(r => `<div class="bulk-row"><span class="bname">${esc(r.cust.name)}</span><span class="bamt ${bulkType === 'debit' ? 'neg' : 'pos'}">${fmtMoney(r.amount)}</span></div>`).join('');
-  if (bad.length) html += `<div class="bulk-note">⚠️ Ye lines match nahi huin (naam bilkul customer jaisa likhein, ya raqam theek karein):</div>`
-    + bad.map(r => `<div class="bulk-row miss"><span class="bname">${esc(r.raw)}</span></div>`).join('');
+  html += ok.map(r => `<div class="bulk-row"><div class="bcol"><span class="bname">${esc(r.cust.name)}</span>${r.detail ? `<span class="bdet">${esc(r.detail)}</span>` : ''}</div><span class="bamt ${bulkType === 'debit' ? 'neg' : 'pos'}">${fmtMoney(r.amount)}</span></div>`).join('');
+  if (bad.length) html += `<div class="bulk-note">⚠️ Ye lines match nahi huin — theek kar ke dobara Aage barhein:</div>`
+    + bad.map(r => `<div class="bulk-row miss"><div class="bcol"><span class="bname">${esc(r.raw)}</span>${r.reason ? `<span class="bdet">${esc(r.reason)}</span>` : ''}</div></div>`).join('');
   if (ok.length) {
     const dLbl = workDate ? fmtDate(workDate) : 'Aaj';
     html += `<div class="bulk-note">Date: <b>${dLbl}</b>. Save karne par sab ${ok.length} entries add ho jayengi.</div>`;
@@ -867,9 +896,9 @@ async function bulkSave(rows) {
   await Store.forceSnapshot('pre-bulk'); // safety net — bulk se pehle backup
   const done = [];
   for (const r of rows) {
-    const t = Store.addPartyTxn('customer', r.cust.id, { amount: r.amount, type: bulkType, note: '', date: iso });
+    Store.addPartyTxn('customer', r.cust.id, { amount: r.amount, type: bulkType, note: r.detail || '', date: iso });
     republishIfShared(Store.getCustomer(r.cust.id));
-    done.push({ cust: r.cust, amount: r.amount });
+    done.push({ cust: r.cust, amount: r.amount, detail: r.detail || '' });
   }
   toast('✅ ' + done.length + ' entries save ho gayin');
   if (activeNav === 'accounts') renderAccounts();
@@ -882,13 +911,13 @@ async function showBulkSendList(done) {
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
     let sent = 0;
-    for (const d of done) { const c = Store.getCustomer(d.cust.id); if (c) { await sendEntryNotification(c.id, { amount: d.amount, type: bulkType, note: '' }, null); sent++; } }
+    for (const d of done) { const c = Store.getCustomer(d.cust.id); if (c) { await sendEntryNotification(c.id, { amount: d.amount, type: bulkType, note: d.detail || '' }, null); sent++; } }
     toast('✅ ' + sent + ' WhatsApp messages bhej diye'); closeModal('bulkModal'); return;
   }
   // No API: har customer ka apna button (jinke number hai)
   const withPhone = done.filter(d => intlPhone(d.cust.phone));
   let html = `<div class="bulk-note">Har customer ko alag bhejna hai — neeche har naam par <b>💬</b> dabayein (WhatsApp khulega, bhej kar wapas aayen aur agla dabayein).</div>`;
-  html += withPhone.map((d, i) => `<div class="bulk-row"><span class="bname">${esc(d.cust.name)}</span><span class="bamt">${fmtMoney(d.amount)}</span><button class="bwa" data-i="${i}">💬 Bhejein</button></div>`).join('');
+  html += withPhone.map((d, i) => `<div class="bulk-row"><div class="bcol"><span class="bname">${esc(d.cust.name)}</span>${d.detail ? `<span class="bdet">${esc(d.detail)}</span>` : ''}</div><span class="bamt">${fmtMoney(d.amount)}</span><button class="bwa" data-i="${i}">💬 Bhejein</button></div>`).join('');
   const noPhone = done.length - withPhone.length;
   if (noPhone) html += `<div class="bulk-note">${noPhone} customer ka number nahi — unko message nahi jayega.</div>`;
   html += `<button class="cancel" id="bulkDone" style="width:100%;margin-top:10px">Ho gaya — band karein</button>`;
@@ -897,7 +926,7 @@ async function showBulkSendList(done) {
     const d = withPhone[+btn.dataset.i];
     const c = Store.getCustomer(d.cust.id); if (!c) return;
     const phone = intlPhone(c.phone);
-    const msg = entryMessage(c, { amount: d.amount, type: bulkType, note: '' });
+    const msg = entryMessage(c, { amount: d.amount, type: bulkType, note: d.detail || '' });
     ensurePublished(c).catch(() => {});
     window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
     btn.textContent = '✓ Bhej diya'; btn.classList.add('done');

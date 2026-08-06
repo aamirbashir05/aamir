@@ -318,10 +318,10 @@
   <div class="modal-bg" id="bulkModal">
     <div class="modal">
       <h2>📋 Ek saath kai entries</h2>
-      <p class="hint">Har line me <b>customer ka naam</b> aur <b>raqam</b> likhein. Misaal:<br>Naveed Auto 5000<br>Shaheen Food 2300</p>
+      <p class="hint"><b>(tafseel) - (customer + raqam)</b> — misaal:<br>(Saad Charpai) - (Aslam Al Madinah 1000)<br>(Hotel Royal Samaa) - (Kohistan Press 1000)<br>Ya bina tafseel sirf: <b>Naveed Auto 5000</b><br><span style="color:var(--muted)">Poora naam lazmi nahi — "Kohistan Press" bhi "Hamza Kohistan Press" ko dhoond lega.</span></p>
       <div class="type-toggle"><button id="bulkDebit">− Maal / Kaam Diya</button><button id="bulkCredit">+ Payment Aayi</button></div>
       <div class="field"><label>Yahan paste karein</label>
-        <textarea id="bulkText" rows="7" placeholder="Naveed Auto 5000&#10;Shaheen Food 2300&#10;Khanji Traders 12000" autocomplete="off"></textarea></div>
+        <textarea id="bulkText" rows="7" placeholder="(Saad Charpai) - (Aslam Al Madinah 1000)&#10;(Hotel Royal Samaa) - (Kohistan Press 1000)&#10;(Mishal Tag VC 3 Size) - (Sohaill Press 1000)" autocomplete="off"></textarea></div>
       <label class="switch-row"><span>💬 Har customer ko WhatsApp bhejein</span><input type="checkbox" id="bulkNotify" checked></label>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="bulkPreview">Aage barhein →</button></div>
       <div id="bulkResult" class="bulk-result"></div>
