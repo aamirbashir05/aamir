@@ -277,7 +277,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .bottomnav button.active span { filter: none; transform: translateY(-1px); }
 
 /* Modal */
-.modal-bg { position: fixed; inset: 0; background: rgba(2,3,5,.7); backdrop-filter: blur(6px); z-index: 50; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.modal-bg { position: fixed; inset: 0; background: rgba(2,3,5,.86); z-index: 50; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .modal-bg.open { opacity: 1; pointer-events: auto; }
 .modal { background: var(--grad-card); border: 1px solid var(--border); border-top: 1px solid rgba(231,162,76,.3); width: 100%; max-width: 640px; border-radius: 20px 20px 0 0; padding: 20px; transform: translateY(20px); transition: transform .2s; max-height: 92vh; overflow-y: auto; box-shadow: 0 -20px 60px rgba(0,0,0,.6); }
 .modal-bg.open .modal { transform: translateY(0); }
@@ -399,14 +399,17 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
    ho rahi thin (off-screen paint bug). Normal rendering zyada mehfooz hai. */
 
 /* ---------- Backup status bar (auto cloud backup + retry) ---------- */
+/* NOTE: backdrop-filter hata diya — Android Chrome par ye fixed bar (jo live sync me
+   baar baar badalti hai) poore page ka paint kharab kar deti thi (content khaali/blank).
+   Ab solid opaque backgrounds. */
 .backup-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; z-index: 45;
   max-width: 92%; padding: 9px 16px; border-radius: 24px; font-size: 13px; font-weight: 700;
   display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.5);
-  border: 1px solid var(--border); backdrop-filter: blur(6px); white-space: nowrap; }
-.backup-bar.saving { background: rgba(231,162,76,.16); color: var(--gold1); }
-.backup-bar.saved { background: rgba(52,211,153,.16); color: var(--green); border-color: rgba(52,211,153,.4); }
-.backup-bar.pending { background: rgba(231,162,76,.14); color: var(--gold1); }
-.backup-bar.warn { background: rgba(248,113,113,.16); color: #fda4a4; border-color: rgba(248,113,113,.5);
+  border: 1px solid var(--border); background: #17181d; white-space: nowrap; }
+.backup-bar.saving { background: #2b2411; color: var(--gold1); }
+.backup-bar.saved { background: #10281e; color: var(--green); border-color: rgba(52,211,153,.4); }
+.backup-bar.pending { background: #272210; color: var(--gold1); }
+.backup-bar.warn { background: #2c1717; color: #fda4a4; border-color: rgba(248,113,113,.5);
   cursor: pointer; animation: bkPulse 1.8s ease-in-out infinite; }
 @keyframes bkPulse { 0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.5); } 50% { box-shadow: 0 6px 26px rgba(248,113,113,.4); } }
 .backup-bar .spin { display: inline-block; animation: bkSpin 1s linear infinite; }
