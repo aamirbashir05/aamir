@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v50'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v51'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1205,11 +1205,12 @@ $('#btnSnapshots').addEventListener('click', async () => {
   const list = $('#snapList');
   if (snaps.length === 0) { list.innerHTML = `<div class="empty" style="padding:20px;">Abhi koi auto-backup nahi.</div>`; }
   else {
-    list.innerHTML = snaps.map(s => `<div class="snap"><div class="s-info"><b>${fmtDateTime(s.at)}</b>${s.customers} customers</div><button data-ts="${s.ts}">Restore</button></div>`).join('');
-    $$('#snapList .snap button').forEach(btn => btn.addEventListener('click', async () => {
-      if (!confirm('Is version par wapas jayein? Mojooda data is se badal jayega.')) return;
-      await Store.restoreSnapshot(Number(btn.dataset.ts));
-      closeModal('snapModal'); toast('Purana version wapas aa gaya ✅'); nav('overview');
+    list.innerHTML = snaps.map(s => `<div class="snap"><div class="s-info"><b>${fmtDateTime(s.at)}</b>${s.customers} customers · ${s.txns != null ? s.txns + ' entries' : ''}</div><button class="snap-merge" data-ts="${s.ts}">↩︎ Ghayeb wapas laao</button></div>`).join('');
+    $$('#snapList .snap-merge').forEach(btn => btn.addEventListener('click', async () => {
+      if (!confirm('Is purane backup ka ghayeb data mojooda hisaab me MILA diya jayega.\n\n✅ Aap ki nayi entries zaya NAHI hongi — sirf jo purana ghayeb tha wo wapas aayega.\n\nJari rakhein?')) return;
+      btn.disabled = true; btn.textContent = 'Ho raha hai…';
+      await Store.mergeSnapshot(Number(btn.dataset.ts));
+      closeModal('snapModal'); toast('✅ Purana ghayeb data wapas mila diya (nayi entries mehfooz)'); nav('overview');
     }));
   }
   openModal('snapModal');

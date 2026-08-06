@@ -254,17 +254,34 @@ const Store = (() => {
   async function listSnapshots() {
     const keys = (await idbKeys(S_SNAP)).sort((a, b) => b - a);
     const out = [];
-    for (const k of keys.slice(0, 60)) {
+    for (const k of keys.slice(0, 150)) {
       const s = await idbGet(S_SNAP, k);
-      if (s) out.push({ ts: s.ts, at: s.at, customers: (s.data.customers || []).length });
+      if (s) {
+        let txns = 0; (s.data.customers || []).forEach(c => txns += (c.txns || []).length); (s.data.suppliers || []).forEach(c => txns += (c.txns || []).length);
+        out.push({ ts: s.ts, at: s.at, customers: (s.data.customers || []).length, txns });
+      }
     }
     return out;
   }
+  // MERGE restore (safe): purane backup ka data mojooda me MILA do — jo purana ghayeb
+  // tha wo wapas aa jaye, magar aap ki nayi entries KABHI zaya na hon. Delete ki hui
+  // (tombstoned) entries wapas nahi aatin.
+  async function mergeSnapshot(ts) {
+    const s = await idbGet(S_SNAP, ts);
+    if (!s || !s.data) return false;
+    try { await forceSnapshot('pre-merge-restore'); } catch (e) {} // pehle mojooda ka bhi backup
+    let snap; try { snap = clone(s.data); } catch (e) { return false; }
+    mergeRemote(snap);  // union + tombstone + last-write-wins
+    save();             // cloud par bhi push (recovered entries sync ho jayein)
+    return true;
+  }
+  // Poora replace (khatarnak) — sirf jab jaan boojh kar sab kuch is version par le jana ho
   async function restoreSnapshot(ts) {
     const s = await idbGet(S_SNAP, ts);
     if (!s) return false;
+    try { await forceSnapshot('pre-full-restore'); } catch (e) {}
     data = migrate(s.data);
-    persist(false);
+    save();
     return true;
   }
 
@@ -416,7 +433,7 @@ const Store = (() => {
     addQuote, updateQuote, deleteQuote, allQuotes,
     putImage, getImage,
     balanceOf, totals, recentTxns,
-    listSnapshots, restoreSnapshot, recoverShareIds, recordShareToken, forceSnapshot,
+    listSnapshots, restoreSnapshot, mergeSnapshot, recoverShareIds, recordShareToken, forceSnapshot,
     getMeta, setMeta,
     markBackup, lastBackup, exportJSON, importJSON
   };
