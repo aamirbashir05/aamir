@@ -28,3 +28,5 @@ jobs:
           path: '.'
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          timeout: 1800000   # 30 min — GitHub Pages queue slow ho to bhi ruk kar wait kare (10-min default se fail na ho)
