@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v54'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v55'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1216,14 +1216,19 @@ $('#btnRemovePin').addEventListener('click', () => {
   if (hashPin(p.trim()) === Store.getShop().pinHash) { Store.setShop({ pinHash: '' }); toast('🔓 App Lock hata diya'); loadSettings(); }
   else toast('Ghalat PIN');
 });
+let _remoteRenderT = null, _lastRemoteToast = 0;
 function onCloudRemote() {
-  // remote data adopted — refresh whatever is on screen
-  if (activeNav === 'overview') renderOverview();
-  else if (activeNav === 'accounts') renderAccounts();
-  else if (activeNav === 'rates') renderRates();
-  if (currentCustId && !$('#detailView').classList.contains('hidden')) renderDetail();
-  maybeLock(); // agar doosre device se PIN aaya to lock laga do
-  toast('☁️ Doosre device se data update hua');
+  // rapid updates (live sync) ko aik saath karo — har delta par poora re-render na ho (jank/lag se bacho)
+  clearTimeout(_remoteRenderT);
+  _remoteRenderT = setTimeout(() => {
+    if (activeNav === 'overview') renderOverview();
+    else if (activeNav === 'accounts') renderAccounts();
+    else if (activeNav === 'rates') renderRates();
+    if (currentCustId && !$('#detailView').classList.contains('hidden')) renderDetail();
+    maybeLock(); // agar doosre device se PIN aaya to lock laga do
+  }, 250);
+  const now = Date.now();
+  if (now - _lastRemoteToast > 6000) { _lastRemoteToast = now; toast('☁️ Hisaab update hua'); }
 }
 
 /* ---------- App Lock (PIN) — sirf owner + Abu khol sakein ---------- */

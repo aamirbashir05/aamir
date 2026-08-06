@@ -119,16 +119,20 @@ const Store = (() => {
   }
 
   /* ---------- save / persist ---------- */
+  let lsTooBig = false; // aik dafa data bara ho jaye to phir har save par stringify na karo (PERF)
   function persist(snapshot = true) {
     data.updatedAt = new Date().toISOString();
     // IndexedDB = asal durable store (barson ka bara data yahan, structured-clone khud hota hai).
     idbPut(S_KV, data, 'data');
-    // localStorage sirf chhote data ka mirror — bara hone par skip (quota crash se bachne ke liye).
-    try {
-      const s = JSON.stringify(data);
-      if (s.length < 2500000) localStorage.setItem(LS_KEY, s);
-      else localStorage.removeItem(LS_KEY);
-    } catch (e) { try { localStorage.removeItem(LS_KEY); } catch (_) {} }
+    // localStorage sirf chhote data ka mirror — bara hone par bilkul chhod do (har save par
+    // poora stringify slow tha; 52k+ entries par lag ki wajah).
+    if (!lsTooBig) {
+      try {
+        const s = JSON.stringify(data);
+        if (s.length < 2500000) localStorage.setItem(LS_KEY, s);
+        else { lsTooBig = true; localStorage.removeItem(LS_KEY); }
+      } catch (e) { lsTooBig = true; try { localStorage.removeItem(LS_KEY); } catch (_) {} }
+    }
     if (snapshot) maybeSnapshot();
   }
   const saveCbs = [];
@@ -138,69 +142,78 @@ const Store = (() => {
   function getData() { return data; }
   function replaceAll(d) { data = migrate(d); persist(false); }
 
-  /* ---- Safe MERGE for multi-device sync (never lose entries) ---- */
-  // Same id par: jo NAYA (edit) hai wo jeete — 'm' (modify time) se. Is se kisi entry
-  // ki raqam badlo to doosre phone par bhi update ho jati hai (pehle purani reh jati thi).
+  /* ---- Safe MERGE for multi-device sync (never lose entries) ----
+     PERF: 52k+ entries par poora JSON.stringify (change detect ke liye) bht slow
+     tha aur har sync par chalta tha — lag ki wajah. Ab merge KHUD batata hai kuch
+     badla ya nahi (_mergeChg flag), koi poora stringify nahi. */
+  let _mergeChg = false;
+  // Same id par: jo NAYA (edit) hai wo jeete — 'm' (modify time) se.
   function mergeById(a, b) {
     a = a || []; b = b || [];
+    if (!b.length) return a;
     const m = new Map();
     a.forEach(t => m.set(t.id, t));
-    b.forEach(t => { const ex = m.get(t.id); if (!ex || (t.m || 0) > (ex.m || 0)) m.set(t.id, t); });
+    b.forEach(t => { const ex = m.get(t.id); if (!ex || (t.m || 0) > (ex.m || 0)) { m.set(t.id, t); _mergeChg = true; } });
     return [...m.values()];
   }
   function mergeParties(a, b) {
     a = a || []; b = b || [];
+    if (!b.length) return a;
     const m = new Map();
     a.forEach(p => m.set(p.id, p));
     b.forEach(p => {
-      if (!m.has(p.id)) { m.set(p.id, p); return; }
+      if (!m.has(p.id)) { m.set(p.id, p); _mergeChg = true; return; }
       const x = m.get(p.id);
       x.txns = mergeById(x.txns, p.txns).sort((u, v) => new Date(u.date) - new Date(v.date));
       x.quotes = mergeById(x.quotes, p.quotes).sort((u, v) => new Date(v.date) - new Date(u.date));
       // naam/phone edit bhi sync ho: jo naya (bara m) ho wo jeete, warna khali-fill
-      if ((p.m || 0) > (x.m || 0)) { if (p.name) x.name = p.name; if (p.phone != null && p.phone !== '') x.phone = p.phone; x.m = p.m; }
-      else { if (!x.name && p.name) x.name = p.name; if (!x.phone && p.phone) x.phone = p.phone; }
-      if (!x.shareId && p.shareId) x.shareId = p.shareId;
+      if ((p.m || 0) > (x.m || 0)) {
+        if (p.name && p.name !== x.name) { x.name = p.name; _mergeChg = true; }
+        if (p.phone != null && p.phone !== '' && p.phone !== x.phone) { x.phone = p.phone; _mergeChg = true; }
+        x.m = p.m;
+      } else {
+        if (!x.name && p.name) { x.name = p.name; _mergeChg = true; }
+        if (!x.phone && p.phone) { x.phone = p.phone; _mergeChg = true; }
+      }
+      if (!x.shareId && p.shareId) { x.shareId = p.shareId; _mergeChg = true; }
     });
     return [...m.values()];
   }
   // Tombstones (mit chuki cheezein) dono taraf se jama karo — sab se nayi delete-time rakho
   function mergeTombstones(a, b) {
-    const out = Object.assign({}, a || {});
+    const out = a || {};
     const rb = b || {};
-    for (const id in rb) { if (!(id in out) || rb[id] > out[id]) out[id] = rb[id]; }
+    for (const id in rb) { if (!(id in out) || rb[id] > out[id]) { out[id] = rb[id]; _mergeChg = true; } }
     return out;
   }
   // Union ke baad: jo ids delete ho chuki hain unhe (party/txn/quote) nikaal do
   function pruneDead(list, dead) {
-    return (list || []).filter(p => !dead[p.id]).map(p => {
-      p.txns = (p.txns || []).filter(t => !dead[t.id]);
-      p.quotes = (p.quotes || []).filter(q => !dead[q.id]);
+    if (!Object.keys(dead).length) return list || [];
+    return (list || []).filter(p => { if (dead[p.id]) { _mergeChg = true; return false; } return true; }).map(p => {
+      const nt = (p.txns || []).filter(t => !dead[t.id]); if (nt.length !== (p.txns || []).length) { p.txns = nt; _mergeChg = true; }
+      const nq = (p.quotes || []).filter(q => !dead[q.id]); if (nq.length !== (p.quotes || []).length) { p.quotes = nq; _mergeChg = true; }
       return p;
     });
   }
   // Union-merge a remote copy into local; returns true if anything changed.
   function mergeRemote(remote) {
     try { remote = migrate(remote); } catch (e) { return false; }
-    const before = JSON.stringify(data);
-    // pehle tombstones jama karo, phir union ke baad unhe lagao — taake delete ki
-    // hui entry doosre phone se dobara wapas na aaye (chahe kisi bhi device se mite).
-    data.deletedIds = mergeTombstones(data.deletedIds, remote.deletedIds);
+    _mergeChg = false;
+    data.deletedIds = mergeTombstones(data.deletedIds || {}, remote.deletedIds);
     const dead = data.deletedIds;
     data.customers = pruneDead(mergeParties(data.customers, remote.customers), dead);
     data.suppliers = pruneDead(mergeParties(data.suppliers, remote.suppliers), dead);
     data.items = mergeById(data.items, remote.items).filter(t => !dead[t.id]);
     if (new Date(remote.updatedAt || 0) > new Date(data.updatedAt || 0)) {
-      // cloud on/off aur config PER-DEVICE hai — ise doosre phone se KABHI overwrite
-      // na karo, warna aik phone ka "off" doosre ka "on" bujha deta hai (sync khud
-      // band ho jati thi). Baqi shop (naam, logo, PIN, payment) sync hota hai.
+      // cloud on/off + config PER-DEVICE — doosre phone se KABHI overwrite na ho.
       const localCloud = data.shop.cloud;
+      const bshop = JSON.stringify(data.shop);
       data.shop = Object.assign({}, data.shop, remote.shop || {});
       data.shop.cloud = localCloud;
+      if (JSON.stringify(data.shop) !== bshop) _mergeChg = true;
     }
-    const changed = JSON.stringify(data) !== before;
-    if (changed) persist(false);
-    return changed;
+    if (_mergeChg) persist(false);
+    return _mergeChg;
   }
 
   async function maybeSnapshot() {
