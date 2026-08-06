@@ -395,7 +395,8 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action: manipulation; }
 .view { -webkit-overflow-scrolling: touch; }
 .list { -webkit-overflow-scrolling: touch; }
-.list .cust, #txnList .txn { content-visibility: auto; contain-intrinsic-size: 66px; }
+/* NOTE: content-visibility:auto hata diya — mobile Chrome par entries khaali/ghayeb
+   ho rahi thin (off-screen paint bug). Normal rendering zyada mehfooz hai. */
 
 /* ---------- Backup status bar (auto cloud backup + retry) ---------- */
 .backup-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 76px; z-index: 45;
