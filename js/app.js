@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v48'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v49'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -14,6 +14,7 @@ let accountsKind = 'customer';
 let txnType = 'debit';
 let editingCust = false;
 let editingTxn = null;   // txn object being edited (null = adding new)
+let workDate = '';       // "Entry date" mode: set ho to nayi entries isi date par (baar baar date select na karni parre)
 
 function kindLabels(kind) {
   if (kind === 'supplier') return {
@@ -137,7 +138,7 @@ function nav(target) {
   $$('.bottomnav button').forEach(b => b.classList.toggle('active', b.dataset.nav === target));
   $('#bottomnav').classList.remove('hidden');
   if (target === 'overview') { renderOverview(); showView('overviewView'); }
-  else if (target === 'accounts') { renderAccounts(); showView('accountsView'); }
+  else if (target === 'accounts') { renderAccounts(); renderWorkDate(); showView('accountsView'); }
   else if (target === 'rates') { renderRates(); showView('ratesView'); }
   else if (target === 'settings') { loadSettings(); showView('settingsView'); }
 }
@@ -311,6 +312,25 @@ function renderAccounts() {
       <div class="bal"><div class="amt ${cls}">${fmtMoney(b)}</div><div class="tag">${tag}</div></div></div>`;
   }).join('');
   $$('#custList .cust').forEach(el => el.addEventListener('click', () => openDetail(accountsKind, el.dataset.id)));
+}
+
+/* ---------- "Entry date" mode — nayi entries chuni hui date par ---------- */
+function renderWorkDate() {
+  const bar = $('#wdBar'), input = $('#wdInput'), title = $('#wdTitle'), today = $('#wdToday');
+  if (!bar) return;
+  const isToday = !workDate || workDate === new Date().toISOString().slice(0, 10);
+  input.value = workDate || new Date().toISOString().slice(0, 10);
+  if (isToday) { bar.classList.remove('active'); today.classList.add('hidden'); title.innerHTML = 'Entry date: <b>Aaj</b>'; }
+  else { bar.classList.add('active'); today.classList.remove('hidden'); title.innerHTML = 'Entry date: <b>' + fmtDate(workDate) + '</b> (purani date par)'; }
+}
+if ($('#wdInput')) {
+  $('#wdInput').addEventListener('change', () => {
+    const v = $('#wdInput').value;
+    workDate = (v && v !== new Date().toISOString().slice(0, 10)) ? v : '';
+    renderWorkDate();
+    if (workDate) toast('Ab nayi entries ' + fmtDate(workDate) + ' par hongi');
+  });
+  $('#wdToday').addEventListener('click', () => { workDate = ''; renderWorkDate(); toast('Ab entries aaj ki date par'); });
 }
 $('#searchBox').addEventListener('input', renderAccounts);
 $$('#partySeg button').forEach(b => b.addEventListener('click', () => { accountsKind = b.dataset.kind; $('#searchBox').value = ''; renderAccounts(); }));
@@ -523,7 +543,8 @@ function openTxn(type) {
   $('#txnModalTitle').textContent = type === 'debit' ? L.debit : L.credit;
   updateTypeToggle();
   txnCalc.reset(); $('#txnNote').value = '';
-  $('#txnDate').value = new Date().toISOString().slice(0, 10);
+  // "Entry date" mode on ho to nayi entry usi date par, warna aaj
+  $('#txnDate').value = workDate || new Date().toISOString().slice(0, 10);
   // WhatsApp notify only for customers
   const notifyRow = $('#txnNotify').closest('.switch-row');
   if (currentKind === 'customer') { notifyRow.style.display = 'flex'; $('#txnNotify').checked = Store.getShop().autoWhatsApp !== false; }
@@ -786,6 +807,102 @@ async function sendRateNotification(custId, job, total, preWin) {
   const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
   if (preWin && !preWin.closed) preWin.location.href = url;
   else { const w = window.open(url, '_blank'); if (!w) toast('WhatsApp block ho gaya — dobara koshish karein'); }
+}
+
+/* ---------- Bulk entries (paste karke kai entries ek saath) ---------- */
+let bulkType = 'debit';
+function setBulkType(t) {
+  bulkType = t;
+  $('#bulkDebit').classList.toggle('act-debit', t === 'debit');
+  $('#bulkCredit').classList.toggle('act-credit', t === 'credit');
+}
+$('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
+  $('#bulkText').value = ''; $('#bulkResult').innerHTML = ''; $('#bulkNotify').checked = true;
+  setBulkType('debit');
+  openModal('bulkModal');
+});
+$('#bulkDebit') && $('#bulkDebit').addEventListener('click', () => setBulkType('debit'));
+$('#bulkCredit') && $('#bulkCredit').addEventListener('click', () => setBulkType('credit'));
+
+// har line: "naam ... raqam" — aakhri number raqam, baqi naam
+function parseBulkLines(text) {
+  const custs = Store.getCustomers();
+  const byName = {}; custs.forEach(c => { byName[c.name.trim().toLowerCase()] = c; });
+  const out = [];
+  (text || '').split('\n').forEach(raw => {
+    const line = raw.trim(); if (!line) return;
+    const m = line.match(/^(.*?)[\s:\-–—=]*?([\d][\d,]*(?:\.\d+)?)\s*$/);
+    if (!m || !m[1].trim()) { out.push({ raw: line, name: line, amount: 0, cust: null, bad: true }); return; }
+    const name = m[1].trim();
+    const amount = parseFloat(m[2].replace(/,/g, ''));
+    const cust = byName[name.toLowerCase()] || null;
+    out.push({ raw: line, name, amount, cust, bad: !cust || !amount || amount <= 0 });
+  });
+  return out;
+}
+$('#bulkPreview').addEventListener('click', () => {
+  const rows = parseBulkLines($('#bulkText').value);
+  if (!rows.length) { toast('Kuch paste to karein'); return; }
+  const ok = rows.filter(r => !r.bad), bad = rows.filter(r => r.bad);
+  const okTotal = ok.reduce((s, r) => s + r.amount, 0);
+  const typeLbl = bulkType === 'debit' ? 'Maal/Kaam' : 'Payment';
+  let html = `<div class="bulk-sum"><div class="ok"><b>${ok.length}</b><span>Milay (${typeLbl})</span></div>`
+    + (bad.length ? `<div class="bad"><b>${bad.length}</b><span>Naam nahi mila</span></div>` : '')
+    + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div></div>`;
+  html += ok.map(r => `<div class="bulk-row"><span class="bname">${esc(r.cust.name)}</span><span class="bamt ${bulkType === 'debit' ? 'neg' : 'pos'}">${fmtMoney(r.amount)}</span></div>`).join('');
+  if (bad.length) html += `<div class="bulk-note">⚠️ Ye lines match nahi huin (naam bilkul customer jaisa likhein, ya raqam theek karein):</div>`
+    + bad.map(r => `<div class="bulk-row miss"><span class="bname">${esc(r.raw)}</span></div>`).join('');
+  if (ok.length) {
+    const dLbl = workDate ? fmtDate(workDate) : 'Aaj';
+    html += `<div class="bulk-note">Date: <b>${dLbl}</b>. Save karne par sab ${ok.length} entries add ho jayengi.</div>`;
+    html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px">✅ Sab ${ok.length} entries Save karein</button>`;
+  }
+  const res = $('#bulkResult'); res.innerHTML = html;
+  const sv = $('#bulkSave');
+  if (sv) sv.addEventListener('click', () => bulkSave(ok));
+});
+async function bulkSave(rows) {
+  const date = (workDate || new Date().toISOString().slice(0, 10)) + 'T' + new Date().toTimeString().slice(0, 8);
+  const iso = new Date(date).toISOString();
+  await Store.forceSnapshot('pre-bulk'); // safety net — bulk se pehle backup
+  const done = [];
+  for (const r of rows) {
+    const t = Store.addPartyTxn('customer', r.cust.id, { amount: r.amount, type: bulkType, note: '', date: iso });
+    republishIfShared(Store.getCustomer(r.cust.id));
+    done.push({ cust: r.cust, amount: r.amount });
+  }
+  toast('✅ ' + done.length + ' entries save ho gayin');
+  if (activeNav === 'accounts') renderAccounts();
+  // WhatsApp
+  if ($('#bulkNotify').checked) showBulkSendList(done);
+  else { closeModal('bulkModal'); }
+}
+// WhatsApp bhejna: endpoint ho to sab khud, warna har customer ka apna button (wa.me ek waqt me ek)
+async function showBulkSendList(done) {
+  const endpoint = (Store.getShop().waEndpoint || '').trim();
+  if (endpoint) {
+    let sent = 0;
+    for (const d of done) { const c = Store.getCustomer(d.cust.id); if (c) { await sendEntryNotification(c.id, { amount: d.amount, type: bulkType, note: '' }, null); sent++; } }
+    toast('✅ ' + sent + ' WhatsApp messages bhej diye'); closeModal('bulkModal'); return;
+  }
+  // No API: har customer ka apna button (jinke number hai)
+  const withPhone = done.filter(d => intlPhone(d.cust.phone));
+  let html = `<div class="bulk-note">Har customer ko alag bhejna hai — neeche har naam par <b>💬</b> dabayein (WhatsApp khulega, bhej kar wapas aayen aur agla dabayein).</div>`;
+  html += withPhone.map((d, i) => `<div class="bulk-row"><span class="bname">${esc(d.cust.name)}</span><span class="bamt">${fmtMoney(d.amount)}</span><button class="bwa" data-i="${i}">💬 Bhejein</button></div>`).join('');
+  const noPhone = done.length - withPhone.length;
+  if (noPhone) html += `<div class="bulk-note">${noPhone} customer ka number nahi — unko message nahi jayega.</div>`;
+  html += `<button class="cancel" id="bulkDone" style="width:100%;margin-top:10px">Ho gaya — band karein</button>`;
+  const res = $('#bulkResult'); res.innerHTML = html;
+  $$('#bulkResult .bwa').forEach(btn => btn.addEventListener('click', () => {
+    const d = withPhone[+btn.dataset.i];
+    const c = Store.getCustomer(d.cust.id); if (!c) return;
+    const phone = intlPhone(c.phone);
+    const msg = entryMessage(c, { amount: d.amount, type: bulkType, note: '' });
+    ensurePublished(c).catch(() => {});
+    window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+    btn.textContent = '✓ Bhej diya'; btn.classList.add('done');
+  }));
+  $('#bulkDone').addEventListener('click', () => closeModal('bulkModal'));
 }
 
 /* ---------- Link + WhatsApp ---------- */

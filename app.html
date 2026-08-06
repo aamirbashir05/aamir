@@ -46,6 +46,16 @@
         <button data-kind="customer" class="active">Customers</button>
         <button data-kind="supplier">Suppliers</button>
       </div>
+      <div class="wd-bar" id="wdBar">
+        <span class="wd-ic">📅</span>
+        <div class="wd-main">
+          <div class="wd-title" id="wdTitle">Entry date: <b>Aaj</b></div>
+          <div class="wd-hint">Purani date chunein to nayi entries usi din me hongi (baar baar date select na karni parre)</div>
+        </div>
+        <input type="date" id="wdInput" class="wd-date">
+        <button id="wdToday" class="wd-today hidden">Aaj</button>
+      </div>
+      <button class="add-quote" id="btnBulk" style="border-style:solid;background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.4);color:var(--green)">📋 Ek saath kai entries (paste karke)</button>
       <input class="search" id="searchBox" placeholder="🔍 Customer dhoondein...">
       <div class="list" id="custList"></div>
     </div>
@@ -301,6 +311,20 @@
 
       <label class="switch-row"><span>💬 Customer ko WhatsApp par rate bhejein</span><input type="checkbox" id="rcNotify" checked></label>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="saveRateCalc">Rate Save & Bhejein</button></div>
+    </div>
+  </div>
+
+  <!-- ============ BULK ENTRIES (paste) ============ -->
+  <div class="modal-bg" id="bulkModal">
+    <div class="modal">
+      <h2>📋 Ek saath kai entries</h2>
+      <p class="hint">Har line me <b>customer ka naam</b> aur <b>raqam</b> likhein. Misaal:<br>Naveed Auto 5000<br>Shaheen Food 2300</p>
+      <div class="type-toggle"><button id="bulkDebit">− Maal / Kaam Diya</button><button id="bulkCredit">+ Payment Aayi</button></div>
+      <div class="field"><label>Yahan paste karein</label>
+        <textarea id="bulkText" rows="7" placeholder="Naveed Auto 5000&#10;Shaheen Food 2300&#10;Khanji Traders 12000" autocomplete="off"></textarea></div>
+      <label class="switch-row"><span>💬 Har customer ko WhatsApp bhejein</span><input type="checkbox" id="bulkNotify" checked></label>
+      <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="bulkPreview">Aage barhein →</button></div>
+      <div id="bulkResult" class="bulk-result"></div>
     </div>
   </div>
 

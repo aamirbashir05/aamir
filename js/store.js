@@ -208,9 +208,24 @@ const Store = (() => {
     if (now - lastSnapTs < 45000) return; // throttle: at most ~1/45s
     lastSnapTs = now;
     await idbPut(S_SNAP, { ts: now, at: new Date(now).toISOString(), data: clone(data) }, now);
-    // prune to newest 60
+    // prune to newest 150 (zyada history — kuch miss ho to door tak wapas ja sakein)
     const keys = (await idbKeys(S_SNAP)).sort((a, b) => a - b);
-    while (keys.length > 60) { await idbDel(S_SNAP, keys.shift()); }
+    while (keys.length > 150) { await idbDel(S_SNAP, keys.shift()); }
+  }
+  // Foran snapshot (throttle ko nazarandaz) — kisi bhi bari/khatarnak tabdeeli se pehle
+  async function forceSnapshot(tag) {
+    const now = Date.now(); lastSnapTs = now;
+    await idbPut(S_SNAP, { ts: now, at: new Date(now).toISOString(), tag: tag || '', data: clone(data) }, now);
+  }
+  // Per-device durable meta (sync NAHI hota) — jaise reset-marker. localStorage +
+  // IndexedDB dono me, taake localStorage clear ho jaye to bhi mehfooz rahe.
+  async function getMeta(key) {
+    try { const v = localStorage.getItem('altariq_meta_' + key); if (v != null) return v; } catch (e) {}
+    try { const v = await idbGet(S_KV, 'meta_' + key); return v != null ? v : null; } catch (e) { return null; }
+  }
+  function setMeta(key, val) {
+    try { localStorage.setItem('altariq_meta_' + key, val); } catch (e) {}
+    idbPut(S_KV, val, 'meta_' + key);
   }
 
   // Purane shareId (bheje gaye link tokens) auto-backup snapshots se wapis
@@ -401,7 +416,8 @@ const Store = (() => {
     addQuote, updateQuote, deleteQuote, allQuotes,
     putImage, getImage,
     balanceOf, totals, recentTxns,
-    listSnapshots, restoreSnapshot, recoverShareIds, recordShareToken,
+    listSnapshots, restoreSnapshot, recoverShareIds, recordShareToken, forceSnapshot,
+    getMeta, setMeta,
     markBackup, lastBackup, exportJSON, importJSON
   };
 })();

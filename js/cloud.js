@@ -51,6 +51,14 @@ const Cloud = (() => {
       // aakhri synced hisaab dikhe, aur net aate hi khud (bina refresh) update ho jaye.
       try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) { console.warn('persistence', e && e.code); }
       ready = true;
+      // reset-marker ko durable (IndexedDB) rakho: localStorage clear ho jaye to bhi
+      // marker mehfooz — taake purana import-reset dobara chal kar entries na mita de.
+      try {
+        const dm = await Store.getMeta('reset');
+        let lm = null; try { lm = localStorage.getItem(RKEY); } catch (e) {}
+        if (dm && !lm) { try { localStorage.setItem(RKEY, dm); } catch (e) {} }     // localStorage bahal
+        else if (lm && dm !== lm) { try { Store.setMeta('reset', lm); } catch (e) {} } // mojooda marker durable karo
+      } catch (e) {}
       const c = (Store.getShop().cloud) || {};
       if (c.enabled && c.syncId) { try { await startSync(String(c.syncId).trim()); } catch (e) { console.warn('sync', e); } }
       return { ok: true };
@@ -75,6 +83,11 @@ const Cloud = (() => {
   }
   const RKEY = 'altariq_reset';
   const PSIG = 'altariq_pushsig'; // aakhri kamyab push ka signature
+  // Reset-marker DURABLE: localStorage + IndexedDB dono me. Agar localStorage clear
+  // ho jaye to bhi marker mehfooz — warna purana ek-baar ka import-reset dobara chal
+  // kar (baad ki) entries mita sakta tha. Ye us khatarnak data-loss ko rokta hai.
+  function getResetMarker() { try { return localStorage.getItem(RKEY) || ''; } catch (e) { return ''; } }
+  function setResetMarker(m) { try { localStorage.setItem(RKEY, m); } catch (e) {} try { Store.setMeta('reset', m); } catch (e) {} }
 
   // Data ka halka signature (bina poora stringify) — add/edit/delete pakadta hai
   function dataSig() {
@@ -142,9 +155,14 @@ const Cloud = (() => {
       lastDelStr = JSON.stringify(rd.deletedIds || {});
     }
 
-    // one-time clean replace
-    if (sd.fullReset && String(sd.fullReset) !== (localStorage.getItem(RKEY) || '')) {
-      try { applyReset(rd); localStorage.setItem(RKEY, String(sd.fullReset)); if (onRemote) onRemote(); schedulePush(); return true; }
+    // one-time clean replace — SIRF jab marker waqai naya ho (durable marker se check)
+    if (sd.fullReset && String(sd.fullReset) !== getResetMarker()) {
+      try {
+        // ledger replace karne se PEHLE mojooda data ka snapshot le lo (kuch bhi ho to
+        // 'Purani Backups' se wapas laaya ja sake) — safety net.
+        try { await Store.forceSnapshot('pre-reset'); } catch (e) {}
+        applyReset(rd); setResetMarker(String(sd.fullReset)); if (onRemote) onRemote(); schedulePush(); return true;
+      }
       catch (e) { console.warn('reset', e); return false; }
     }
     let changed = false;
@@ -196,9 +214,16 @@ const Cloud = (() => {
     if (!docRef) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { dirty = true; setStatus('offline'); return; }
     try {
-      const json = JSON.stringify(Store.getData());
+      const snapData = Store.getData();
+      const json = JSON.stringify(snapData);
+      // JIS data ko abhi bhej rahe hain, USI ke ids ko "pushed" mark karo — await ke
+      // DAURAN agar nayi entry add ho jaye, wo agle delta me jaye (cloud se na chhoote).
+      const pushedIds = new Set();
+      const addIds = list => (list || []).forEach(p => { (p.txns || []).forEach(t => pushedIds.add(t.id)); (p.quotes || []).forEach(q => pushedIds.add(q.id)); });
+      addIds(snapData.customers); addIds(snapData.suppliers);
+      const pushedDel = JSON.stringify(snapData.deletedIds || {});
       const doc = { updatedAt: new Date().toISOString() };
-      const r = localStorage.getItem(RKEY); if (r) doc.fullReset = r; // marker barqarar rakho
+      const r = getResetMarker(); if (r) doc.fullReset = r; // marker barqarar rakho
       const gz = await gzipB64(json);
       if (gz) {
         if (gz.length <= 900000) { doc.gz = gz; doc.chunks = 0; }
@@ -211,10 +236,12 @@ const Cloud = (() => {
       } else { doc.payload = json; doc.chunks = 0; }
       await docRef.set(doc);
       dirty = false; clearTimeout(retryT);
-      markAllPushed();                            // ab poora data cloud par — delta reset
+      fullPushedIds = pushedIds; lastDelStr = pushedDel; // JO bheja wahi base (race-safe)
       try { localStorage.setItem(PSIG, dataSig()); } catch (e) {}
       // stale delta doc khaali kar do (ab main doc me sab kuch hai)
-      if (deltaRef) { try { await deltaRef.set({ d: JSON.stringify({ v: 1, c: [], s: [], del: Store.getData().deletedIds || {} }), updatedAt: new Date().toISOString() }); } catch (e) {} }
+      if (deltaRef) { try { await deltaRef.set({ d: JSON.stringify({ v: 1, c: [], s: [], del: snapData.deletedIds || {} }), updatedAt: new Date().toISOString() }); } catch (e) {} }
+      // agar upload ke doran koi nayi entry aayi thi (jo bheji nahi gayi), foran delta bhej do
+      if (dataSig() !== localStorage.getItem(PSIG)) schedulePush();
       setStatus('saved');
     } catch (e) {
       console.warn('push', e); dirty = true; setStatus('error');
@@ -301,8 +328,9 @@ const Cloud = (() => {
     const rd = JSON.parse(json);
     if (!rd || !Array.isArray(rd.customers)) throw new Error('bad import data');
     if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+    try { await Store.forceSnapshot('pre-import'); } catch (e) {}
     applyReset(rd);
-    localStorage.setItem(RKEY, String(marker));
+    setResetMarker(String(marker));
     if (docRef) {
       await push(); // gz + fullReset=marker
       unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
@@ -329,7 +357,7 @@ const Cloud = (() => {
   async function forceResetAll() {
     if (!docRef || !syncOn) return { ok: false, error: 'Pehle Cloud Sync ON karein' };
     try {
-      localStorage.setItem(RKEY, 'force-' + Date.now()); // naya marker; apne aap ko dobara reset na karo
+      setResetMarker('force-' + Date.now()); // naya DURABLE marker; apne aap ko dobara reset na karo
       await push(); // poora data + fullReset marker — doosra phone isko apna lega
       return { ok: true };
     } catch (e) { return { ok: false, error: e.message || String(e) }; }
