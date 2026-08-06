@@ -1,10 +1,9 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v57';
+const CACHE = 'altariq-hisaab-v58';
 const ASSETS = [
   './app.html',
   './view.html',
   './studio.html',
-  './gemini-setup.html',
   './manifest.json',
   './css/styles.css',
   './js/firebase-config.js',
@@ -21,7 +20,13 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // best-effort: koi aik file missing/404 ho to bhi install fail na ho (pehle addAll
+  // aik missing file par poora SW install tor deta tha — updates/offline ruk jate the).
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => Promise.all(ASSETS.map(u => c.add(u).catch(() => {}))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
