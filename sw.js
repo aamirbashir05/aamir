@@ -1,5 +1,5 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v59';
+const CACHE = 'altariq-hisaab-v60';
 const ASSETS = [
   './app.html',
   './view.html',
@@ -39,11 +39,26 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  const p = url.pathname;
+  // APP SHELL (app.html): network-first LEKIN 2s me network na aaye to CACHE se foran
+  // khol do — slow internet par app turant khule, net theek ho to taza le le.
+  if (url.origin === location.origin && p.endsWith('app.html')) {
+    e.respondWith((async () => {
+      const cached = await caches.match(e.request);
+      const net = fetch(e.request).then(res => {
+        const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return res;
+      }).catch(() => null);
+      if (!cached) return (await net) || fetch(e.request); // pehli dafa: cache nahi, net ka intezaar
+      const timeout = new Promise(r => setTimeout(() => r(null), 2000));
+      return (await Promise.race([net, timeout])) || cached; // slow net -> 2s baad cache se khol do
+    })());
+    return;
+  }
   // Customer page (view.html) aur marketing website (index.html/root): NETWORK-FIRST —
   // hamesha taza. Offline par cache fallback.
-  const p = url.pathname;
   if (url.origin === location.origin &&
-      (p.endsWith('app.html') || p.endsWith('view.html') || p.endsWith('index.html') || p === '/' || p.endsWith('/') || p.includes('/data/'))) {
+      (p.endsWith('view.html') || p.endsWith('index.html') || p === '/' || p.endsWith('/') || p.includes('/data/'))) {
     e.respondWith(
       fetch(e.request).then(res => {
         const copy = res.clone();
