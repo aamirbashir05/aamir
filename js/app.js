@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v60'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v61'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -480,11 +480,21 @@ function renderDetail() {
         <div class="t-info"><div class="t-note">${esc(t.note) || (d ? L.debit : L.credit)}</div>
           <div class="t-meta"><span class="t-date">${fmtDateTime(t.date)}</span><span class="t-bal ${balCls(bv)}">Bal. ${fmtMoney(bv)}</span></div></div>
         <div class="t-amt">${d ? '−' : '+'}${fmtMoney(t.amount)}</div>
+        ${currentKind === 'customer' ? `<button class="t-send" title="WhatsApp bhejein">💬</button>` : ''}
         <button class="t-del" title="Delete">🗑</button></div>`;
     }).join('');
     $$('#txnList .txn').forEach(el => {
       el.querySelector('.t-del').addEventListener('click', e => { e.stopPropagation(); if (confirm('Ye lein-dein delete karein?')) { Store.deletePartyTxn(currentKind, currentCustId, el.dataset.id); renderDetail(); republishIfShared(curParty()); } });
       el.addEventListener('click', () => { const t = (curParty().txns || []).find(x => x.id === el.dataset.id); if (t) openTxnEdit(t); });
+      const sb = el.querySelector('.t-send');
+      if (sb) sb.addEventListener('click', e => {
+        e.stopPropagation();
+        const cc = curParty(); const t = (cc.txns || []).find(x => x.id === el.dataset.id); if (!t) return;
+        // popup-block se bachne ke liye click ke DAURAN hi window khol lo
+        const hasEndpoint = !!(Store.getShop().waEndpoint || '').trim();
+        const preWin = (!hasEndpoint && intlPhone(cc.phone)) ? window.open('', '_blank') : null;
+        sendEntryNotification(currentCustId, { amount: t.amount, type: t.type, note: t.note }, preWin);
+      });
       const th = el.querySelector('.t-thumb'); if (th) th.addEventListener('click', () => openImage(th.dataset.img));
     });
     hydrateImages(list);

@@ -1,5 +1,5 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v60';
+const CACHE = 'altariq-hisaab-v61';
 const ASSETS = [
   './app.html',
   './view.html',
