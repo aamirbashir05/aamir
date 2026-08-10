@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v58'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v59'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -174,6 +174,19 @@ function localDay(iso) {
   const d = new Date(iso);
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+function prevDayStr(dayStr) {
+  const d = new Date(dayStr + 'T12:00:00'); d.setDate(d.getDate() - 1);
+  return localDay(d);
+}
+/* Grand total (Net Baqaya) us din ke AAKHIR tak — sirf us tarikh tak ki entries se.
+   Overview ka Net Baqaya = customers ke balances − suppliers ke balances. */
+function netTotalUpTo(dayStr) {
+  let net = 0;
+  const upTo = t => localDay(t.date) <= dayStr;
+  Store.getCustomers().forEach(c => (c.txns || []).forEach(t => { if (upTo(t)) net += (t.type === 'debit' ? t.amount : -t.amount); }));
+  Store.getSuppliers().forEach(c => (c.txns || []).forEach(t => { if (upTo(t)) net -= (t.type === 'debit' ? t.amount : -t.amount); }));
+  return net;
+}
 
 /* latest activity time (last txn) — sorting ke liye */
 function lastActivity(c) {
@@ -237,8 +250,17 @@ function renderOvPanel() {
         <div><span>Maal / Kaam</span><b class="neg">${fmtMoney(tDeb)}</b></div>
         <div><span>Payment aayi</span><b class="pos">${fmtMoney(tCred)}</b></div>
       </div>` : '';
+    // Din se pehle vs is din ke baad grand total (taake yaad rakhne ki zaroorat na ho)
+    const before = netTotalUpTo(prevDayStr(day));
+    const after = netTotalUpTo(day);
+    const diff = after - before;
+    const cmpHtml = `<div class="day-cmp">
+        <div><span>Is se pehle (kal tak) total</span><b>${fmtMoney(before)}</b></div>
+        <div><span>Is din ke baad total</span><b>${fmtMoney(after)}</b></div>
+        <div class="day-diff"><span>Is din farq</span><b class="${diff >= 0 ? 'pos' : 'neg'}">${diff >= 0 ? '+' : '−'}${fmtMoney(diff)}</b></div>
+      </div>`;
     box.innerHTML = `<div class="ov-head">${label} ki entries (${rows.length})
-        <input type="date" id="ovDate" class="ov-date" value="${day}"></div>` + totHtml
+        <input type="date" id="ovDate" class="ov-date" value="${day}"></div>` + totHtml + cmpHtml
       + (rows.length
         ? `<div class="list">` + rows.map(x => {
             const d = x.t.type === 'debit';
@@ -894,30 +916,50 @@ $('#bulkPreview').addEventListener('click', () => {
   });
   renderBulkPreview();
 });
-function renderBulkPreview() {
-  const okRows = bulkRows.filter(r => r.custId && r.amount > 0);
-  const need = bulkRows.filter(r => !(r.custId && r.amount > 0));
-  const okTotal = okRows.reduce((s, r) => s + r.amount, 0);
+function bulkSummaryHtml() {
+  const okN = bulkRows.filter(r => r.custId && r.amount > 0).length;
+  const need = bulkRows.length - okN;
+  const okTotal = bulkRows.filter(r => r.custId && r.amount > 0).reduce((s, r) => s + r.amount, 0);
   const typeLbl = bulkType === 'debit' ? 'Maal/Kaam' : 'Payment';
-  let html = `<div class="bulk-sum"><div class="ok"><b>${okRows.length}</b><span>Tayyar (${typeLbl})</span></div>`
-    + (need.length ? `<div class="bad"><b>${need.length}</b><span>Customer chunein</span></div>` : '')
-    + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div></div>`;
+  return `<div class="ok"><b>${okN}</b><span>Tayyar (${typeLbl})</span></div>`
+    + (need ? `<div class="bad"><b>${need}</b><span>Adhoori</span></div>` : '')
+    + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div>`;
+}
+function updateBulkSummary() {
+  const sum = $('#bulkSum'); if (sum) sum.innerHTML = bulkSummaryHtml();
+  const okN = bulkRows.filter(r => r.custId && r.amount > 0).length;
+  const sv = $('#bulkSave'); if (sv) { sv.textContent = '✅ ' + okN + ' entries Save karein'; sv.disabled = !okN; }
+}
+// Har row EDITABLE: customer (tap se pick/badlein), raqam aur tafseel yahin edit karein
+function renderBulkPreview() {
+  let html = `<div class="bulk-sum" id="bulkSum">${bulkSummaryHtml()}</div>`;
   html += bulkRows.map((r, i) => {
     const cust = r.custId ? Store.getCustomer(r.custId) : null;
-    const amtHtml = r.amount > 0 ? `<span class="bamt ${bulkType === 'debit' ? 'neg' : 'pos'}">${fmtMoney(r.amount)}</span>` : `<span class="bamt neg">?</span>`;
-    const who = cust ? `<span class="bname">${esc(cust.name)}</span>` : `<span class="bname" style="color:var(--red)">${esc(r.name || r.raw)}</span>`;
-    const sub = r.detail ? esc(r.detail) : (cust ? '' : (r.amount > 0 ? 'customer chunein →' : 'raqam nahi mili'));
-    const det = sub ? `<span class="bdet">${sub}</span>` : '';
-    const pickBtn = `<button class="bwa ${cust ? 'done' : ''}" data-pick="${i}">${cust ? '✎' : '🔍 Chunein'}</button>`;
-    return `<div class="bulk-row ${cust ? '' : 'miss'}"><div class="bcol">${who}${det}</div>${amtHtml}${pickBtn}</div>`;
+    const who = cust ? `👤 ${esc(cust.name)} ✎` : `🔍 Customer chunein`;
+    return `<div class="bulk-erow ${cust ? '' : 'need'}">
+      <div class="brow-top">
+        <button class="bpick ${cust ? '' : 'need'}" data-pick="${i}">${who}</button>
+        <input class="bamt-in ${bulkType === 'debit' ? 'neg' : 'pos'}" type="number" inputmode="decimal" data-amt="${i}" value="${r.amount || ''}" placeholder="0">
+        <button class="bdel" data-del="${i}" title="Hatayein">✕</button>
+      </div>
+      <input class="bdet-in" type="text" data-det="${i}" value="${esc(r.detail || '')}" placeholder="Tafseel / kaam (optional)" autocomplete="off">
+    </div>`;
   }).join('');
   const dLbl = workDate ? fmtDate(workDate) : 'Aaj';
-  html += `<div class="bulk-note">Date: <b>${dLbl}</b>.${need.length ? ' Jo "Chunein" par hain unhe tap kar ke customer laga lein.' : ''}</div>`;
-  html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px"${okRows.length ? '' : ' disabled'}>✅ ${okRows.length} entries Save karein</button>`;
+  html += `<div class="bulk-note">Date: <b>${dLbl}</b>. Har entry ka naam, raqam aur tafseel yahin theek kar sakte hain. Save se pehle achi tarah dekh lein.</div>`;
+  html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px">✅ Save karein</button>`;
   const res = $('#bulkResult'); res.innerHTML = html;
   $$('#bulkResult [data-pick]').forEach(b => b.addEventListener('click', () => openAssign(+b.dataset.pick)));
+  $$('#bulkResult [data-amt]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.amt]; if (r) { r.amount = parseFloat(inp.value) || 0; updateBulkSummary(); } }));
+  $$('#bulkResult [data-det]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.det]; if (r) r.detail = inp.value; }));
+  $$('#bulkResult [data-del]').forEach(b => b.addEventListener('click', () => { bulkRows.splice(+b.dataset.del, 1); renderBulkPreview(); }));
+  updateBulkSummary();
   const sv = $('#bulkSave');
-  if (sv && okRows.length) sv.addEventListener('click', () => bulkSave(bulkRows.filter(r => r.custId && r.amount > 0)));
+  if (sv) sv.addEventListener('click', () => {
+    const rows = bulkRows.filter(r => r.custId && r.amount > 0);
+    if (!rows.length) { toast('Kam se kam aik entry customer aur raqam ke sath honi chahiye'); return; }
+    bulkSave(rows);
+  });
 }
 // Kisi line ke liye customer khud chunein (search ya top candidates se)
 let assignIdx = -1;

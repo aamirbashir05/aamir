@@ -252,7 +252,7 @@ const Cloud = (() => {
   function schedulePush() {
     if (!syncOn) return;
     dirty = true; setStatus('pending');
-    clearTimeout(deltaT); deltaT = setTimeout(pushDelta, 300);   // fast: sirf changes (live)
+    clearTimeout(deltaT); deltaT = setTimeout(pushDelta, 150);   // fast: sirf changes (slow net par bhi foran)
     clearTimeout(fullT); fullT = setTimeout(push, 12000);        // slow: poora snapshot
   }
   function retry() { clearTimeout(retryT); return push(); }
