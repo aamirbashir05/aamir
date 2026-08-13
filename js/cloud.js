@@ -195,19 +195,17 @@ const Cloud = (() => {
     };
     return { v: 1, c: pick(d.customers), s: pick(d.suppliers), del: d.deletedIds || {} };
   }
-  // Sirf changes ki chhoti si upload — slow net par bhi foran ho jaati hai
-  async function pushDelta() {
+  // Sirf changes ki chhoti si upload. Firestore local persistence write ko FORAN durable
+  // kar deti hai + background me khud server par bhej deti hai — is liye server ke jawab ka
+  // intezaar NAHI karte; user ko turant "backup ho gaya" dikhate hain (slow net par bhi tez).
+  function pushDelta() {
     if (!deltaRef || !syncOn) return;
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) { setStatus('offline'); return; }
     const payload = buildDelta();
     const delStr = JSON.stringify(payload.del);
-    if (!payload.c.length && !payload.s.length && delStr === lastDelStr) return; // kuch naya nahi
-    setStatus('saving');
-    try {
-      await deltaRef.set({ d: JSON.stringify(payload), updatedAt: new Date().toISOString() });
-      lastDelStr = delStr;
-      setStatus('saved'); // user ko foran "backup ho gaya" — bara snapshot background me
-    } catch (e) { console.warn('delta', e); setStatus('pending'); /* full push cover kar lega */ }
+    if (!payload.c.length && !payload.s.length && delStr === lastDelStr) { setStatus('saved'); return; } // kuch naya nahi — bar clear
+    lastDelStr = delStr;
+    try { deltaRef.set({ d: JSON.stringify(payload), updatedAt: new Date().toISOString() }).catch(e => console.warn('delta', e)); } catch (e) { console.warn('delta', e); }
+    setStatus('saved'); // locally durable + queue me — foran "ho gaya"
   }
 
   async function push() {

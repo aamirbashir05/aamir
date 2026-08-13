@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v61'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v62'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -294,6 +294,14 @@ $('#btnReminders').addEventListener('click', () => {
   }
   openModal('reminderModal');
 });
+// WhatsApp DIRECT kholo — `wa.me` link pehle api.whatsapp.com ka "Continue to WhatsApp?"
+// intermediate page dikhata tha. `whatsapp://send` scheme seedha app kholta hai.
+// location.href use karte hain (popup-blocker se azad) is liye pehle se blank tab kholne
+// ki zaroorat nahi — agar koi preWin diya ho to use band kar dete hain.
+function waOpen(phone, msg, preWin) {
+  if (preWin) { try { preWin.close(); } catch (e) {} }
+  location.href = 'whatsapp://send?phone=' + phone + '&text=' + encodeURIComponent(msg);
+}
 async function sendReminder(custId) {
   const c = Store.getCustomer(custId); if (!c) return;
   const phone = intlPhone(c.phone);
@@ -301,7 +309,7 @@ async function sendReminder(custId) {
   await ensurePublished(c);
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
-  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+  waOpen(phone, msg);
 }
 
 /* ---------- Accounts ---------- */
@@ -492,8 +500,7 @@ function renderDetail() {
         const cc = curParty(); const t = (cc.txns || []).find(x => x.id === el.dataset.id); if (!t) return;
         // popup-block se bachne ke liye click ke DAURAN hi window khol lo
         const hasEndpoint = !!(Store.getShop().waEndpoint || '').trim();
-        const preWin = (!hasEndpoint && intlPhone(cc.phone)) ? window.open('', '_blank') : null;
-        sendEntryNotification(currentCustId, { amount: t.amount, type: t.type, note: t.note }, preWin);
+        sendEntryNotification(currentCustId, { amount: t.amount, type: t.type, note: t.note });
       });
       const th = el.querySelector('.t-thumb'); if (th) th.addEventListener('click', () => openImage(th.dataset.img));
     });
@@ -648,13 +655,12 @@ $('#saveTxn').addEventListener('click', async () => {
   const notify = currentKind === 'customer' && $('#txnNotify').checked;
   // Popup-block se bachne ke liye: click ke DAURAN hi WhatsApp window khol lo (baad me URL set karenge).
   const hasEndpoint = !!(Store.getShop().waEndpoint || '').trim();
-  const preWin = (notify && !hasEndpoint && intlPhone((curParty() || {}).phone)) ? window.open('', '_blank') : null;
   let imgId = '';
   if (pendingTxnImg) imgId = await Store.putImage(pendingTxnImg);
   Store.addPartyTxn(currentKind, currentCustId, { amount: amt, type: txnType, note: noteVal, date, img: imgId });
   closeModal('txnModal'); renderDetail();
   republishIfShared(curParty());
-  if (notify) sendEntryNotification(currentCustId, { amount: amt, type: txnType, note: noteVal }, preWin);
+  if (notify) sendEntryNotification(currentCustId, { amount: amt, type: txnType, note: noteVal });
   else toast('Entry save ho gayi');
 });
 
@@ -811,7 +817,6 @@ $('#saveRateCalc').addEventListener('click', async () => {
   const notify = $('#rcNotify').checked;
   // popup-block se bachne ke liye click ke DAURAN hi WhatsApp window khol lo
   const hasEndpoint = !!(Store.getShop().waEndpoint || '').trim();
-  const preWin = (notify && !hasEndpoint && intlPhone((cust || {}).phone)) ? window.open('', '_blank') : null;
 
   const note = rateBreakdown(v);
   const date = new Date().toISOString();
@@ -819,7 +824,7 @@ $('#saveRateCalc').addEventListener('click', async () => {
   republishIfShared(cust);        // customer ke record/link me foran nazar aaye
   closeModal('rateCalcModal');
   renderRates();
-  if (notify) sendRateNotification(custId, job, v.total, preWin);
+  if (notify) sendRateNotification(custId, job, v.total);
   else toast('Rate save ho gaya ✅');
 });
 async function sendRateNotification(custId, job, total, preWin) {
@@ -836,9 +841,7 @@ async function sendRateNotification(custId, job, total, preWin) {
       if (res.ok) { toast('✅ Rate WhatsApp par bhej diya'); return; }
     } catch (e) {}
   }
-  const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
-  if (preWin && !preWin.closed) preWin.location.href = url;
-  else { const w = window.open(url, '_blank'); if (!w) toast('WhatsApp block ho gaya — dobara koshish karein'); }
+  waOpen(phone, msg, preWin);
 }
 
 /* ---------- Bulk entries (paste karke kai entries ek saath) ---------- */
@@ -1034,7 +1037,7 @@ async function showBulkSendList(done) {
     const phone = intlPhone(c.phone);
     const msg = entryMessage(c, { amount: d.amount, type: bulkType, note: d.detail || '' });
     ensurePublished(c).catch(() => {});
-    window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+    waOpen(phone, msg);
     btn.textContent = '✓ Bhej diya'; btn.classList.add('done');
   }));
   $('#bulkDone').addEventListener('click', () => closeModal('bulkModal'));
@@ -1148,9 +1151,7 @@ async function sendEntryNotification(custId, entry, preWin) {
       toast('Auto-send fail — WhatsApp khol raha hoon');
     } catch (e) { toast('Server na mila — WhatsApp khol raha hoon'); }
   }
-  const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
-  if (preWin && !preWin.closed) { preWin.location.href = url; }
-  else { const w = window.open(url, '_blank'); if (!w) toast('WhatsApp block ho gaya — dobara koshish karein'); }
+  waOpen(phone, msg, preWin);
 }
 $('#btnWhatsApp').addEventListener('click', async () => {
   const c = curParty();
@@ -1159,7 +1160,7 @@ $('#btnWhatsApp').addEventListener('click', async () => {
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
-  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+  waOpen(phone, msg);
 });
 $('#btnCopyLink').addEventListener('click', async () => {
   await ensurePublished(curParty());
