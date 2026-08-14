@@ -10,6 +10,7 @@ const Cloud = (() => {
   // FAST BACKUP: delta doc — sirf nayi/badli hui entries chhoti si upload hoti hain
   // (slow net par bhi foran), poora bara snapshot background me kabhi kabhi jata hai.
   let deltaRef = null, deltaUnsub = null, deltaT = null, fullT = null;
+  let inboxRef = null, inboxUnsub = null, inboxCb = null; // n8n/automation ki nayi entries ka box
   let fullPushedIds = new Set(); // aakhri POORE push me jo ids gayi thi
   let lastDelStr = '';           // aakhri delete-list jo delta me bheji
   const CHUNK = 700000; // base64 chars per chunk doc (Firestore 1 MiB limit ke neeche)
@@ -281,6 +282,17 @@ const Cloud = (() => {
     if (fullPushedIds.size === 0) markAllPushed(); // fallback agar base set na hua
     unsub = docRef.onSnapshot(s => { if (s.exists) pull(s.data()); }, e => console.warn('sub', e));
     deltaUnsub = deltaRef.onSnapshot(s => { if (s.exists) pullDelta(s.data()); }, e => console.warn('dsub', e));
+    // INBOX: n8n (ya koi automation) yahan seedhi plain-JSON entry daal sakta hai — app khud
+    // usko sahi customer me daal deti hai. subcollection: khatas/{syncId}/inbox
+    inboxRef = docRef.collection('inbox');
+    inboxUnsub = inboxRef.onSnapshot(snap => {
+      snap.docChanges().forEach(ch => {
+        if (ch.type === 'removed') return;
+        const d = ch.doc.data() || {};
+        if (d.pending) return;              // pehle se flag — dobara process na karo
+        if (inboxCb) { try { inboxCb(ch.doc.id, d); } catch (e) { console.warn('inbox', e); } }
+      });
+    }, e => console.warn('inboxsub', e));
     syncOn = true;
     Store.onSave(schedulePush);
     pushIfNeeded(); // app khulte hi: koi local entry jo pichli dafa push na hui thi, ab bhej do
@@ -297,6 +309,14 @@ const Cloud = (() => {
       });
       window.addEventListener('focus', onResume);
     }
+  }
+  // ---- INBOX (automation ki entries) helpers ----
+  function onInbox(cb) { inboxCb = cb; }
+  function inboxDone(id) {            // entry app me daal di gayi — box se hata do
+    if (inboxRef) inboxRef.doc(id).delete().catch(e => console.warn('inbox del', e));
+  }
+  function inboxPending(id, reason) { // match nahi hua / masla — flag lagao (dobara na uthe)
+    if (inboxRef) inboxRef.doc(id).set({ pending: true, reason: reason || 'review', at: new Date().toISOString() }, { merge: true }).catch(e => console.warn('inbox flag', e));
   }
   // cloud se seedha taza data khud maang lo (onSnapshot ka intezaar na karo)
   function refresh() {
@@ -362,5 +382,6 @@ const Cloud = (() => {
   }
 
   return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz, forceResetAll,
-    getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry, refresh };
+    getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry, refresh,
+    onInbox, inboxDone, inboxPending };
 })();

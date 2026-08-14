@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v62'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v63'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1388,6 +1388,8 @@ function setupAutoUpdate() {
   const av = document.getElementById('appVer'); if (av) av.textContent = 'Al Tariq Hisaab · ' + APP_VERSION;
   // backup status bar — auto cloud backup ka haal + retry
   if (Cloud.onStatus) Cloud.onStatus(renderBackupBar);
+  // n8n/automation inbox — external tool ki bheji entries khud ledger me daalo
+  if (Cloud.onInbox) Cloud.onInbox(handleInboxEntry);
   const bb = document.getElementById('backupBar');
   if (bb) bb.addEventListener('click', () => {
     const st = Cloud.getStatus ? Cloud.getStatus().state : '';
@@ -1412,6 +1414,33 @@ function renderBackupBar(st) {
   else if (st === 'saved') { bar.className = 'backup-bar saved'; bar.innerHTML = '☁️ Backup save ho gaya ✓'; flushShares(); bkHideT = setTimeout(() => bar.classList.add('hidden'), 2300); }
   else if (st === 'offline' || st === 'error') { bar.className = 'backup-bar warn'; bar.innerHTML = '⚠️ Backup nahi hua — <b>tap karke dobara karein</b>'; }
   else { bar.className = 'backup-bar hidden'; }
+}
+
+/* INBOX: n8n (ya koi automation) Firestore ke khatas/{syncId}/inbox me plain-JSON entry
+   daalta hai: { customerName, amount, type:'debit'|'credit', note, date }. App usay padh kar
+   sahi customer me daal deti hai. Naam na mile to entry ko chhoro aur user ko batao.
+   tid (tay-shuda id) inbox doc-id se banate hain — do phone duplicate na banayein. */
+function handleInboxEntry(id, d) {
+  try {
+    const name = (d.customerName || d.name || '').toString().trim();
+    const amt = Math.round(Number(d.amount) * 100) / 100;
+    const type = (d.type === 'credit') ? 'credit' : 'debit';
+    const note = (d.note || d.detail || '').toString();
+    let date = new Date().toISOString();
+    if (d.date) { const dt = new Date(d.date); if (!isNaN(dt.getTime())) date = dt.toISOString(); }
+    if (!name || !isFinite(amt) || amt <= 0) { Cloud.inboxPending(id, 'bad-data'); toast('⚠️ n8n entry adhoori (naam/raqam) — check karein'); return; }
+    const m = matchCustomer(name, buildCustIndex());
+    if (!m.custId) {                                   // saaf match nahi mila — chhoro + batao
+      Cloud.inboxPending(id, 'no-match');
+      toast('⚠️ n8n: "' + name + '" match nahi hua — khud daalein');
+      return;
+    }
+    Store.addTxn(m.custId, { amount: amt, type, note, date, tid: 'nb_' + id });
+    Cloud.inboxDone(id);
+    const c = Store.getCustomer(m.custId);
+    toast('✅ n8n: ' + (c ? c.name : name) + ' — ' + fmtMoney(amt) + (type === 'debit' ? ' (Maal Diya)' : ' (Paisay Milay)'));
+    if (activeNav === 'overview') renderOverview();
+  } catch (e) { Cloud.inboxPending(id, 'err'); }
 }
 
 /* Ek-baar final Udhaar data import: app.html?import=altariq-final

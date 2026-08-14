@@ -328,9 +328,12 @@ const Store = (() => {
     const l = listOf(kind); const i = l.findIndex(x => x.id === id);
     if (i >= 0) { l.splice(i, 1); save(); }
   }
-  function addPartyTxn(kind, id, { amount, type, note, date, img }) {
+  function addPartyTxn(kind, id, { amount, type, note, date, img, tid }) {
     const p = getParty(kind, id); if (!p) return null;
-    const t = { id: uid(), amount: Math.round(Number(amount) * 100) / 100, type, note: (note || '').trim(), date: date || new Date().toISOString(), img: img || '', m: Date.now() };
+    // tid: automation (inbox) ke liye tay-shuda id — do phone ek hi inbox entry par
+    // alag id na banayein (warna duplicate). Agar wahi id pehle se hai to dobara na daalo.
+    if (tid && p.txns.some(x => x.id === tid)) return p.txns.find(x => x.id === tid);
+    const t = { id: tid || uid(), amount: Math.round(Number(amount) * 100) / 100, type, note: (note || '').trim(), date: date || new Date().toISOString(), img: img || '', m: Date.now() };
     p.txns.push(t); p.txns.sort((a, b) => new Date(a.date) - new Date(b.date)); save(); return t;
   }
   function deletePartyTxn(kind, id, txnId) {

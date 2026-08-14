@@ -21,9 +21,9 @@ JavaScript, no build step, no Node/Express server). All data lives in the browse
   - **(A)** read that big gzipped doc → gunzip → parse → append the new entry → re-gzip → write back
     (read-modify-write), **or**
   - **(B)** write to the small "delta" doc the app already uses for incremental sync, **or**
-  - **(C) [recommended]** add a tiny **inbox collection** to the app so n8n can do a dead-simple
-    `POST` of a plain-JSON entry, and the app drains it automatically. This needs a small one-time
-    code addition to the app (the app owner can add it on request).
+  - **(C) [recommended — NOW BUILT IN, app v63+]** an **inbox subcollection** the app drains
+    automatically. n8n does one dead-simple `POST` of a plain-JSON entry; the app matches it to the
+    right customer, adds the transaction, and deletes the inbox doc. **Use this path.**
 
 The rest of this document gives exact values for all three paths.
 
@@ -140,26 +140,47 @@ Content-Type: application/json
 same instant, your delta can be clobbered before it's read. Fine for low-frequency automation while the app
 is closed; not guaranteed under concurrent use. Firestore REST `PATCH` on a non-existent doc creates it.
 
-### Path C — Recommended: an "inbox" collection (needs one small app change)
+### Path C — ✅ RECOMMENDED — inbox subcollection (built in, app v63+)
 
-Ask the app owner to add an inbox drain. Then n8n just creates one plain-JSON doc per entry — no gzip, no race:
+n8n creates **one plain-JSON doc per entry** — no gzip, no read-modify-write, no race. The app (when open
+on the shop's phone) drains the inbox automatically.
+
+**Endpoint** (Firestore REST "create document"; `documentId` optional):
 
 ```http
-POST https://firestore.googleapis.com/v1/projects/altariq-hisaab/databases/(default)/documents/khatas/{syncId}_inbox
-Authorization: Bearer <idToken>
+POST https://firestore.googleapis.com/v1/projects/altariq-hisaab/databases/(default)/documents/khatas/{syncId}/inbox
+Authorization: Bearer <accessToken>
 Content-Type: application/json
 
 { "fields": {
     "customerName": { "stringValue": "Hamza Kohistan Press" },
-    "amount":       { "integerValue": "5000" },
+    "amount":       { "doubleValue": 5000 },
     "type":         { "stringValue": "debit" },
     "note":         { "stringValue": "1000 flyers printing" },
     "date":         { "stringValue": "2026-08-14T10:00:00.000Z" }
 } }
 ```
 
-The app, on load/sync, reads inbox docs → matches/creates the customer → adds the txn → deletes the inbox doc.
-This is the **cleanest** integration for n8n. (Say the word and this can be built into the app.)
+**Fields n8n sends** (all in one flat doc):
+
+| Field | Required | Value |
+|---|---|---|
+| `customerName` | ✅ | Customer's name. Fuzzy-matched (partial name OK, e.g. `"Kohistan Press"` finds `"Hamza Kohistan Press"`). |
+| `amount` | ✅ | Positive number (rupees). |
+| `type` | ✅ | `"debit"` = printing order / customer owes · `"credit"` = payment received. Defaults to `debit` if omitted. |
+| `note` | optional | Job/item description, e.g. `"1000 flyers printing"`. |
+| `date` | optional | ISO 8601. Defaults to now if omitted/invalid. |
+
+**What the app does with it (automatic):**
+- Matches `customerName` to a customer. **Clear match →** adds the transaction and **deletes** the inbox doc.
+- **No confident match →** the app does **not** guess. It flags the doc (`pending: true`) and shows the shop
+  owner a warning (`⚠️ "<name>" match nahi hua`) so they can add it manually. So **the customer must already
+  exist in the app** for auto-add; unknown names are held for review, never auto-created.
+- Duplicate-safe: the transaction id is derived from the inbox doc id, so even if two phones drain the same
+  inbox doc, it can't double-post.
+
+> **Note:** the app drains the inbox only while it is **open** on the shop's phone (it listens live).
+> Entries queue safely in Firestore and are picked up the next time the app is opened/foregrounded.
 
 ### (a) Printing order / expense vs (b) Payment
 
@@ -276,8 +297,11 @@ ledger** and is meant to run once — it's destructive, not additive. For ongoin
 ## TL;DR for the n8n builder
 
 - Backend = **Firebase Firestore**, project `altariq-hisaab`, collection `khatas`, doc id = **Sync ID**.
-- No custom API; auth = Firebase anonymous ID token (or a **service account** for server use).
-- A "record" = a transaction object `{ id, amount, type, note, date, img, m }` pushed into a customer's
-  `txns[]`. `type: "debit"` = printing order (owes), `type: "credit"` = payment received.
-- The whole dataset is gzip+base64 inside one Firestore doc, so single-record insert needs read-modify-write
-  **unless** the app adds a simple **inbox collection** (recommended — ask for it).
+- No custom API. **Auth = a Firebase service account** (recommended for n8n server-to-server): Firebase
+  console → Project settings → Service accounts → Generate private key → mint an OAuth2 access token, use as
+  `Authorization: Bearer <accessToken>`. (Anonymous ID token also works but needs open Firestore rules.)
+- **Use Path C (inbox)** — built in as of app **v63**. n8n does one `POST` to
+  `khatas/{syncId}/inbox` with `{ customerName, amount, type, note, date }`. `type: "debit"` = printing
+  order (customer owes), `type: "credit"` = payment received.
+- The app auto-adds matched entries and deletes the inbox doc; **unknown customer names are held for the shop
+  owner to review** (not auto-created). Customer should already exist in the app for hands-free add.
