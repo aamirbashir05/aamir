@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v63'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v64'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -904,17 +904,29 @@ function parseBulkLines(text) {
   const out = [];
   (text || '').split('\n').forEach(raw => {
     const line = raw.trim(); if (!line) return;
-    let detail = '', naStr = line;
+    const hasParen = line.includes('(') && line.includes(')');
+    // PAYMENT line (Payment group): koi bracket nahi + number se shuru => "6000 Amjad Press"
+    // amount pehle, naam baad me, type = credit (paisa aaya).
+    if (!hasParen) {
+      const pm = line.match(/^([\d][\d,]*(?:\.\d+)?)\s+(.+)$/);
+      if (pm && pm[2].trim()) {
+        out.push({ raw: line, detail: 'Payment received', name: pm[2].trim(), amount: parseFloat(pm[1].replace(/,/g, '')), type: 'credit' });
+        return;
+      }
+    }
+    // ORDER line (Saman group) ya manual "(tafseel) - (customer raqam)": aakhri bracket me
+    // customer+raqam, pehle wale bracket(s) tafseel banti hai, type = debit.
+    let detail = '', naStr = line, isOrder = false;
     const di = line.lastIndexOf(' - ');
     if (di >= 0) { detail = line.slice(0, di); naStr = line.slice(di + 3); }
     else {
       const g = [...line.matchAll(/\(([^)]*)\)/g)].map(m => m[1].trim());
-      if (g.length >= 2) { detail = g[0]; naStr = g[g.length - 1]; }
+      if (g.length >= 2) { detail = g.slice(0, -1).join(' '); naStr = g[g.length - 1]; isOrder = true; }
       else if (g.length === 1) naStr = g[0];
     }
     detail = detail.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
     const na = parseNameAmount(naStr);
-    out.push({ raw: line, detail, name: na ? na.name : naStr.replace(/[()]/g, ' ').trim(), amount: na ? na.amount : 0 });
+    out.push({ raw: line, detail, name: na ? na.name : naStr.replace(/[()]/g, ' ').trim(), amount: na ? na.amount : 0, type: (hasParen || isOrder) ? 'debit' : null });
   });
   return out;
 }
@@ -925,18 +937,21 @@ $('#bulkPreview').addEventListener('click', () => {
   const idx = buildCustIndex();
   bulkRows = parsed.map(r => {
     const m = r.amount > 0 ? matchCustomer(r.name, idx) : { custId: null, candidates: [] };
-    return { raw: r.raw, detail: r.detail, name: r.name, amount: r.amount, custId: m.custId, candidates: m.candidates };
+    return { raw: r.raw, detail: r.detail, name: r.name, amount: r.amount, type: r.type || bulkType, custId: m.custId, candidates: m.candidates };
   });
   renderBulkPreview();
 });
 function bulkSummaryHtml() {
-  const okN = bulkRows.filter(r => r.custId && r.amount > 0).length;
-  const need = bulkRows.length - okN;
-  const okTotal = bulkRows.filter(r => r.custId && r.amount > 0).reduce((s, r) => s + r.amount, 0);
-  const typeLbl = bulkType === 'debit' ? 'Maal/Kaam' : 'Payment';
-  return `<div class="ok"><b>${okN}</b><span>Tayyar (${typeLbl})</span></div>`
-    + (need ? `<div class="bad"><b>${need}</b><span>Adhoori</span></div>` : '')
-    + `<div><b>${fmtMoney(okTotal)}</b><span>Total</span></div>`;
+  const ok = bulkRows.filter(r => r.custId && r.amount > 0);
+  const need = bulkRows.length - ok.length;
+  const deb = ok.filter(r => (r.type || bulkType) === 'debit');
+  const cred = ok.filter(r => (r.type || bulkType) === 'credit');
+  const debT = deb.reduce((s, r) => s + r.amount, 0), credT = cred.reduce((s, r) => s + r.amount, 0);
+  let h = '';
+  if (deb.length) h += `<div class="ok"><b>${deb.length}</b><span>Maal (${fmtMoney(debT)})</span></div>`;
+  if (cred.length) h += `<div class="ok pos"><b>${cred.length}</b><span>Paisa (${fmtMoney(credT)})</span></div>`;
+  if (need) h += `<div class="bad"><b>${need}</b><span>Adhoori</span></div>`;
+  return h || `<div class="bad"><b>0</b><span>Kuch nahi</span></div>`;
 }
 function updateBulkSummary() {
   const sum = $('#bulkSum'); if (sum) sum.innerHTML = bulkSummaryHtml();
@@ -949,10 +964,12 @@ function renderBulkPreview() {
   html += bulkRows.map((r, i) => {
     const cust = r.custId ? Store.getCustomer(r.custId) : null;
     const who = cust ? `👤 ${esc(cust.name)} ✎` : `🔍 Customer chunein`;
+    const isDeb = (r.type || bulkType) === 'debit';
     return `<div class="bulk-erow ${cust ? '' : 'need'}">
       <div class="brow-top">
         <button class="bpick ${cust ? '' : 'need'}" data-pick="${i}">${who}</button>
-        <input class="bamt-in ${bulkType === 'debit' ? 'neg' : 'pos'}" type="number" inputmode="decimal" data-amt="${i}" value="${r.amount || ''}" placeholder="0">
+        <button class="btype ${isDeb ? 'neg' : 'pos'}" data-type="${i}" title="Maal/Paisa badlein">${isDeb ? '− Maal' : '+ Paisa'}</button>
+        <input class="bamt-in ${isDeb ? 'neg' : 'pos'}" type="number" inputmode="decimal" data-amt="${i}" value="${r.amount || ''}" placeholder="0">
         <button class="bdel" data-del="${i}" title="Hatayein">✕</button>
       </div>
       <input class="bdet-in" type="text" data-det="${i}" value="${esc(r.detail || '')}" placeholder="Tafseel / kaam (optional)" autocomplete="off">
@@ -963,6 +980,7 @@ function renderBulkPreview() {
   html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px">✅ Save karein</button>`;
   const res = $('#bulkResult'); res.innerHTML = html;
   $$('#bulkResult [data-pick]').forEach(b => b.addEventListener('click', () => openAssign(+b.dataset.pick)));
+  $$('#bulkResult [data-type]').forEach(b => b.addEventListener('click', () => { const r = bulkRows[+b.dataset.type]; if (r) { r.type = (r.type || bulkType) === 'debit' ? 'credit' : 'debit'; renderBulkPreview(); } }));
   $$('#bulkResult [data-amt]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.amt]; if (r) { r.amount = parseFloat(inp.value) || 0; updateBulkSummary(); } }));
   $$('#bulkResult [data-det]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.det]; if (r) r.detail = inp.value; }));
   $$('#bulkResult [data-del]').forEach(b => b.addEventListener('click', () => { bulkRows.splice(+b.dataset.del, 1); renderBulkPreview(); }));
@@ -991,11 +1009,23 @@ function renderAssign(q, candidates) {
   if (!f && candidates && candidates.length) list = candidates;
   else list = Store.getCustomers().filter(c => !f || c.name.toLowerCase().includes(f) || (c.phone || '').replace(/\s/g, '').includes(f)).slice(0, 60);
   const drop = $('#assignDrop');
-  drop.innerHTML = list.length ? list.map(c => `<div class="cust-opt" data-id="${c.id}">${esc(c.name)}${c.phone ? '<span>' + esc(c.phone) + '</span>' : ''}</div>`).join('') : '<div class="cust-empty">Koi customer nahi mila</div>';
-  $$('#assignDrop .cust-opt').forEach(el => el.addEventListener('click', () => {
+  // Jo naam typed hai (ya line ka naam) us se naya customer banane ka option — taake
+  // match na hone par yahin foran bana kar assign kar sakein (spec: inline create).
+  const newName = (q && q.trim()) || ((bulkRows[assignIdx] || {}).name || '').trim();
+  const exists = newName && Store.getCustomers().some(c => normName(c.name) === normName(newName));
+  const createHtml = (newName && !exists) ? `<div class="cust-opt cust-new" data-new="1">➕ Naya banayein: <b>${esc(newName)}</b></div>` : '';
+  drop.innerHTML = createHtml + (list.length ? list.map(c => `<div class="cust-opt" data-id="${c.id}">${esc(c.name)}${c.phone ? '<span>' + esc(c.phone) + '</span>' : ''}</div>`).join('') : (createHtml ? '' : '<div class="cust-empty">Koi customer nahi mila</div>'));
+  $$('#assignDrop .cust-opt[data-id]').forEach(el => el.addEventListener('click', () => {
     if (bulkRows[assignIdx]) { bulkRows[assignIdx].custId = el.dataset.id; bulkRows[assignIdx].candidates = []; }
     closeModal('assignModal'); renderBulkPreview();
   }));
+  const nb = $('#assignDrop [data-new]');
+  if (nb) nb.addEventListener('click', () => {
+    const c = Store.addCustomer({ name: newName });
+    if (bulkRows[assignIdx]) { bulkRows[assignIdx].custId = c.id; bulkRows[assignIdx].candidates = []; }
+    closeModal('assignModal'); renderBulkPreview();
+    toast('✅ "' + c.name + '" ban gaya');
+  });
 }
 $('#assignSearch') && $('#assignSearch').addEventListener('input', () => renderAssign($('#assignSearch').value, (bulkRows[assignIdx] || {}).candidates));
 async function bulkSave(rows) {
@@ -1005,9 +1035,10 @@ async function bulkSave(rows) {
   const done = [];
   for (const r of rows) {
     const c = Store.getCustomer(r.custId); if (!c) continue;
-    Store.addPartyTxn('customer', c.id, { amount: r.amount, type: bulkType, note: r.detail || '', date: iso });
+    const rt = r.type || bulkType;
+    Store.addPartyTxn('customer', c.id, { amount: r.amount, type: rt, note: r.detail || '', date: iso });
     republishIfShared(c);
-    done.push({ cust: c, amount: r.amount, detail: r.detail || '' });
+    done.push({ cust: c, amount: r.amount, detail: r.detail || '', type: rt });
   }
   toast('✅ ' + done.length + ' entries save ho gayin');
   if (activeNav === 'accounts') renderAccounts();
@@ -1020,7 +1051,7 @@ async function showBulkSendList(done) {
   const endpoint = (Store.getShop().waEndpoint || '').trim();
   if (endpoint) {
     let sent = 0;
-    for (const d of done) { const c = Store.getCustomer(d.cust.id); if (c) { await sendEntryNotification(c.id, { amount: d.amount, type: bulkType, note: d.detail || '' }, null); sent++; } }
+    for (const d of done) { const c = Store.getCustomer(d.cust.id); if (c) { await sendEntryNotification(c.id, { amount: d.amount, type: d.type || bulkType, note: d.detail || '' }, null); sent++; } }
     toast('✅ ' + sent + ' WhatsApp messages bhej diye'); closeModal('bulkModal'); return;
   }
   // No API: har customer ka apna button (jinke number hai)
@@ -1035,7 +1066,7 @@ async function showBulkSendList(done) {
     const d = withPhone[+btn.dataset.i];
     const c = Store.getCustomer(d.cust.id); if (!c) return;
     const phone = intlPhone(c.phone);
-    const msg = entryMessage(c, { amount: d.amount, type: bulkType, note: d.detail || '' });
+    const msg = entryMessage(c, { amount: d.amount, type: d.type || bulkType, note: d.detail || '' });
     ensurePublished(c).catch(() => {});
     waOpen(phone, msg);
     btn.textContent = '✓ Bhej diya'; btn.classList.add('done');
