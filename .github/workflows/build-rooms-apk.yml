@@ -1,0 +1,71 @@
+name: Build Account Rooms APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "claude/multi-tiktok-accounts-app-phw47n" ]
+    paths:
+      - "rooms-app/**"
+      - ".github/workflows/build-rooms-apk.yml"
+
+permissions:
+  contents: write          # APK ko Releases par publish karne ke liye
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('rooms-app/**/*.gradle.kts', 'rooms-app/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Build APK
+        working-directory: rooms-app
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp rooms-app/app/build/outputs/apk/debug/app-debug.apk AccountRooms.apk
+
+      # Har build ka APK yahan se bhi utha sakte hain (Actions tab)
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AccountRooms-apk
+          path: AccountRooms.apk
+
+      # Seedha download link — Releases page par
+      - name: Publish to Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: rooms-latest
+          name: Account Rooms — latest APK
+          body: |
+            **Account Rooms** — har TikTok account ka apna room.
+
+            Phone me install karne ka tareeqa:
+            1. Neeche `AccountRooms.apk` par tap karke download karein
+            2. Phone "unknown sources" ki ijazat maange to allow karein
+            3. Install — ho gaya
+
+            Har build par ye file update ho jati hai.
+          files: AccountRooms.apk
+          make_latest: true

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chaar rounded squares = kai alag rooms. Chhote size par bhi saaf parhi jati hai. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#2DD4BF"
+        android:pathData="M29,21 H43 A8,8 0 0 1 51,29 V43 A8,8 0 0 1 43,51 H29 A8,8 0 0 1 21,43 V29 A8,8 0 0 1 29,21 Z" />
+
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M65,21 H79 A8,8 0 0 1 87,29 V43 A8,8 0 0 1 79,51 H65 A8,8 0 0 1 57,43 V29 A8,8 0 0 1 65,21 Z" />
+
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M29,57 H43 A8,8 0 0 1 51,65 V79 A8,8 0 0 1 43,87 H29 A8,8 0 0 1 21,79 V65 A8,8 0 0 1 29,57 Z" />
+
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M65,57 H79 A8,8 0 0 1 87,65 V79 A8,8 0 0 1 79,87 H65 A8,8 0 0 1 57,79 V65 A8,8 0 0 1 65,57 Z" />
+
+</vector>
