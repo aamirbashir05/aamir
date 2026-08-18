@@ -525,3 +525,69 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
 .reminder-btn:active { transform: translateY(2px); }
 .calc-pad button, .type-toggle button { transition: transform .08s ease, box-shadow .08s ease; }
 .calc-pad button.eq { box-shadow: 0 4px 14px rgba(231,162,76,.4), inset 0 1px 0 rgba(255,255,255,.5); }
+
+/* ============ v66 — Design 5 theme (slate bg + orange 3D glass panels + profile-icon avatars) ============ */
+/* Koi backdrop-filter/content-visibility NAHI (blank-screen safe). */
+:root {
+  --bg: #20242c;
+  --panel: linear-gradient(158deg, #ffd68c 0%, #f0ac4e 48%, #e29632 100%);
+  --panel-brd: rgba(255,235,190,.6);
+  --panel-sh: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 14px rgba(150,80,10,.25), 0 6px 0 rgba(150,85,20,.34), 0 14px 26px rgba(231,162,76,.26);
+  --panel-sh-lite: inset 0 1px 0 rgba(255,255,255,.5), 0 3px 12px rgba(150,85,20,.22);
+  --on-dark: #33260a;   --on-muted: #7a5a1e;   --on-green: #0b5a3d;   --on-red: #8a2b1a;
+}
+body {
+  background:
+    radial-gradient(560px 320px at 50% -8%, rgba(231,162,76,.18), transparent 60%),
+    radial-gradient(460px 300px at 108% 6%, rgba(231,162,76,.10), transparent 60%),
+    linear-gradient(180deg, #242932, #1a1e25) fixed;
+}
+.topbar.light { background: linear-gradient(180deg, rgba(231,162,76,.08), transparent), linear-gradient(180deg,#2a2f38,#20242c); border-bottom: 1px solid rgba(231,162,76,.2); }
+
+/* ---- Orange 3D glass panels (data cards) ---- */
+.sum-card, .mini, .cust, .txn, .quote, .recent, .detail-head {
+  position: relative; background: var(--panel); border: 1px solid var(--panel-brd); color: var(--on-dark);
+}
+.sum-card, .mini, .detail-head { box-shadow: var(--panel-sh); }           /* hero tiles: full 3D */
+.cust, .txn, .quote, .recent { box-shadow: var(--panel-sh-lite); }        /* list rows: halka (lambi list) */
+.sum-card::before, .mini::before, .cust::before, .txn::before, .quote::before, .recent::before, .detail-head::before {
+  content:""; position:absolute; left:0; right:0; top:0; height:44%; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,0)); pointer-events:none;
+}
+.sum-card > *, .mini > *, .cust > *, .txn > *, .quote > *, .recent > *, .detail-head > * { position: relative; z-index: 1; }
+
+/* text on orange -> dark + gehre semantic rang */
+.sum-card .label, .cust .phone, .cust .bal .tag, .mini .m-lbl, .txn .t-date, .quote .q-meta, .recent .r-date, .detail-head .phone { color: var(--on-muted); }
+.cust .name, .txn .t-note, .quote .q-job, .recent .r-name, .detail-head .name, .cust .bal .amt { color: var(--on-dark); }
+.mini .m-val { background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--on-dark); }
+.quote .q-rate { background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--on-dark); }
+.sum-card.lena .val, .mini .m-val.pos, .cust .bal .amt.pos, .ov-panel .cust .bal .amt.pos, .txn.credit .t-amt, .recent.credit .r-amt { color: var(--on-green); }
+.sum-card.dena .val, .mini .m-val.neg, .cust .bal .amt.neg, .ov-panel .cust .bal .amt.neg, .txn.debit .t-amt, .recent.debit .r-amt { color: var(--on-red); }
+.txn .t-bal { background: rgba(120,70,15,.14); border-color: rgba(120,70,15,.28); color: var(--on-muted); }
+.txn .t-bal.pos { color: var(--on-green); } .txn .t-bal.neg { color: var(--on-red); } .txn .t-bal.zero { color: var(--on-muted); }
+.txn .t-icon, .ov-panel .t-icon, .recent .r-ic { background: rgba(255,255,255,.30) !important; color: #5a3c08 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+.txn .t-del { color: #7a5a1e; }
+.txn .t-send { background: rgba(255,255,255,.4); border-color: rgba(120,70,15,.3); color: #0b5a3d; }
+.cust:hover { border-color: rgba(255,235,190,.8); }
+
+/* Settings ke form-blocks orange NAHI (inputs/light-text readable rahein) — slate glass */
+.card-block { background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text); }
+
+/* detail-head ke andar balance-box orange par readable */
+.detail-head .balance-box { background: rgba(255,255,255,.34); border-color: rgba(120,70,15,.25); }
+.detail-head .balance-box .b-label { color: var(--on-muted); }
+.detail-head .balance-box.pos, .detail-head .balance-box.pos .b-amt { color: var(--on-green); }
+.detail-head .balance-box.neg, .detail-head .balance-box.neg .b-amt { color: var(--on-red); }
+.detail-head .balance-box.zero, .detail-head .balance-box.zero .b-amt { color: var(--on-dark); }
+
+/* ---- Profile-icon avatar (initials ki jagah default person) ---- */
+.avatar {
+  background: radial-gradient(circle at 50% 32%, rgba(255,255,255,.55), rgba(255,255,255,.30)) !important;
+  color: transparent !important; font-size: 0 !important; text-shadow: none !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -3px 6px rgba(150,80,10,.22), 0 3px 8px rgba(120,70,15,.25);
+}
+.avatar::after {
+  content:""; width: 60%; height: 60%; background: #6a4410;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='8' r='4'/><path d='M12 14c-4.4 0-8 2.9-8 6.5V22h16v-1.5c0-3.6-3.6-6.5-8-6.5z'/></svg>") center/contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='8' r='4'/><path d='M12 14c-4.4 0-8 2.9-8 6.5V22h16v-1.5c0-3.6-3.6-6.5-8-6.5z'/></svg>") center/contain no-repeat;
+}
