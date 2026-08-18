@@ -469,3 +469,59 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
 .day-cmp b { font-size: 15px; font-weight: 800; color: var(--text); }
 .day-cmp .day-diff { grid-column: 1 / -1; background: rgba(231,162,76,.09); }
 .day-cmp .day-diff b.pos { color: var(--green); } .day-cmp .day-diff b.neg { color: var(--red); }
+
+/* ============ v65 — Date+Time row + Glass/3D-glow polish ============ */
+/* NOTE: koi backdrop-filter/content-visibility NAHI (pehle in se blank screen hui thi).
+   "Transparent glass" look sirf translucent rgba + gradient + glow-shadow se. */
+.dt-row { display: flex; gap: 8px; }
+.dt-row input { flex: 1; min-width: 0; }
+
+:root {
+  --glass: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)), rgba(18,19,26,.66);
+  --glass-brd: rgba(255,255,255,.12);
+}
+
+/* Glassy surfaces — halka transparent + upar white highlight */
+.sum-card, .mini, .card-block, .detail-head, .cust, .txn, .recent, .quote {
+  background: var(--glass);
+  border: 1px solid var(--glass-brd);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 30px rgba(0,0,0,.36);
+}
+.sum-card.lena { box-shadow: inset 0 0 0 1px rgba(52,211,153,.12), 0 10px 30px rgba(0,0,0,.36); }
+.sum-card.dena { box-shadow: inset 0 0 0 1px rgba(248,113,113,.12), 0 10px 30px rgba(0,0,0,.36); }
+.modal {
+  background: linear-gradient(180deg, rgba(30,31,40,.94), rgba(13,14,19,.96));
+  border: 1px solid var(--glass-brd);
+  border-top: 1px solid rgba(255,255,255,.18);
+}
+.bottomnav {
+  background: linear-gradient(180deg, rgba(26,27,34,.92), rgba(13,14,19,.96));
+  border-top: 1px solid var(--glass-brd);
+  box-shadow: 0 -4px 22px rgba(0,0,0,.45);
+}
+
+/* Primary buttons — 3D glowing (dabao to dabta hua) */
+.save, .add-contact {
+  transition: transform .09s ease, box-shadow .09s ease;
+  box-shadow: 0 5px 0 rgba(150,90,10,.5), 0 10px 26px rgba(231,162,76,.36), inset 0 1px 0 rgba(255,255,255,.55);
+}
+.save:active, .add-contact:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 rgba(150,90,10,.5), 0 4px 12px rgba(231,162,76,.3), inset 0 1px 0 rgba(255,255,255,.4);
+}
+.save.danger { box-shadow: 0 5px 0 rgba(140,30,30,.5), 0 10px 26px rgba(248,113,113,.36), inset 0 1px 0 rgba(255,255,255,.4); }
+.save.danger:active { box-shadow: 0 1px 0 rgba(140,30,30,.5), 0 4px 12px rgba(248,113,113,.3), inset 0 1px 0 rgba(255,255,255,.35); }
+
+/* Active tab/segment — halka glow */
+.tab.active, .seg button.active { box-shadow: 0 4px 16px rgba(231,162,76,.4), inset 0 1px 0 rgba(255,255,255,.5); }
+
+/* Reminder + calc pad + type toggle — press feel */
+.reminder-btn {
+  background: linear-gradient(180deg, rgba(231,162,76,.12), rgba(231,162,76,.03)), rgba(18,19,26,.6);
+  border: 1px solid var(--glass-brd);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 6px 22px rgba(0,0,0,.34);
+  transition: transform .09s ease;
+}
+.reminder-btn:active { transform: translateY(2px); }
+.calc-pad button, .type-toggle button { transition: transform .08s ease, box-shadow .08s ease; }
+.calc-pad button.eq { box-shadow: 0 4px 14px rgba(231,162,76,.4), inset 0 1px 0 rgba(255,255,255,.5); }

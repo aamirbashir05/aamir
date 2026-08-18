@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v64'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v65'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -584,6 +584,7 @@ function openTxn(type) {
   txnCalc.reset(); $('#txnNote').value = '';
   // "Entry date" mode on ho to nayi entry usi date par, warna aaj
   $('#txnDate').value = workDate || new Date().toISOString().slice(0, 10);
+  const tt = $('#txnTime'); if (tt) tt.value = new Date().toTimeString().slice(0, 5); // abhi ka waqt (badla ja sakta hai)
   // WhatsApp notify only for customers
   const notifyRow = $('#txnNotify').closest('.switch-row');
   if (currentKind === 'customer') { notifyRow.style.display = 'flex'; $('#txnNotify').checked = Store.getShop().autoWhatsApp !== false; }
@@ -604,6 +605,7 @@ function openTxnEdit(t) {
   txnCalc.set(t.amount);
   $('#txnNote').value = t.note || '';
   $('#txnDate').value = (t.date || '').slice(0, 10);
+  const tt = $('#txnTime'); if (tt) tt.value = t.date ? new Date(t.date).toTimeString().slice(0, 5) : '';
   const notifyRow = $('#txnNotify').closest('.switch-row');
   notifyRow.style.display = 'none'; $('#txnNotify').checked = false;
   $('#txnImage').value = ''; $('#txnImageCam').value = ''; pendingTxnImg = null;
@@ -636,10 +638,11 @@ $('#saveTxn').addEventListener('click', async () => {
 
   // EDIT mode — mojooda entry update karein
   if (editingTxn) {
-    // date: agar din wahi hai to asli waqt rakho, warna nayi date
+    // date+time: jo date/waqt box me hai wahi lagao (time ab user badal sakta hai)
     let date = editingTxn.date;
-    if (dateStr && dateStr !== (editingTxn.date || '').slice(0, 10)) {
-      const tm = editingTxn.date ? new Date(editingTxn.date).toTimeString().slice(0, 8) : '09:00:00';
+    if (dateStr) {
+      const tm = ($('#txnTime') && $('#txnTime').value) ? $('#txnTime').value + ':00'
+               : (editingTxn.date ? new Date(editingTxn.date).toTimeString().slice(0, 8) : '09:00:00');
       date = new Date(dateStr + 'T' + tm).toISOString();
     }
     let patch = { amount: amt, type: txnType, note: $('#txnNote').value, date };
@@ -650,7 +653,8 @@ $('#saveTxn').addEventListener('click', async () => {
     toast('Entry update ho gayi ✅'); return;
   }
 
-  const date = dateStr ? new Date(dateStr + 'T' + new Date().toTimeString().slice(0, 8)).toISOString() : new Date().toISOString();
+  const tmv = ($('#txnTime') && $('#txnTime').value) ? $('#txnTime').value + ':00' : new Date().toTimeString().slice(0, 8);
+  const date = dateStr ? new Date(dateStr + 'T' + tmv).toISOString() : new Date().toISOString();
   const noteVal = $('#txnNote').value;
   const notify = currentKind === 'customer' && $('#txnNotify').checked;
   // Popup-block se bachne ke liye: click ke DAURAN hi WhatsApp window khol lo (baad me URL set karenge).
