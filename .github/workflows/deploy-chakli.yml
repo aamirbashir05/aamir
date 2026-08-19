@@ -1,0 +1,39 @@
+name: Deploy Chakli to Netlify
+
+# Jab bhi chakli/ folder mein koi change push ho, yeh Action khud
+# usi Netlify site par (same URL) deploy kar deta hai — manual upload ki zaroorat nahi.
+
+on:
+  push:
+    branches:
+      - claude/app-backup-data-preservation-sjup8y
+      - main
+    paths:
+      - "chakli/**"
+      - ".github/workflows/deploy-chakli.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy chakli/ to existing Netlify site
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID secrets set nahi hain — skip."
+            echo "GitHub repo → Settings → Secrets and variables → Actions mein add karein."
+            exit 1
+          fi
+          npm install -g netlify-cli@17
+          netlify deploy \
+            --dir=chakli \
+            --prod \
+            --site="$NETLIFY_SITE_ID" \
+            --auth="$NETLIFY_AUTH_TOKEN" \
+            --message "Auto-deploy: ${{ github.sha }}"

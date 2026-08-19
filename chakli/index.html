@@ -170,6 +170,22 @@
   .srow.danger { color:#dc2626; }
   textarea { width:100%; height:90px; border:1px solid #d1d5db; border-radius:12px; padding:10px; font-family:monospace; font-size:11px; margin-top:8px; }
 
+  /* entry: type buttons + member chips */
+  .type-toggle { display:flex; gap:10px; }
+  .tbtn { flex:1; padding:14px 6px; border-radius:16px; font-weight:850; font-size:16px; line-height:1.2; border:2px solid #e5e7eb; background:#fff; color:#9ca3af; }
+  .tbtn small { font-weight:600; font-size:11px; opacity:.9; }
+  .tbtn:active { transform:translateY(1px); }
+  .tbtn.tincome.on { background:linear-gradient(145deg,#16a34a,#0f7a3a); color:#fff; border-color:transparent; box-shadow:0 8px 18px rgba(22,163,74,0.35); }
+  .tbtn.texpense.on { background:linear-gradient(145deg,#ef4444,#c81e1e); color:#fff; border-color:transparent; box-shadow:0 8px 18px rgba(220,38,38,0.35); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; max-height:210px; overflow-y:auto; padding:10px; background:#eef2f0; border-radius:14px; border:1px solid #e2e7e4; }
+  .chip2 { padding:10px 13px; border-radius:22px; background:#fff; border:1.5px solid #e5e7eb; font-size:13.5px; font-weight:800; color:#1f2937; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
+  .chip2:active { transform:translateY(1px); }
+  .chip2.on { background:linear-gradient(145deg,#16a34a,#0f7a3a); color:#fff; border-color:transparent; box-shadow:0 6px 14px rgba(22,163,74,0.4); }
+  .chip2.special { background:#fff7e6; border-color:#f5c542; color:#92400e; }
+  .chip2.special.on { background:linear-gradient(145deg,#d97706,#b45309); color:#fff; border-color:transparent; }
+  .chip2.others { background:#eef2ff; border-color:#c7d2fe; color:#3730a3; }
+  .chip2.others.on { background:linear-gradient(145deg,#4f46e5,#3730a3); color:#fff; border-color:transparent; }
+
   .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:#0d4f3c; color:#fff; padding:12px 20px; border-radius:14px; font-weight:700; font-size:14px; z-index:200; box-shadow:0 10px 30px rgba(0,0,0,0.3); opacity:0; transition:opacity .2s; max-width:90%; text-align:center; }
   .toast.show { opacity:1; }
 </style>
@@ -309,22 +325,29 @@
   <div class="sheet">
     <button class="close-x" onclick="closeModal('modal-entry')">✕</button>
     <h3>Nayi Entry</h3>
-    <div class="fg"><label>Member (ya "Doosra")</label>
-      <select id="e-member" onchange="entryMemberChange()"></select></div>
+
+    <div class="fg"><label>Qisam — tap karein</label>
+      <div class="type-toggle">
+        <button type="button" id="type-income" class="tbtn tincome on" onclick="setType('income')">💰 Wasooli<br><small>(paise aaye)</small></button>
+        <button type="button" id="type-expense" class="tbtn texpense" onclick="setType('expense')">💸 Kharcha<br><small>(paise diye)</small></button>
+      </div>
+    </div>
+
+    <div class="fg"><label>Kis ka? — naam par tap karein</label>
+      <div class="chips" id="e-chips"></div>
+    </div>
+
     <div class="fg"><label>Tafseel</label><input id="e-desc" type="text" placeholder="Naam ya wajah"></div>
-    <div id="e-newmember-row" style="display:none; margin-top:10px; background:#eefaf1; border:1px solid #c3e9d1; border-radius:12px; padding:11px 13px;">
+    <div id="e-newmember-row" style="display:none; margin-top:4px; background:#eefaf1; border:1px solid #c3e9d1; border-radius:12px; padding:11px 13px;">
       <label style="display:flex; align-items:flex-start; gap:9px; cursor:pointer; font-weight:800; color:#0f5132; font-size:13.5px;">
         <input type="checkbox" id="e-newmember" style="width:auto; margin:3px 0 0 0;">
-        <span>Naya member bhi add karein<br><span style="font-weight:600;color:#6b7280;font-size:12px;">(Agar list mein nahi. Bill/Kharcha ho to uncheck karein.)</span></span>
+        <span>Naya member bhi add karein<br><span style="font-weight:600;color:#6b7280;font-size:12px;">(Naya banda list mein aa jayega. Bill/Kharcha ho to uncheck.)</span></span>
       </label>
     </div>
-    <div class="row2">
-      <div class="fg"><label>Raqam (Rs)</label><input id="e-amount" type="tel" placeholder="0"></div>
-      <div class="fg"><label>Qisam</label>
-        <select id="e-type" onchange="updateNewMemberRow()"><option value="income">Wasooli (aaye)</option><option value="expense">Kharcha (diye)</option></select></div>
-    </div>
+
+    <div class="fg"><label>Raqam (Rs)</label><input id="e-amount" type="tel" inputmode="numeric" placeholder="Kitne paise?"></div>
     <div class="fg"><label>Mahina</label><input id="e-month" type="month"></div>
-    <button class="save-btn" onclick="saveEntry()">Save Karein</button>
+    <button class="save-btn" onclick="saveEntry()">✓ Save Karein</button>
   </div>
 </div>
 
@@ -525,32 +548,44 @@ function renderMore(){
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 /* ---------- entry ---------- */
+let entryType='income', entrySel=null;
 function openEntry(){
-  const sel=$('e-member'); let o='<option value="">— Doosra (bina member) —</option>';
-  DATA.members.forEach(mm=> o+=`<option value="${mm.id}">${esc(mm.name)}</option>`);
-  sel.innerHTML=o; sel.value='';
-  $('e-desc').value=''; $('e-amount').value=''; $('e-type').value='income';
+  entryType='income'; entrySel=null; setTypeUI(); renderEntryChips();
+  $('e-desc').value=''; $('e-amount').value='';
   $('e-month').value=viewYM.y+'-'+String(viewYM.m).padStart(2,'0');
   updateNewMemberRow();
   openModal('modal-entry');
 }
-function entryMemberChange(){
-  const id=$('e-member').value;
-  if(id){ const mm=DATA.members.find(x=>x.id===id); if(mm){ $('e-desc').value=mm.name+' (Monthly Payment)'; $('e-type').value='income'; if(mm.amount>0 && !$('e-amount').value) $('e-amount').value=mm.amount; } }
-  updateNewMemberRow();
+function setType(t){ entryType=t; setTypeUI(); updateNewMemberRow(); }
+function setTypeUI(){
+  $('type-income').classList.toggle('on', entryType==='income');
+  $('type-expense').classList.toggle('on', entryType==='expense');
 }
-// Naya member checkbox row: sirf tab dikhe jab koi maujooda member select na ho.
-// Income (wasooli) ke liye default checked (naye bande ki payment), kharcha ke liye off.
+function renderEntryChips(){
+  let h='<button type="button" class="chip2 special'+(entrySel===null?' on':'')+'" onclick="selectChip(null)">✏️ Naya / Doosra</button>';
+  DATA.members.forEach(mm=>{ const cls=isOthers(mm)?'others':'';
+    h+='<button type="button" class="chip2 '+cls+(entrySel===mm.id?' on':'')+'" onclick="selectChip(\''+mm.id+'\')">'+(isOthers(mm)?'👥 ':'')+esc(mm.name)+'</button>'; });
+  $('e-chips').innerHTML=h;
+}
+function selectChip(id){
+  entrySel=id;
+  if(id){ const mm=DATA.members.find(x=>x.id===id);
+    if(mm){ $('e-desc').value = isOthers(mm)?'':(mm.name+' (Monthly Payment)'); entryType='income'; setTypeUI();
+      if(mm.amount>0 && !$('e-amount').value) $('e-amount').value=mm.amount; } }
+  renderEntryChips(); updateNewMemberRow();
+  if(id===null) $('e-desc').focus();
+}
+// Naya member checkbox: sirf jab koi member select na ho (Naya/Doosra). Wasooli ke liye default on.
 function updateNewMemberRow(){
-  const isDoosra = $('e-member').value==='';
+  const isDoosra = (entrySel===null);
   $('e-newmember-row').style.display = isDoosra ? 'block' : 'none';
-  if(isDoosra) $('e-newmember').checked = ($('e-type').value==='income');
+  if(isDoosra) $('e-newmember').checked = (entryType==='income');
 }
 function saveEntry(){
-  let memberId=$('e-member').value||null;
+  let memberId=entrySel;
   const desc=$('e-desc').value.trim();
   const amount=parseFloat($('e-amount').value);
-  const type=$('e-type').value;
+  const type=entryType;
   const mv=$('e-month').value;
   if(desc===''){ toast('Tafseel likhein'); return; }
   if(!(amount>0)){ toast('Sahi raqam likhein'); return; }
