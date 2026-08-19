@@ -638,3 +638,11 @@ body { background: radial-gradient(600px 300px at 100% -6%, rgba(231,162,76,.08)
   background:rgba(192,57,43,.09); border-color:rgba(192,57,43,.32); color:var(--red);
 }
 .cust .bal .tag { margin-top:5px; }
+/* Total Lena/Dena (overview), Net Baqaya, aur Rate amount par bhi block */
+.sum-card .val { display:inline-block; padding:5px 12px; border-radius:14px; }
+.sum-card.lena .val { background:rgba(15,157,99,.10); border:1px solid rgba(15,157,99,.3); }
+.sum-card.dena .val { background:rgba(192,57,43,.09); border:1px solid rgba(192,57,43,.3); }
+.mini .m-val { display:inline-block; padding:3px 10px; border-radius:12px; background:rgba(201,133,31,.10); border:1px solid rgba(201,133,31,.26); max-width:100%; }
+.mini .m-val.pos { background:rgba(15,157,99,.10); border-color:rgba(15,157,99,.3); }
+.mini .m-val.neg { background:rgba(192,57,43,.09); border-color:rgba(192,57,43,.3); }
+.quote .q-rate { display:inline-block; padding:5px 12px; border-radius:20px; background:rgba(201,133,31,.10); border:1px solid rgba(201,133,31,.28); }
