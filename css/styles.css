@@ -526,80 +526,98 @@ button, .cust, .txn, .mini, .sum-card, .quote, .tab, .seg button { touch-action:
 .calc-pad button, .type-toggle button { transition: transform .08s ease, box-shadow .08s ease; }
 .calc-pad button.eq { box-shadow: 0 4px 14px rgba(231,162,76,.4), inset 0 1px 0 rgba(255,255,255,.5); }
 
-/* ============ v66 — Design 5 theme (slate bg + orange 3D glass panels + profile-icon avatars) ============ */
-/* Koi backdrop-filter/content-visibility NAHI (blank-screen safe). */
+/* ============ v69 — CLEAN LIGHT theme (Design 5 final: white + orange side-bar cards + slate/gold header) ============ */
+/* Koi backdrop-filter/content-visibility nahi (blank-screen safe). */
 :root {
-  --bg: #20242c;
-  --panel: linear-gradient(158deg, #ffd68c 0%, #f0ac4e 48%, #e29632 100%);
-  --panel-brd: rgba(255,235,190,.6);
-  --panel-sh: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -6px 14px rgba(150,80,10,.25), 0 6px 0 rgba(150,85,20,.34), 0 14px 26px rgba(231,162,76,.26);
-  --panel-sh-lite: inset 0 1px 0 rgba(255,255,255,.5), 0 3px 12px rgba(150,85,20,.22);
-  --on-dark: #33260a;   --on-muted: #7a5a1e;   --on-green: #0b5a3d;   --on-red: #8a2b1a;
+  --bg:#f6f1e8; --card:#fffdfa; --text:#2a2a2a; --muted:#8a7a5e;
+  --border:rgba(160,120,45,.20); --line-soft:rgba(160,120,45,.14);
+  --green:#0f9d63; --green-dark:#0d8a55; --red:#c0392b;
+  --green-soft:rgba(15,157,99,.12); --red-soft:rgba(192,57,43,.10);
+  --grad-card:#fffdfa; --shadow:0 1px 2px rgba(120,80,20,.06), 0 4px 14px rgba(120,80,20,.06);
+  --gold-text:linear-gradient(180deg,#ffe0a3,#e7a24c);
+  --glass:#fffdfa; --glass-brd:rgba(160,120,45,.2);
 }
-body {
-  background:
-    radial-gradient(560px 320px at 50% -8%, rgba(231,162,76,.18), transparent 60%),
-    radial-gradient(460px 300px at 108% 6%, rgba(231,162,76,.10), transparent 60%),
-    linear-gradient(180deg, #242932, #1a1e25) fixed;
+html, body { background:#f6f1e8; }
+body { background: radial-gradient(600px 300px at 100% -6%, rgba(231,162,76,.08), transparent 60%), #f6f1e8; color:var(--text); }
+
+/* Header = slate letterhead + orange rule + gold name */
+.topbar.light { background: radial-gradient(360px 140px at 100% 0, rgba(231,162,76,.24), transparent 60%), linear-gradient(160deg,#2b3039,#1b1f26); border-bottom:3px solid #e7a24c; box-shadow:0 2px 10px rgba(0,0,0,.18); }
+.topbar .back, .topbar .icon-btn, .icon-btn.dark { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#ffd89a; }
+
+/* Cards = white with orange left accent bar (ledger) */
+.sum-card, .mini, .cust, .txn, .quote, .recent, .detail-head, .card-block, .ov-panel, .wd-bar {
+  background:#fffdfa; border:1px solid var(--border); border-left:4px solid #e7a24c; color:var(--text);
+  box-shadow:0 1px 2px rgba(120,80,20,.06), 0 4px 14px rgba(120,80,20,.06);
 }
-.topbar.light { background: linear-gradient(180deg, rgba(231,162,76,.08), transparent), linear-gradient(180deg,#2a2f38,#20242c); border-bottom: 1px solid rgba(231,162,76,.2); }
-
-/* ---- Orange 3D glass panels (data cards) ---- */
-.sum-card, .mini, .cust, .txn, .quote, .recent, .detail-head {
-  position: relative; background: var(--panel); border: 1px solid var(--panel-brd); color: var(--on-dark);
+.sum-card::before,.mini::before,.cust::before,.txn::before,.quote::before,.recent::before,.detail-head::before { display:none; }
+.sum-card .label,.mini .m-lbl,.cust .phone,.cust .bal .tag,.txn .t-date,.quote .q-meta,.recent .r-date,.detail-head .phone {
+  color:var(--muted); background:none; padding:0; box-shadow:none; border-radius:0; display:block; font-weight:600;
 }
-.sum-card, .mini, .detail-head { box-shadow: var(--panel-sh); }           /* hero tiles: full 3D */
-.cust, .txn, .quote, .recent { box-shadow: var(--panel-sh-lite); }        /* list rows: halka (lambi list) */
-.sum-card::before, .mini::before, .cust::before, .txn::before, .quote::before, .recent::before, .detail-head::before {
-  content:""; position:absolute; left:0; right:0; top:0; height:44%; border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,0)); pointer-events:none;
-}
-.sum-card > *, .mini > *, .cust > *, .txn > *, .quote > *, .recent > *, .detail-head > * { position: relative; z-index: 1; }
+.txn .t-note,.quote .q-job { background:none; padding:0; border-radius:0; display:block; color:var(--text); }
+.cust .name,.detail-head .name { color:var(--text); }
+.mini .m-val { background:none; -webkit-background-clip:initial; background-clip:initial; color:#c9851f; }
+.mini .m-val.pos { color:var(--green); } .mini .m-val.neg { color:var(--red); }
+.quote .q-rate { background:none; -webkit-background-clip:initial; background-clip:initial; color:#c9851f; }
+.sum-card.lena .val { color:var(--green); } .sum-card.dena .val { color:var(--red); }
+.cust:hover { border-color:rgba(231,162,76,.5); }
 
-/* text on orange -> dark + gehre semantic rang */
-.sum-card .label, .cust .phone, .cust .bal .tag, .mini .m-lbl, .txn .t-date, .quote .q-meta, .recent .r-date, .detail-head .phone { color: var(--on-muted); }
-.cust .name, .txn .t-note, .quote .q-job, .recent .r-name, .detail-head .name, .cust .bal .amt { color: var(--on-dark); }
-.mini .m-val { background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--on-dark); }
-.quote .q-rate { background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--on-dark); }
-.sum-card.lena .val, .mini .m-val.pos, .cust .bal .amt.pos, .ov-panel .cust .bal .amt.pos, .txn.credit .t-amt, .recent.credit .r-amt { color: var(--on-green); }
-.sum-card.dena .val, .mini .m-val.neg, .cust .bal .amt.neg, .ov-panel .cust .bal .amt.neg, .txn.debit .t-amt, .recent.debit .r-amt { color: var(--on-red); }
-.txn .t-bal { background: rgba(120,70,15,.14); border-color: rgba(120,70,15,.28); color: var(--on-muted); }
-.txn .t-bal.pos { color: var(--on-green); } .txn .t-bal.neg { color: var(--on-red); } .txn .t-bal.zero { color: var(--on-muted); }
-.txn .t-icon, .ov-panel .t-icon, .recent .r-ic { background: rgba(255,255,255,.30) !important; color: #5a3c08 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
-.txn .t-del { color: #7a5a1e; }
-.txn .t-send { background: rgba(255,255,255,.4); border-color: rgba(120,70,15,.3); color: #0b5a3d; }
-.cust:hover { border-color: rgba(255,235,190,.8); }
+/* txn icon chips + bal pill on white */
+.txn .t-icon { box-shadow:none; }
+.txn.debit .t-icon, .ov-panel .t-icon.debit { background:var(--red-soft); color:var(--red); }
+.txn.credit .t-icon, .ov-panel .t-icon.credit { background:var(--green-soft); color:var(--green); }
+.txn .t-bal { background:rgba(231,162,76,.12); border:1px solid rgba(201,133,31,.28); color:var(--muted); }
+.txn .t-bal.pos { color:var(--green); } .txn .t-bal.neg { color:var(--red); } .txn .t-bal.zero { color:var(--muted); }
+.txn .t-del { color:#b0a08a; }
+.txn .t-send { background:rgba(15,157,99,.10); border:1px solid rgba(15,157,99,.3); color:var(--green); }
 
-/* Settings ke form-blocks orange NAHI (inputs/light-text readable rahein) — slate glass */
-.card-block { background: var(--glass); border: 1px solid var(--glass-brd); color: var(--text); }
+/* balance-box (detail head) */
+.detail-head .balance-box .b-label { color:var(--muted); }
+.detail-head .balance-box.pos, .detail-head .balance-box.pos .b-amt { color:var(--green); }
+.detail-head .balance-box.neg, .detail-head .balance-box.neg .b-amt { color:var(--red); }
+.detail-head .balance-box.zero, .detail-head .balance-box.zero .b-amt { color:var(--text); }
 
-/* detail-head ke andar balance-box orange par readable */
-.detail-head .balance-box { background: rgba(255,255,255,.34); border-color: rgba(120,70,15,.25); }
-.detail-head .balance-box .b-label { color: var(--on-muted); }
-.detail-head .balance-box.pos, .detail-head .balance-box.pos .b-amt { color: var(--on-green); }
-.detail-head .balance-box.neg, .detail-head .balance-box.neg .b-amt { color: var(--on-red); }
-.detail-head .balance-box.zero, .detail-head .balance-box.zero .b-amt { color: var(--on-dark); }
-
-/* ---- Profile-icon avatar (initials ki jagah default person) ---- */
-.avatar {
-  background: radial-gradient(circle at 50% 32%, rgba(255,255,255,.55), rgba(255,255,255,.30)) !important;
-  color: transparent !important; font-size: 0 !important; text-shadow: none !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -3px 6px rgba(150,80,10,.22), 0 3px 8px rgba(120,70,15,.25);
-}
+/* avatar = cream circle + orange person icon (initials ki jagah) */
+.avatar { background:#faf0dc !important; border:1px solid rgba(201,133,31,.3); box-shadow:none; color:transparent !important; font-size:0 !important; text-shadow:none !important; }
 .avatar::after {
-  content:""; width: 60%; height: 60%; background: #6a4410;
+  content:""; width:58%; height:58%; background:#c9851f;
   -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='8' r='4'/><path d='M12 14c-4.4 0-8 2.9-8 6.5V22h16v-1.5c0-3.6-3.6-6.5-8-6.5z'/></svg>") center/contain no-repeat;
           mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='8' r='4'/><path d='M12 14c-4.4 0-8 2.9-8 6.5V22h16v-1.5c0-3.6-3.6-6.5-8-6.5z'/></svg>") center/contain no-repeat;
 }
 
-/* ============ v68 — orange par muted text saaf + har chhote text ka apna translucent block ============ */
-/* Labels/date/tag ab gehre rang + halke safed pill me (jaise 'Bal.' wala block) — alag alag saaf nazar aayein */
-.sum-card .label, .mini .m-lbl, .cust .phone, .cust .bal .tag, .txn .t-date, .quote .q-meta, .recent .r-date, .detail-head .phone {
-  color: #5a3d08; font-weight: 700;
-  background: rgba(255,255,255,.36); padding: 2px 9px; border-radius: 8px;
-  display: inline-block; box-shadow: inset 0 1px 0 rgba(255,255,255,.45);
-}
-.mini .m-lbl { margin-top: 5px; }
-.sum-card .label { margin-bottom: 6px; }
-/* tafseel/note ko bhi halka block taake alag nazar aaye */
-.txn .t-note, .quote .q-job { background: rgba(255,255,255,.24); padding: 3px 9px; border-radius: 9px; display: inline-block; }
+/* modals / dropdown / toast */
+.modal { background:#fffdf9; border:1px solid var(--border); border-top:3px solid #e7a24c; box-shadow:0 -20px 60px rgba(80,50,10,.25); }
+.cust-drop { background:#fffdf9; border:1px solid var(--border); }
+.cust-opt { color:var(--text); border-bottom:1px solid var(--line-soft); }
+.cust-opt span { color:var(--muted); }
+.cust-opt:active { background:rgba(231,162,76,.12); }
+.toast { background:#2b3039; border:1px solid rgba(231,162,76,.4); color:#ffd89a; }
+
+/* bottom nav */
+.bottomnav { background:#fffdf9; border-top:1px solid var(--border); box-shadow:0 -4px 18px rgba(80,50,10,.10); }
+.bottomnav button.active { color:#c9851f; }
+
+/* inputs / search / seg / tabs / calc / type-toggle */
+.field input, .field textarea, .field select, .search { background:#fff; border:1px solid var(--border); color:var(--text); }
+.field input::placeholder, .field textarea::placeholder, .search::placeholder { color:#b0a084; }
+.field input:focus, .field textarea:focus, .field select:focus, .search:focus { border-color:rgba(231,162,76,.6); }
+.amount-input { background:#fff !important; }
+.seg, .tab { background:#f1e9da; border:1px solid var(--border); }
+.seg button, .tab { color:var(--muted); }
+.seg button.active, .tab.active { background:var(--grad-orange); color:#3a2705; }
+.calc-pad button { background:#fff; border:1px solid var(--border); color:var(--text); }
+.calc-pad button.op { background:rgba(231,162,76,.14); color:#c9851f; border-color:rgba(231,162,76,.3); }
+.calc-pad button.eq { background:var(--grad-orange); color:#3a2705; }
+.calc-pad button.del { background:var(--red-soft); color:var(--red); }
+.type-toggle button { background:#fff; border:1px solid var(--border); color:var(--muted); }
+
+/* misc light fixes */
+.reminder-btn { background:linear-gradient(180deg,#f8c471,#e7a24c); border:none; color:#3a2705; box-shadow:0 5px 0 rgba(150,90,10,.30), 0 10px 20px rgba(231,162,76,.35), inset 0 1px 0 rgba(255,255,255,.6); }
+.cancel { background:#efe4d2; color:#5a4a2a; border:1px solid var(--border); }
+.btn-link { color:#c9851f; background:rgba(231,162,76,.12); border:1px solid var(--border); }
+.section-title { color:#c9851f; }
+.banner { background:rgba(231,162,76,.14); border:1px solid var(--border); color:#8a5a12; }
+.hint, .settings-note, .app-ver { color:var(--muted); }
+.switch-row { color:var(--text); }
+.switch-row input[type=checkbox] { background:#d8ccb8; }
+.wd-bar.active { background:rgba(231,162,76,.12); border-color:rgba(231,162,76,.55); }
+.add-quote { border:1.5px dashed rgba(201,133,31,.5); background:rgba(231,162,76,.06); color:#a5701a; }
