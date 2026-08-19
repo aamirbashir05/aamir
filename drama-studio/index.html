@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Khaleeji Drama Studio — Al Tariq Printers</title>
-<meta name="description" content="Ek story idea daalo — poore 6-scene ka Veo blueprint milega: har scene ka Image Prompt + Video Prompt, character bible, Arabic dialogue, captions & hashtags. Mobile aur PC dono pe.">
-<link rel="icon" href="assets/favicon.png" type="image/png">
-<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<title>Drama Studio — AI Micro-Drama Blueprint for Veo 3</title>
+<meta name="description" content="Ek story idea daalo — poore 6-scene ka Veo blueprint milega: har scene ka Image Prompt + Video Prompt, character bible, Arabic dialogue, captions & hashtags. Mobile aur PC dono pe. Bilkul standalone.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E">
 <meta name="theme-color" content="#08090c">
-<meta property="og:title" content="Khaleeji Drama Studio — Al Tariq Printers">
+<meta property="og:title" content="Drama Studio — AI Micro-Drama Blueprint for Veo 3">
 <meta property="og:description" content="Story idea → poore 6-scene Veo prompts, character bible, Arabic dialogue, captions. 1 click.">
 <style>
   :root{
@@ -33,13 +32,14 @@
   /* nav */
   .nav{position:sticky;top:0;z-index:60;backdrop-filter:blur(12px);
     background:rgba(8,9,12,.72);border-bottom:1px solid var(--line)}
-  .nav .row{display:flex;align-items:center;gap:12px;height:64px}
+  .nav .row{display:flex;align-items:center;gap:12px;height:60px}
   .brand{display:flex;align-items:center;gap:10px}
-  .brand img{height:34px;filter:drop-shadow(0 4px 12px rgba(231,162,76,.4))}
+  .brand .logo{width:36px;height:36px;border-radius:10px;background:var(--grad-gold);color:#241a08;
+    display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(231,162,76,.4)}
   .brand b{font-weight:900;font-size:16px}
-  .brand span.k{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-  .nav .back{font-weight:800;font-size:13px;color:var(--gold);
-    border:1px solid var(--line);padding:9px 15px;border-radius:30px;background:rgba(231,162,76,.08)}
+  .brand span.k{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;display:block}
+  .nav .ver{margin-left:auto;font-weight:800;font-size:11px;color:var(--muted);
+    border:1px solid var(--line);padding:6px 12px;border-radius:30px;background:rgba(231,162,76,.05)}
 
   /* hero */
   .hero{text-align:center;padding:clamp(24px,5vw,46px) 0 8px}
@@ -149,23 +149,20 @@
   footer{text-align:center;color:var(--muted);font-size:12.5px;padding:22px 0 40px;border-top:1px solid var(--line)}
   footer b{color:var(--gold)}
   @media(max-width:720px){.steps{grid-template-columns:1fr 1fr}}
-  @media(max-width:520px){.nav .back.hideSm{display:none}}
 </style>
 </head>
 <body>
   <nav class="nav"><div class="wrap row">
-    <a class="brand" href="index.html">
-      <img src="assets/mark.png" alt="Al Tariq" onerror="this.style.display='none'">
-      <span style="display:flex;flex-direction:column;line-height:1.1">
-        <b>Al Tariq Printers</b><span class="k">Khaleeji Drama Studio</span>
+    <a class="brand" href="#top">
+      <span class="logo">🎬</span>
+      <span style="line-height:1.1">
+        <b>Drama Studio</b><span class="k">Veo 3 blueprint generator</span>
       </span>
     </a>
-    <a class="back hideSm" href="studio.html" style="margin-left:auto">✂ BG Remover</a>
-    <a class="back hideSm" href="upscale.html" style="margin-left:10px">⬆ Upscaler</a>
-    <a class="back" href="index.html" style="margin-left:auto">← Website</a>
+    <span class="ver">Standalone</span>
   </div></nav>
 
-  <div class="wrap">
+  <div class="wrap" id="top">
     <section class="hero">
       <span class="eyebrow">Khaleeji · Family Drama · Veo 3</span>
       <h1>Story do → poora <span class="gold">6-scene blueprint</span></h1>
@@ -309,9 +306,7 @@
     </section>
 
     <footer>
-      Powered by <b>Al Tariq Printers</b> ·
-      <a href="index.html" style="color:var(--gold)">altariqprinters.store</a><br>
-      <span style="font-size:11.5px">Aapki key aur stories sirf is device ke browser mein rehti hain.</span>
+      <b>🎬 Drama Studio</b> — standalone tool · aapki key aur stories sirf is device ke browser mein rehti hain.
     </footer>
   </div>
 
@@ -320,7 +315,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-const LS = { key:'atp_drama_key', model:'atp_drama_model', lang:'atp_drama_lang', bible:'atp_drama_bible' };
+const LS = { key:'drama_key', model:'drama_model', lang:'drama_lang', bible:'drama_bible' };
 let MODE = 'auto';
 let lastData = null;
 
@@ -456,7 +451,6 @@ function parseJSON(txt){
 
 /* ---------- render ---------- */
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function copyBlockBtn(sel){ return `<button class="btn btn-ghost btn-sm copy" data-copy="${sel}">📋 Copy</button>`; }
 
 function render(d){
   lastData = d;
