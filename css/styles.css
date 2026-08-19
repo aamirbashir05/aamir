@@ -625,3 +625,16 @@ body { background: radial-gradient(600px 300px at 100% -6%, rgba(231,162,76,.08)
 /* PIN lock keypad — light (numbers black-on-black nahi, ab saaf) */
 .lock-pad button { background:#fff; color:var(--text); border:1px solid var(--border); box-shadow:0 2px 8px rgba(120,80,20,.07); }
 .lock-pad button:active { background:rgba(231,162,76,.18); }
+
+/* AMOUNT/PAYMENT ke peeche pill/block (poori app: customer balance, entry amount, recent) */
+.cust .bal .amt, .txn .t-amt, .recent .r-amt {
+  display:inline-block; padding:5px 12px; border-radius:20px; font-weight:900;
+  background:rgba(201,133,31,.10); border:1px solid rgba(201,133,31,.28); color:#a5701a;
+}
+.cust .bal .amt.pos, .txn.credit .t-amt, .recent.credit .r-amt {
+  background:rgba(15,157,99,.10); border-color:rgba(15,157,99,.32); color:var(--green);
+}
+.cust .bal .amt.neg, .txn.debit .t-amt, .recent.debit .r-amt {
+  background:rgba(192,57,43,.09); border-color:rgba(192,57,43,.32); color:var(--red);
+}
+.cust .bal .tag { margin-top:5px; }
