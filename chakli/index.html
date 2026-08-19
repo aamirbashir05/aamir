@@ -177,7 +177,7 @@
   .tbtn:active { transform:translateY(1px); }
   .tbtn.tincome.on { background:linear-gradient(145deg,#16a34a,#0f7a3a); color:#fff; border-color:transparent; box-shadow:0 8px 18px rgba(22,163,74,0.35); }
   .tbtn.texpense.on { background:linear-gradient(145deg,#ef4444,#c81e1e); color:#fff; border-color:transparent; box-shadow:0 8px 18px rgba(220,38,38,0.35); }
-  .chips { display:flex; flex-wrap:wrap; gap:8px; max-height:210px; overflow-y:auto; padding:10px; background:#eef2f0; border-radius:14px; border:1px solid #e2e7e4; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; max-height:340px; overflow-y:auto; padding:12px; background:#eef2f0; border-radius:14px; border:1px solid #e2e7e4; }
   .chip2 { padding:10px 13px; border-radius:22px; background:#fff; border:1.5px solid #e5e7eb; font-size:13.5px; font-weight:800; color:#1f2937; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
   .chip2:active { transform:translateY(1px); }
   .chip2.on { background:linear-gradient(145deg,#16a34a,#0f7a3a); color:#fff; border-color:transparent; box-shadow:0 6px 14px rgba(22,163,74,0.4); }
@@ -337,12 +337,9 @@
       <div class="chips" id="e-chips"></div>
     </div>
 
-    <div class="fg"><label>Tafseel</label><input id="e-desc" type="text" placeholder="Naam ya wajah"></div>
-    <div id="e-newmember-row" style="display:none; margin-top:4px; background:#eefaf1; border:1px solid #c3e9d1; border-radius:12px; padding:11px 13px;">
-      <label style="display:flex; align-items:flex-start; gap:9px; cursor:pointer; font-weight:800; color:#0f5132; font-size:13.5px;">
-        <input type="checkbox" id="e-newmember" style="width:auto; margin:3px 0 0 0;">
-        <span>Naya member bhi add karein<br><span style="font-weight:600;color:#6b7280;font-size:12px;">(Naya banda list mein aa jayega. Bill/Kharcha ho to uncheck.)</span></span>
-      </label>
+    <div class="fg" id="e-name-row" style="display:none;">
+      <label id="e-name-label">Naye bande ka naam</label>
+      <input id="e-newname" type="text" placeholder="Naam likhein...">
     </div>
 
     <div class="fg"><label>Raqam (Rs)</label><input id="e-amount" type="tel" inputmode="numeric" placeholder="Kitne paise?"></div>
@@ -551,12 +548,12 @@ function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;'
 let entryType='income', entrySel=null;
 function openEntry(){
   entryType='income'; entrySel=null; setTypeUI(); renderEntryChips();
-  $('e-desc').value=''; $('e-amount').value='';
+  $('e-newname').value=''; $('e-amount').value='';
   $('e-month').value=viewYM.y+'-'+String(viewYM.m).padStart(2,'0');
-  updateNewMemberRow();
+  updateNameRow();
   openModal('modal-entry');
 }
-function setType(t){ entryType=t; setTypeUI(); updateNewMemberRow(); }
+function setType(t){ entryType=t; setTypeUI(); updateNameRow(); }
 function setTypeUI(){
   $('type-income').classList.toggle('on', entryType==='income');
   $('type-expense').classList.toggle('on', entryType==='expense');
@@ -570,34 +567,45 @@ function renderEntryChips(){
 function selectChip(id){
   entrySel=id;
   if(id){ const mm=DATA.members.find(x=>x.id===id);
-    if(mm){ $('e-desc').value = isOthers(mm)?'':(mm.name+' (Monthly Payment)'); entryType='income'; setTypeUI();
-      if(mm.amount>0 && !$('e-amount').value) $('e-amount').value=mm.amount; } }
-  renderEntryChips(); updateNewMemberRow();
-  if(id===null) $('e-desc').focus();
+    if(mm && mm.amount>0 && !$('e-amount').value) $('e-amount').value=mm.amount; }
+  renderEntryChips(); updateNameRow();
+  if(id===null) setTimeout(()=>{ const n=$('e-newname'); if(n) n.focus(); }, 60);
 }
-// Naya member checkbox: sirf jab koi member select na ho (Naya/Doosra). Wasooli ke liye default on.
-function updateNewMemberRow(){
+// Naam field sirf "Naya/Doosra" par dikhta hai. Wasooli=naye bande ka naam, Kharcha=wajah.
+function updateNameRow(){
   const isDoosra = (entrySel===null);
-  $('e-newmember-row').style.display = isDoosra ? 'block' : 'none';
-  if(isDoosra) $('e-newmember').checked = (entryType==='income');
+  $('e-name-row').style.display = isDoosra ? 'block' : 'none';
+  if(isDoosra){
+    if(entryType==='income'){ $('e-name-label').textContent='Naye bande ka naam'; $('e-newname').placeholder='Naam likhein (member ban jayega)...'; }
+    else { $('e-name-label').textContent='Kharcha kis cheez ka? (wajah)'; $('e-newname').placeholder='Misaal: Qari Sahab, Bijli bill...'; }
+  }
 }
 function saveEntry(){
-  let memberId=entrySel;
-  const desc=$('e-desc').value.trim();
   const amount=parseFloat($('e-amount').value);
   const type=entryType;
   const mv=$('e-month').value;
-  if(desc===''){ toast('Tafseel likhein'); return; }
   if(!(amount>0)){ toast('Sahi raqam likhein'); return; }
   if(!mv){ toast('Mahina chunein'); return; }
   const y=+mv.split('-')[0], m=+mv.split('-')[1];
-  // Naya member auto-add: agar koi maujooda member select nahi aur checkbox on hai
-  let addedName=null;
-  if(!memberId && $('e-newmember').checked){
-    const nm = desc.replace(/\s*\(.*\)\s*$/,'').trim() || desc;
-    const ex = DATA.members.find(mm=> mm.name.toLowerCase()===nm.toLowerCase());
-    if(ex){ memberId = ex.id; }
-    else { const nid=uid(); DATA.members.push({ id:nid, name:nm, amount: amount||0 }); memberId=nid; addedName=nm; }
+
+  let memberId=entrySel, desc='', addedName=null;
+  if(entrySel){
+    // Maujooda member (ya Others) chip
+    const mm=DATA.members.find(x=>x.id===entrySel); const nm=mm?mm.name:'';
+    desc = (type==='income' && mm && !isOthers(mm)) ? (nm+' (Monthly Payment)') : nm;
+  } else {
+    // Naya / Doosra — naam/wajah zaroori
+    const nm=$('e-newname').value.trim();
+    if(nm===''){ toast(type==='income'?'Naye bande ka naam likhein':'Kharcha ki wajah likhein'); return; }
+    if(type==='income'){
+      // Wasooli: naya banda member ban jaye (ya maujooda se link)
+      const ex=DATA.members.find(mm=> mm.name.toLowerCase()===nm.toLowerCase());
+      if(ex){ memberId=ex.id; desc=ex.name+' (Monthly Payment)'; }
+      else { const nid=uid(); DATA.members.push({ id:nid, name:nm, amount: amount||0 }); memberId=nid; addedName=nm; desc=nm+' (Monthly Payment)'; }
+    } else {
+      // Kharcha: bill/wajah, koi member nahi
+      memberId=null; desc=nm;
+    }
   }
   DATA.txns.push({ id:uid(), desc, amount, type, m, y, memberId, date:todayStr(), addedBy: currentAdmin?currentAdmin.name:'' });
   saveData(); closeModal('modal-entry');
