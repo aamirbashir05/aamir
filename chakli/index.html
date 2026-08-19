@@ -312,10 +312,16 @@
     <div class="fg"><label>Member (ya "Doosra")</label>
       <select id="e-member" onchange="entryMemberChange()"></select></div>
     <div class="fg"><label>Tafseel</label><input id="e-desc" type="text" placeholder="Naam ya wajah"></div>
+    <div id="e-newmember-row" style="display:none; margin-top:10px; background:#eefaf1; border:1px solid #c3e9d1; border-radius:12px; padding:11px 13px;">
+      <label style="display:flex; align-items:flex-start; gap:9px; cursor:pointer; font-weight:800; color:#0f5132; font-size:13.5px;">
+        <input type="checkbox" id="e-newmember" style="width:auto; margin:3px 0 0 0;">
+        <span>Naya member bhi add karein<br><span style="font-weight:600;color:#6b7280;font-size:12px;">(Agar list mein nahi. Bill/Kharcha ho to uncheck karein.)</span></span>
+      </label>
+    </div>
     <div class="row2">
       <div class="fg"><label>Raqam (Rs)</label><input id="e-amount" type="tel" placeholder="0"></div>
       <div class="fg"><label>Qisam</label>
-        <select id="e-type"><option value="income">Wasooli (aaye)</option><option value="expense">Kharcha (diye)</option></select></div>
+        <select id="e-type" onchange="updateNewMemberRow()"><option value="income">Wasooli (aaye)</option><option value="expense">Kharcha (diye)</option></select></div>
     </div>
     <div class="fg"><label>Mahina</label><input id="e-month" type="month"></div>
     <button class="save-btn" onclick="saveEntry()">Save Karein</button>
@@ -445,7 +451,15 @@ function doSetup(){
 function logout(){ currentAdmin=null; pinBuf=''; boot(); }
 
 /* ---------- app ---------- */
-function enterApp(){ viewYM=nowYM(); show('screen-app'); showTab('home'); }
+function enterApp(){ viewYM=nowYM(); ensureOthers(); show('screen-app'); showTab('home'); }
+
+// "Others" ek permanent member — jin logon ka naam na aaye unki payment yahan.
+function ensureOthers(){
+  if(!DATA.members.some(m=> (m.name||'').trim().toLowerCase()==='others')){
+    DATA.members.push({ id:uid(), name:'Others', amount:0 }); saveData();
+  }
+}
+function isOthers(mem){ return (mem.name||'').trim().toLowerCase()==='others'; }
 
 function showTab(t){
   ['home','members','share','more'].forEach(x=> $('tab-'+x).classList.toggle('hidden', x!==t));
@@ -481,12 +495,19 @@ function renderMembers(){
   const {y,m}=viewYM;
   $('mem-month').textContent=MONTHS[m]+' '+y;
   const mt=monthTotals(y,m); $('mem-total').textContent=money(mt.inc);
-  let paidN=0; let h='';
-  DATA.members.forEach(mem=>{ const p=memberPaid(mem.id,y,m); const paid=p>0; if(paid)paidN++;
+  let paidN=0, denom=0, h='', othersHtml='';
+  DATA.members.forEach(mem=>{ const p=memberPaid(mem.id,y,m); const paid=p>0;
+    if(isOthers(mem)){
+      othersHtml=`<div class="mcell ${paid?'paid':''}"><div class="nm">👥 ${esc(mem.name)}</div>
+        <div class="st" style="color:#0d4f3c;">${money(p)}</div></div>`;
+      return;
+    }
+    denom++; if(paid)paidN++;
     h+=`<div class="mcell ${paid?'paid':'pend'}"><div class="nm">${esc(mem.name)}</div>
       <div class="st">${paid? '✓ '+money(p) : '⏳ Pending'}</div></div>`; });
-  $('mem-grid').innerHTML= DATA.members.length? h : '<div style="grid-column:1/3;text-align:center;color:#9ca3af;padding:16px;">Koi member nahi.</div>';
-  $('mem-paidcount').innerHTML=paidN+' / '+DATA.members.length+'<br>paid';
+  h+=othersHtml;
+  $('mem-grid').innerHTML= (DATA.members.length? h : '<div style="grid-column:1/3;text-align:center;color:#9ca3af;padding:16px;">Koi member nahi.</div>');
+  $('mem-paidcount').innerHTML=paidN+' / '+denom+'<br>paid';
   // non-member entries
   const others=DATA.txns.filter(t=> t.y===y && t.m===m && (!t.memberId || !isMemberId(t.memberId)));
   if(others.length){ let oh='<div class="otherbox"><h4>DOOSRI ENTRIES</h4>';
@@ -510,14 +531,23 @@ function openEntry(){
   sel.innerHTML=o; sel.value='';
   $('e-desc').value=''; $('e-amount').value=''; $('e-type').value='income';
   $('e-month').value=viewYM.y+'-'+String(viewYM.m).padStart(2,'0');
+  updateNewMemberRow();
   openModal('modal-entry');
 }
 function entryMemberChange(){
   const id=$('e-member').value;
   if(id){ const mm=DATA.members.find(x=>x.id===id); if(mm){ $('e-desc').value=mm.name+' (Monthly Payment)'; $('e-type').value='income'; if(mm.amount>0 && !$('e-amount').value) $('e-amount').value=mm.amount; } }
+  updateNewMemberRow();
+}
+// Naya member checkbox row: sirf tab dikhe jab koi maujooda member select na ho.
+// Income (wasooli) ke liye default checked (naye bande ki payment), kharcha ke liye off.
+function updateNewMemberRow(){
+  const isDoosra = $('e-member').value==='';
+  $('e-newmember-row').style.display = isDoosra ? 'block' : 'none';
+  if(isDoosra) $('e-newmember').checked = ($('e-type').value==='income');
 }
 function saveEntry(){
-  const memberId=$('e-member').value||null;
+  let memberId=$('e-member').value||null;
   const desc=$('e-desc').value.trim();
   const amount=parseFloat($('e-amount').value);
   const type=$('e-type').value;
@@ -526,8 +556,17 @@ function saveEntry(){
   if(!(amount>0)){ toast('Sahi raqam likhein'); return; }
   if(!mv){ toast('Mahina chunein'); return; }
   const y=+mv.split('-')[0], m=+mv.split('-')[1];
+  // Naya member auto-add: agar koi maujooda member select nahi aur checkbox on hai
+  let addedName=null;
+  if(!memberId && $('e-newmember').checked){
+    const nm = desc.replace(/\s*\(.*\)\s*$/,'').trim() || desc;
+    const ex = DATA.members.find(mm=> mm.name.toLowerCase()===nm.toLowerCase());
+    if(ex){ memberId = ex.id; }
+    else { const nid=uid(); DATA.members.push({ id:nid, name:nm, amount: amount||0 }); memberId=nid; addedName=nm; }
+  }
   DATA.txns.push({ id:uid(), desc, amount, type, m, y, memberId, date:todayStr(), addedBy: currentAdmin?currentAdmin.name:'' });
-  saveData(); closeModal('modal-entry'); toast('Entry save ho gayi ✓');
+  saveData(); closeModal('modal-entry');
+  toast(addedName ? ('Entry + naya member: '+addedName+' ✓') : 'Entry save ho gayi ✓');
   showTab('home');
 }
 
@@ -643,11 +682,19 @@ function buildSummaryReport(){
 }
 function buildMembersReport(){
   const {y,m}=viewYM; const mt=monthTotals(y,m);
-  let paidN=0; let cells='';
-  DATA.members.forEach(mem=>{ const p=memberPaid(mem.id,y,m); const paid=p>0; if(paid)paidN++;
+  let paidN=0, denom=0, cells='', othersCell='';
+  DATA.members.forEach(mem=>{ const p=memberPaid(mem.id,y,m); const paid=p>0;
+    if(isOthers(mem)){
+      othersCell=`<div style="background:${paid?'#effaf2':'#f6f8f7'};border:1.5px solid ${paid?'#c3e9d1':'#e5e7eb'};border-radius:12px;padding:10px 12px;">
+        <div style="font-size:13px;font-weight:800;color:#111;">👥 ${esc(mem.name)}</div>
+        <div style="font-size:12.5px;font-weight:800;margin-top:4px;color:#0d4f3c;">${money(p)}</div></div>`;
+      return;
+    }
+    denom++; if(paid)paidN++;
     cells+=`<div style="background:${paid?'#effaf2':'#fff'};border:1.5px solid ${paid?'#c3e9d1':'#eee'};border-radius:12px;padding:10px 12px;">
       <div style="font-size:13px;font-weight:800;color:#111;">${esc(mem.name)}</div>
       <div style="font-size:12.5px;font-weight:800;margin-top:4px;color:${paid?'#16a34a':'#b0873a'};">${paid?'✓ '+money(p):'⏳ Pending'}</div></div>`; });
+  cells+=othersCell;
   const others=DATA.txns.filter(t=> t.y===y && t.m===m && (!t.memberId || !isMemberId(t.memberId)));
   let orows=''; others.forEach(t=> orows+=`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f4f2;font-size:14px;"><span>${esc(t.desc)}</span><span style="font-weight:800;color:${t.type==='income'?'#16a34a':'#dc2626'};">${t.type==='income'?'+':'-'} ${money(t.amount)}</span></div>`);
   const d=document.createElement('div'); d.style.cssText=rStyle()+"background:#eef2f0;padding:0 0 16px;";
@@ -657,7 +704,7 @@ function buildMembersReport(){
       <div><div style="font-size:19px;font-weight:850;">Chakli Payments</div><div style="font-size:11px;letter-spacing:2px;color:#ffd97a;font-weight:800;">MASJID HISAAB</div></div></div>
       <div style="margin-top:14px;"><div style="font-size:12px;opacity:.85;letter-spacing:1px;">${MONTHS[m].toUpperCase()} ${y} KI WASOOLI</div>
       <div style="font-size:32px;font-weight:850;">${money(mt.inc)}</div>
-      <div style="font-size:12px;opacity:.9;">${paidN} / ${DATA.members.length} members ne payment ki</div></div></div>
+      <div style="font-size:12px;opacity:.9;">${paidN} / ${denom} members ne payment ki</div></div></div>
     <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:#6b7280;margin:16px 16px 10px;">MEMBERS KI PAYMENT STATUS</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:0 16px;">${cells}</div>
     ${orows? `<div style="background:#fff;margin:14px 16px 0;border-radius:14px;padding:14px 16px;box-shadow:0 3px 10px rgba(0,0,0,0.05);"><div style="font-size:12px;letter-spacing:1px;color:#6b7280;margin-bottom:6px;">DOOSRI ENTRIES</div>${orows}
