@@ -621,3 +621,7 @@ body { background: radial-gradient(600px 300px at 100% -6%, rgba(231,162,76,.08)
 .switch-row input[type=checkbox] { background:#d8ccb8; }
 .wd-bar.active { background:rgba(231,162,76,.12); border-color:rgba(231,162,76,.55); }
 .add-quote { border:1.5px dashed rgba(201,133,31,.5); background:rgba(231,162,76,.06); color:#a5701a; }
+
+/* PIN lock keypad — light (numbers black-on-black nahi, ab saaf) */
+.lock-pad button { background:#fff; color:var(--text); border:1px solid var(--border); box-shadow:0 2px 8px rgba(120,80,20,.07); }
+.lock-pad button:active { background:rgba(231,162,76,.18); }
