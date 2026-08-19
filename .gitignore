@@ -86,3 +86,6 @@ lint/tmp/
 
 # Scratch/working files (not part of the site)
 scratchpad/
+
+# Extension build artifact (source lives in extension/)
+*.zip
