@@ -85,6 +85,7 @@
             <button class="small-btn btn-restore" onclick="importData()">♻️ Restore (Load)</button>
         </div>
         <input type="file" id="restore-file" accept="application/json,.json,.txt" style="display:none" onchange="loadFile(this)">
+        <button class="small-btn" style="width:100%;background-color:#7c3aed;margin-bottom:8px;" onclick="showAllData()">🔍 Saara Data Dikhayein (Diagnostic)</button>
         <details>
             <summary>Backup text (copy/paste yahan)</summary>
             <textarea id="backup-text" placeholder="Backup dabane par yahan data aayega. Restore ke liye yahan backup text paste karein."></textarea>
@@ -277,14 +278,49 @@
     }
 
     // ===================== BACKUP / RESTORE (naya) =====================
+    function getAllStorage() {
+        const all = {};
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                all[k] = localStorage.getItem(k);
+            }
+        } catch (e) { console.log(e); }
+        return all;
+    }
+
+    function safeParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
+
     function getBackupObject() {
         return {
             app: "ChakliPayments",
-            format: 1,
+            format: 2,
             exportedAt: new Date().toISOString(),
-            transactions: JSON.parse(localStorage.getItem('chakliApp_Pro_Version')) || transactions || [],
-            members: JSON.parse(localStorage.getItem('chakliMembers_Final')) || memberNames || []
+            // Aasan restore ke liye maaloom keys
+            transactions: safeParse(localStorage.getItem('chakliApp_Pro_Version')),
+            members: safeParse(localStorage.getItem('chakliMembers_Final')),
+            // POORA localStorage — taake kisi bhi naam (key) ka purana data miss na ho
+            allStorage: getAllStorage()
         };
+    }
+
+    // Diagnostic: phone mein maujood SAARE naam (keys) aur unka size dikhayein
+    function showAllData() {
+        const all = getAllStorage();
+        const keys = Object.keys(all);
+        let report = `Is phone mein save keys: ${keys.length}\n\n`;
+        keys.forEach(k => {
+            const v = all[k] || '';
+            let info = v.length + ' chars';
+            const p = safeParse(v);
+            if (Array.isArray(p)) info = p.length + ' items';
+            report += `• ${k}  (${info})\n`;
+        });
+        if (keys.length === 0) report += '(khali — kuch save nahi)';
+        document.getElementById('backup-text').value = JSON.stringify(all, null, 2);
+        const d = document.querySelector('#backup-section details');
+        if (d) d.open = true;
+        alert(report);
     }
 
     function exportData() {
