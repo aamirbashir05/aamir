@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v73'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v74'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
