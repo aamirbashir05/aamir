@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0d4f3c">
-<title>Chakli Payments</title>
+<title>CHAKLI PAYMENTS</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; font-family:'Segoe UI', Arial, sans-serif; }
   :root { --green:#12664c; --green2:#0d4f3c; --acc:#16a34a; --gold:#ffd97a; --red:#dc2626; }
@@ -196,7 +196,7 @@
 <div id="screen-login" class="hidden">
   <div class="lcard">
     <div class="llogo">🕌</div>
-    <h2>Chakli Payments</h2>
+    <h2>CHAKLI PAYMENTS</h2>
     <div class="sub">Apna PIN daal kar login karein</div>
     <div class="dots" id="pin-dots"></div>
     <div class="pad">
@@ -238,7 +238,7 @@
   <!-- HOME -->
   <div id="tab-home" class="scroll">
     <div class="header">
-      <div class="brand"><div class="logo">🕌</div><div><h1>Chakli Payments</h1><div class="tag">MASJID HISAAB</div></div></div>
+      <div class="brand"><div class="logo">🕌</div><div><h1>CHAKLI PAYMENTS</h1></div></div>
       <div class="balcard">
         <div class="lbl">NET BALANCE</div>
         <div class="amt" id="h-balance">Rs 0</div>
@@ -260,7 +260,7 @@
   <!-- MEMBERS -->
   <div id="tab-members" class="scroll hidden">
     <div class="header">
-      <div class="brand"><div class="logo">🕌</div><div><h1>Chakli Payments</h1><div class="tag">MEMBERS</div></div></div>
+      <div class="brand"><div class="logo">🕌</div><div><h1>CHAKLI PAYMENTS</h1></div></div>
       <div class="msel">
         <button class="chev" onclick="changeMonth(-1)">‹</button>
         <div class="mid"><div class="m" id="mem-month">—</div><div class="s">Is mahinay ka status</div></div>
@@ -279,7 +279,7 @@
 
   <!-- SHARE -->
   <div id="tab-share" class="scroll hidden">
-    <div class="header"><div class="brand"><div class="logo">🕌</div><div><h1>Chakli Payments</h1><div class="tag">SHARE</div></div></div></div>
+    <div class="header"><div class="brand"><div class="logo">🕌</div><div><h1>CHAKLI PAYMENTS</h1></div></div></div>
     <div class="sec">WHATSAPP PAR JPG BHEJEIN</div>
     <div style="padding:0 14px;">
       <div class="mcard" onclick="shareReport('members')" style="cursor:pointer;">
@@ -296,7 +296,7 @@
 
   <!-- MORE -->
   <div id="tab-more" class="scroll hidden">
-    <div class="header"><div class="brand"><div class="logo">🕌</div><div><h1>Chakli Payments</h1><div class="tag">SETTINGS</div></div></div></div>
+    <div class="header"><div class="brand"><div class="logo">🕌</div><div><h1>CHAKLI PAYMENTS</h1></div></div></div>
     <div class="sec">DATA BACKUP</div>
     <div class="slist">
       <button class="srow" onclick="exportData()"><span class="i">📥</span> Backup — Data Save / Share (file)</button>
@@ -333,7 +333,7 @@
       </div>
     </div>
 
-    <div class="fg"><label>Kis ka? — naam par tap karein</label>
+    <div class="fg" id="e-member-row"><label>Kis ka? — naam par tap karein</label>
       <div class="chips" id="e-chips"></div>
     </div>
 
@@ -550,10 +550,10 @@ function openEntry(){
   entryType='income'; entrySel=null; setTypeUI(); renderEntryChips();
   $('e-newname').value=''; $('e-amount').value='';
   $('e-month').value=viewYM.y+'-'+String(viewYM.m).padStart(2,'0');
-  updateNameRow();
+  updateEntryVisibility();
   openModal('modal-entry');
 }
-function setType(t){ entryType=t; setTypeUI(); updateNameRow(); }
+function setType(t){ entryType=t; if(t==='expense') entrySel=null; setTypeUI(); renderEntryChips(); updateEntryVisibility(); }
 function setTypeUI(){
   $('type-income').classList.toggle('on', entryType==='income');
   $('type-expense').classList.toggle('on', entryType==='expense');
@@ -568,16 +568,18 @@ function selectChip(id){
   entrySel=id;
   if(id){ const mm=DATA.members.find(x=>x.id===id);
     if(mm && mm.amount>0 && !$('e-amount').value) $('e-amount').value=mm.amount; }
-  renderEntryChips(); updateNameRow();
+  renderEntryChips(); updateEntryVisibility();
   if(id===null) setTimeout(()=>{ const n=$('e-newname'); if(n) n.focus(); }, 60);
 }
-// Naam field sirf "Naya/Doosra" par dikhta hai. Wasooli=naye bande ka naam, Kharcha=wajah.
-function updateNameRow(){
-  const isDoosra = (entrySel===null);
-  $('e-name-row').style.display = isDoosra ? 'block' : 'none';
-  if(isDoosra){
-    if(entryType==='income'){ $('e-name-label').textContent='Naye bande ka naam'; $('e-newname').placeholder='Naam likhein (member ban jayega)...'; }
-    else { $('e-name-label').textContent='Kharcha kis cheez ka? (wajah)'; $('e-newname').placeholder='Misaal: Qari Sahab, Bijli bill...'; }
+// Kharcha par members chhup jate hain (sirf wajah). Wasooli par members chips + (Naya par) naam.
+function updateEntryVisibility(){
+  const expense = (entryType==='expense');
+  $('e-member-row').style.display = expense ? 'none' : 'block';
+  const showName = expense || (entrySel===null);
+  $('e-name-row').style.display = showName ? 'block' : 'none';
+  if(showName){
+    if(expense){ $('e-name-label').textContent='Kharcha kis cheez ka? (wajah)'; $('e-newname').placeholder='Misaal: Qari Sahab, Bijli bill...'; }
+    else { $('e-name-label').textContent='Naye bande ka naam'; $('e-newname').placeholder='Naam likhein (member ban jayega)...'; }
   }
 }
 function saveEntry(){
@@ -688,7 +690,7 @@ function shareReport(kind){
     canvas.toBlob(blob=>{
       const file=new File([blob],'Chakli_Hisaab.jpg',{type:'image/jpeg'});
       if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:'Chakli Payments'}).catch(()=>{});
+        navigator.share({files:[file], title:'CHAKLI PAYMENTS'}).catch(()=>{});
       } else {
         const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Chakli_Hisaab.jpg'; a.click();
         toast('Tasveer download ho gayi');
@@ -710,7 +712,7 @@ function buildSummaryReport(){
   d.innerHTML=`
     <div style="background:linear-gradient(160deg,#12664c,#0d4f3c);color:#fff;padding:22px 20px 26px;border-radius:0 0 24px 24px;">
       <div style="display:flex;align-items:center;gap:10px;"><div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(145deg,#ffd75e,#e0a92a);display:flex;align-items:center;justify-content:center;font-size:24px;">🕌</div>
-      <div><div style="font-size:20px;font-weight:850;">Chakli Payments</div><div style="font-size:11px;letter-spacing:2px;color:#ffd97a;font-weight:800;">MUKAMMAL HISAAB</div></div></div>
+      <div><div style="font-size:20px;font-weight:850;">CHAKLI PAYMENTS</div><div style="font-size:11px;letter-spacing:2px;color:#ffd97a;font-weight:800;">MUKAMMAL HISAAB</div></div></div>
       <div style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.18);border-radius:16px;padding:14px 16px;margin-top:16px;">
         <div style="font-size:11px;letter-spacing:1px;opacity:.85;">NET BALANCE</div>
         <div style="font-size:34px;font-weight:850;margin:2px 0 10px;">${money(tt.bal)}</div>
@@ -744,7 +746,7 @@ function buildMembersReport(){
   d.innerHTML=`
     <div style="background:linear-gradient(160deg,#12664c,#0d4f3c);color:#fff;padding:20px;border-radius:0 0 24px 24px;">
       <div style="display:flex;align-items:center;gap:10px;"><div style="width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,#ffd75e,#e0a92a);display:flex;align-items:center;justify-content:center;font-size:23px;">🕌</div>
-      <div><div style="font-size:19px;font-weight:850;">Chakli Payments</div><div style="font-size:11px;letter-spacing:2px;color:#ffd97a;font-weight:800;">MASJID HISAAB</div></div></div>
+      <div><div style="font-size:19px;font-weight:850;">CHAKLI PAYMENTS</div></div></div>
       <div style="margin-top:14px;"><div style="font-size:12px;opacity:.85;letter-spacing:1px;">${MONTHS[m].toUpperCase()} ${y} KI WASOOLI</div>
       <div style="font-size:32px;font-weight:850;">${money(mt.inc)}</div>
       <div style="font-size:12px;opacity:.9;">${paidN} / ${denom} members ne payment ki</div></div></div>
