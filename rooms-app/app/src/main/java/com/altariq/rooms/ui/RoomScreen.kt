@@ -202,7 +202,7 @@ fun RoomScreen(
                     notSetText = if (room.vpnPkg.isBlank()) "VPN app select nahi ki — Edit me jaakar chunein" else null,
                     copyText = room.vpnServer,
                     onOpen = {
-                        if (AppLauncher.open(context, room.vpnPkg)) {
+                        if (AppLauncher.open(context, room.vpnPkg, room.vpnActivity)) {
                             vpnDone = true
                             store.markUsed(room.id)
                         }
@@ -232,7 +232,7 @@ fun RoomScreen(
                         if (room.coords.isNotBlank()) {
                             AppLauncher.copy(context, room.coords, "Coords copy — GPS app me paste karein")
                         }
-                        if (AppLauncher.open(context, room.gpsPkg)) gpsDone = true
+                        if (AppLauncher.open(context, room.gpsPkg, room.gpsActivity)) gpsDone = true
                     },
                     onToggleDone = { gpsDone = !gpsDone }
                 )
@@ -252,7 +252,7 @@ fun RoomScreen(
                     notSetText = if (room.tiktokPkg.isBlank()) "TikTok app select nahi ki — Edit me jaakar chunein" else null,
                     copyText = room.handle,
                     onOpen = {
-                        if (AppLauncher.open(context, room.tiktokPkg)) {
+                        if (AppLauncher.open(context, room.tiktokPkg, room.tiktokActivity)) {
                             tiktokDone = true
                             store.markUsed(room.id)
                         }

@@ -293,9 +293,15 @@ fun EditScreen(
             onDismiss = { picker = null },
             onPick = { app ->
                 draft = when (which) {
-                    "vpn" -> draft.copy(vpnPkg = app.pkg, vpnLabel = app.label)
-                    "gps" -> draft.copy(gpsPkg = app.pkg, gpsLabel = app.label)
-                    else -> draft.copy(tiktokPkg = app.pkg, tiktokLabel = app.label)
+                    "vpn" -> draft.copy(
+                        vpnPkg = app.pkg, vpnActivity = app.activity, vpnLabel = app.label
+                    )
+                    "gps" -> draft.copy(
+                        gpsPkg = app.pkg, gpsActivity = app.activity, gpsLabel = app.label
+                    )
+                    else -> draft.copy(
+                        tiktokPkg = app.pkg, tiktokActivity = app.activity, tiktokLabel = app.label
+                    )
                 }
                 picker = null
             }

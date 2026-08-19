@@ -65,6 +65,11 @@ fun AppPickerDialog(
         query.isBlank() || it.label.contains(query, ignoreCase = true)
     }
 
+    // Wo naam jo ek se zyada dafa aate hain (clones) — inke liye extra tafseel dikhate hain
+    val dupLabels = remember(apps) {
+        apps.orEmpty().groupBy { it.label }.filterValues { it.size > 1 }.keys
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold) },
@@ -77,7 +82,14 @@ fun AppPickerDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Clone / multi-account apps alag alag entry ban kar yahan nazar aati hain.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 15.sp
+                )
+                Spacer(Modifier.height(8.dp))
 
                 when {
                     apps == null -> Box(
@@ -99,7 +111,7 @@ fun AppPickerDialog(
                         modifier = Modifier.heightIn(max = 380.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        items(list, key = { it.pkg }) { app ->
+                        items(list, key = { it.pkg + "/" + it.activity }) { app ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -125,11 +137,22 @@ fun AppPickerDialog(
                                     )
                                 }
                                 Spacer(Modifier.width(12.dp))
-                                Text(
-                                    app.label,
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        app.label,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    // Clone apps ka naam aksar bilkul ek jaisa hota hai —
+                                    // package/entry dikhane se pata chalta hai kaunsi kaunsi hai
+                                    Text(
+                                        if (dupLabels.contains(app.label)) "${app.pkg}  ·  ${app.shortId}"
+                                        else app.pkg,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }

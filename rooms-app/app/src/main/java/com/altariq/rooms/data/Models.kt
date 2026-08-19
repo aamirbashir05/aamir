@@ -17,11 +17,13 @@ data class Room(
 
     // Step 1 — VPN
     val vpnPkg: String = "",
+    val vpnActivity: String = "",
     val vpnLabel: String = "",
     val vpnServer: String = "",
 
     // Step 2 — Fake GPS
     val gpsPkg: String = "",
+    val gpsActivity: String = "",
     val gpsLabel: String = "",
     val city: String = "",
     val lat: String = "",
@@ -29,6 +31,7 @@ data class Room(
 
     // Step 3 — TikTok
     val tiktokPkg: String = "",
+    val tiktokActivity: String = "",
     val tiktokLabel: String = "",
 
     val notes: String = "",

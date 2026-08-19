@@ -2,6 +2,7 @@ package com.altariq.rooms.util
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
@@ -9,17 +10,29 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 
-/** Phone me maujood ek app (picker me dikhane ke liye). */
+/**
+ * Phone me maujood ek launchable entry.
+ *
+ * Yahan "app" se murad package nahi, balke ek LAUNCHER ENTRY hai. Clone/multi-account
+ * apps aksar ek hi package ke andar har clone ke liye alag launcher entry banati hain —
+ * isliye hum package ke bajaye poore component (package + activity) ko pehchan mante hain,
+ * warna saare clones aapas me mil kar ek reh jate hain.
+ */
 data class InstalledApp(
     val pkg: String,
+    val activity: String,
     val label: String,
     val icon: ImageBitmap?
-)
+) {
+    /** Picker me ek jaise naam wali entries ko alag karne ke liye. */
+    val shortId: String
+        get() = activity.substringAfterLast('.')
+}
 
 object AppLauncher {
 
     /**
-     * Phone ki saari launchable apps — picker me dikhane ke liye.
+     * Phone ki saari launchable entries — picker me dikhane ke liye.
      * Ye thora bhaari kaam hai, isliye hamesha background thread par chalayein.
      */
     fun installedApps(context: Context): List<InstalledApp> {
@@ -34,7 +47,8 @@ object AppLauncher {
         }
 
         return resolved.mapNotNull { info ->
-            val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
+            val ai = info.activityInfo ?: return@mapNotNull null
+            val pkg = ai.packageName ?: return@mapNotNull null
             // Khud ki app ko list me na dikhayein
             if (pkg == context.packageName) return@mapNotNull null
             val label = try {
@@ -47,30 +61,52 @@ object AppLauncher {
             } catch (e: Exception) {
                 null
             }
-            InstalledApp(pkg, label, icon)
+            InstalledApp(pkg = pkg, activity = ai.name ?: "", label = label, icon = icon)
         }
-            .distinctBy { it.pkg }
-            .sortedBy { it.label.lowercase() }
+            // Har alag launcher entry apni jagah rakhti hai (clones alag alag nazar aayein)
+            .distinctBy { it.pkg + "/" + it.activity }
+            .sortedWith(compareBy({ it.label.lowercase() }, { it.activity }))
     }
 
     /**
-     * Package se app kholna. Kaamyab ho to true.
-     * App uninstall ho chuki ho to user ko batate hain (crash nahi).
+     * Room me se app kholna.
+     *
+     * Pehle theek us entry ko kholne ki koshish karte hain jo user ne chuni thi
+     * (component ke zariye) — isi tarah clone wali entry seedha khulti hai.
+     * Agar wo entry ab maujood na ho to package ka aam launcher intent try karte hain.
      */
-    fun open(context: Context, pkg: String): Boolean {
+    fun open(context: Context, pkg: String, activity: String = ""): Boolean {
         if (pkg.isBlank()) return false
-        val intent = try {
+
+        if (activity.isNotBlank()) {
+            val direct = Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_LAUNCHER)
+                .setComponent(ComponentName(pkg, activity))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(direct)
+                return true
+            } catch (e: Exception) {
+                // Entry badal gayi hogi — neeche wale aam tareeqe par chale jate hain
+            }
+        }
+
+        val fallback = try {
             context.packageManager.getLaunchIntentForPackage(pkg)
         } catch (e: Exception) {
             null
         }
-        if (intent == null) {
-            Toast.makeText(context, "Ye app phone me nahi mili — Room edit karke dobara chunein", Toast.LENGTH_LONG).show()
+        if (fallback == null) {
+            Toast.makeText(
+                context,
+                "Ye app phone me nahi mili — Room edit karke dobara chunein",
+                Toast.LENGTH_LONG
+            ).show()
             return false
         }
         return try {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
+            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(fallback)
             true
         } catch (e: Exception) {
             Toast.makeText(context, "App khul nahi saki", Toast.LENGTH_SHORT).show()
