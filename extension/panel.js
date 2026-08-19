@@ -108,7 +108,7 @@ function parseFreeText(text){
   for(let i=1;i<parts.length;i+=2){
     const num=parseInt(parts[i],10); const body=parts[i+1]||'';
     const img = matchBlock(body, /\(?A\)?[^\n]*?(?:image\s*prompt)/i);
-    const vid = matchBlock(body, /\(?B\)?[^\n]*?(?:video\s*prompt|image-?to-?video)/i);
+    const vid = matchBlock(body, /\(?B\)?[^\n]*?(?:image-?to-?video\s*prompt|video\s*prompt|image-?to-?video)/i);
     if(img||vid) out.push({ n:num, beat:'Scene '+num, imagePrompt:img||'', videoPrompt:vid||'' });
   }
   return out;
@@ -117,10 +117,36 @@ function matchBlock(body, labelRe){
   const m=body.match(labelRe); if(!m) return '';
   const start=m.index+m[0].length;
   const rest=body.slice(start);
-  // stop at next (A)/(B) label, next "Dialogue", or double newline heading
-  const stop=rest.search(/\n\s*(?:\(?[AB]\)?[^\n]*?prompt|dialogue|arabic|transliteration|caption|hashtag|thumbnail|={2,}|scene\s*\d)/i);
-  let block=(stop>=0?rest.slice(0,stop):rest);
-  return block.replace(/^[:\s\-–]+/,'').trim().slice(0,1600);
+  return cleanBlock(rest);
+}
+function cleanBlock(s){
+  // stop at next (A)/(B) label, dialogue/caption/thumbnail heading, or scene marker
+  const stop=s.search(/\n\s*(?:\(?[AB]\)?[^\n]*?prompt|image-?to-?video|dialogue|arabic|transliteration|meaning|caption|hashtag|thumbnail|={2,}|scene\s*\d)/i);
+  let block=(stop>=0?s.slice(0,stop):s);
+  return block.replace(/^(?:\s*prompt)?[:\s\-–)]+/i,'').trim().slice(0,1600);
+}
+
+/* Robust: scene-scoped parse, warna image/video labels ko order mein pair kar do */
+function parsePrompts(text){
+  const scoped=parseFreeText(text);
+  if(scoped.length) return scoped.map((s,i)=>({n:s.n||i+1,beat:s.beat||('Scene '+(i+1)),imagePrompt:s.imagePrompt||'',videoPrompt:s.videoPrompt||''}));
+  const re=/(image-?to-?video\s*prompt|video\s*prompt|image\s*prompt)/ig;
+  let m, marks=[];
+  while((m=re.exec(text))){ marks.push({type:/video|image-?to/i.test(m[1])?'vid':'img',start:m.index,end:m.index+m[0].length}); }
+  if(!marks.length) return [];
+  const imgs=[], vids=[];
+  marks.forEach((mk,i)=>{ const next=marks[i+1]; const raw=text.slice(mk.end,next?next.start:text.length); const b=cleanBlock(raw); (mk.type==='img'?imgs:vids).push(b); });
+  const count=Math.max(imgs.length,vids.length); const out=[];
+  for(let i=0;i<count;i++) out.push({n:i+1,beat:'Scene '+(i+1),imagePrompt:imgs[i]||'',videoPrompt:vids[i]||''});
+  return out;
+}
+function loadFromText(text){
+  $('#err').style.display='none';
+  if(!text||!text.trim()){ toast('Pehle prompts paste karo'); return; }
+  const parsed=parsePrompts(text);
+  if(!parsed.length){ showErr('Prompts pehchaan nahi paaya — har scene mein “IMAGE PROMPT:” aur “VIDEO PROMPT:” labels hon.'); log('⚠️ paste: koi prompt nahi mila','warn'); return; }
+  SCENES=parsed.map(s=>({...s,imgDone:false,vidDone:false})); renderScenes();
+  log('✓ '+SCENES.length+' scenes text se load ho gaye.','ok'); $('#cQueue').classList.remove('collapsed'); toast('Load ho gaya ✓');
 }
 
 /* ---------- render queue ---------- */
@@ -165,6 +191,10 @@ let lastFull=null;
 $('#copyMaster').onclick=()=>{ navigator.clipboard.writeText(buildInstruction(false)); toast('Master prompt copy ✓ — Claude mein paste karo'); };
 function showErr(m){ const e=$('#err'); e.innerHTML=m; e.style.display='block'; }
 
+/* paste / .txt import */
+$('#loadPaste').onclick=()=>loadFromText($('#pasteBox').value);
+$('#pasteFile').onchange=(e)=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ $('#pasteBox').value=r.result||''; loadFromText($('#pasteBox').value); }; r.onerror=()=>toast('File padhi nahi gayi'); r.readAsText(f); e.target.value=''; };
+
 /* ---------- tabs ---------- */
 function isVeoUrl(u){ return /labs\.google|flow\.google|gemini\.google\.com|aistudio\.google\.com/.test(u||''); }
 async function refreshTabs(){
@@ -198,7 +228,7 @@ $('#grabClaude').onclick=async()=>{
     await chrome.scripting.executeScript({target:{tabId:id},files:['claude-agent.js']});
     const r=await sendTab(id,{cmd:'grabClaude'});
     if(!r.ok||!r.text){ log('✗ Claude se text nahi mila.','err'); return; }
-    const parsed=parseFreeText(r.text);
+    const parsed=parsePrompts(r.text);
     if(!parsed.length){ log('⚠️ Claude ke jawab mein (A)/(B) prompts nahi pehchaan paaya. Format check karo.','warn'); return; }
     SCENES=parsed.map(s=>({...s,imgDone:false,vidDone:false})); renderScenes();
     log('✓ Claude se '+SCENES.length+' scenes aa gaye.','ok'); $('#cQueue').classList.remove('collapsed'); toast('Claude se aa gaya ✓');

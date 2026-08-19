@@ -33,6 +33,10 @@ Edge mein bhi same: `edge://extensions` → Developer mode → Load unpacked.
 - **Ya Claude se:** `claude.ai` pe apni story banwao (aapka wahi purana system-prompt),
   phir panel mein **“⬇ Claude tab se lao”** — aakhri jawab se prompts nikaal leta hai.
   (Best-effort — agar (A)/(B) label saaf hon to theek pehchaanta hai.)
+- **Ya paste / .txt:** Claude ke saare prompts copy karke panel ke **“Load prompts”** box
+  mein paste karo, ya ek **.txt file** chuno — app khud har scene ka image + video prompt
+  tod kar queue bana deti hai. Format: har scene mein `IMAGE PROMPT:` aur `VIDEO PROMPT:`
+  labels (aur ho sake to `Scene 1/2…`) hon.
 
 ### B) Veo pe chalao
 1. Ek tab mein apna **Veo / Flow** (labs.google / gemini / flow) khol lo, login rakho.

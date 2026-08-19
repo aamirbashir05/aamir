@@ -70,6 +70,15 @@
         <button class="btn btn-ghost btn-sm" id="copyMaster">📋 Master prompt copy</button>
         <button class="btn btn-ghost btn-sm" id="grabClaude">⬇ Claude tab se lao</button>
       </div>
+
+      <label class="lbl">Ya saare prompts paste / .txt se lao</label>
+      <textarea id="pasteBox" placeholder="Claude ke saare prompts yahan paste karo — (A) IMAGE PROMPT / (B) VIDEO PROMPT wale format mein. Ya neeche .txt file chuno." style="min-height:58px"></textarea>
+      <div class="btnrow">
+        <button class="btn btn-ghost btn-sm" id="loadPaste">📥 Load prompts</button>
+        <label class="btn btn-ghost btn-sm" for="pasteFile" style="cursor:pointer;margin:0">📄 .txt file</label>
+        <input id="pasteFile" type="file" accept=".txt,text/plain" style="display:none">
+      </div>
+      <div class="fine">Format: har scene mein <b>IMAGE PROMPT:</b> aur <b>VIDEO PROMPT:</b> labels hon (aur ho sake to “Scene 1/2…”). App inhein khud tod kar queue bana degi.</div>
       <div class="err" id="err"></div>
     </div>
   </div>
