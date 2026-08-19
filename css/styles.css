@@ -601,6 +601,7 @@ body { background: radial-gradient(600px 300px at 100% -6%, rgba(231,162,76,.08)
 .field input::placeholder, .field textarea::placeholder, .search::placeholder { color:#b0a084; }
 .field input:focus, .field textarea:focus, .field select:focus, .search:focus { border-color:rgba(231,162,76,.6); }
 .amount-input { background:#fff !important; }
+.ov-date, .wd-date { background:#fff; color:var(--text); border:1px solid var(--border); }
 .seg, .tab { background:#f1e9da; border:1px solid var(--border); }
 .seg button, .tab { color:var(--muted); }
 .seg button.active, .tab.active { background:var(--grad-orange); color:#3a2705; }
