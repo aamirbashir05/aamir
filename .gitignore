@@ -86,3 +86,8 @@ lint/tmp/
 
 # Scratch/working files (not part of the site)
 scratchpad/
+
+# Android build artifacts / signing key (do not publish)
+android/out/
+android/*.keystore
+android/gen/
