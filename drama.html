@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Khaleeji Drama Studio — Al Tariq Printers</title>
+<meta name="description" content="Ek story idea daalo — poore 6-scene ka Veo blueprint milega: har scene ka Image Prompt + Video Prompt, character bible, Arabic dialogue, captions & hashtags. Mobile aur PC dono pe.">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="theme-color" content="#08090c">
+<meta property="og:title" content="Khaleeji Drama Studio — Al Tariq Printers">
+<meta property="og:description" content="Story idea → poore 6-scene Veo prompts, character bible, Arabic dialogue, captions. 1 click.">
+<style>
+  :root{
+    --bg:#08090c; --bg2:#0d0f14; --panel:#111319; --line:rgba(231,162,76,.16);
+    --gold1:#f8da98; --gold:#e7a24c; --gold2:#c9851f;
+    --white:#f4f2ee; --muted:#9a9488;
+    --grad-gold:linear-gradient(180deg,#f8da98 0%,#e7a24c 52%,#c9851f 100%);
+    --shadow:0 2px 6px rgba(0,0,0,.5),0 18px 40px rgba(0,0,0,.45);
+    --ok:#34d399; --err:#fca5a5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{background:
+      radial-gradient(1200px 700px at 100% -10%,rgba(231,162,76,.09),transparent 60%),
+      radial-gradient(900px 600px at -10% 110%,rgba(231,162,76,.05),transparent 60%),
+      var(--bg);
+    color:var(--white);font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;min-height:100vh;line-height:1.5}
+  a{color:inherit;text-decoration:none}
+  .wrap{width:100%;max-width:940px;margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+
+  /* nav */
+  .nav{position:sticky;top:0;z-index:60;backdrop-filter:blur(12px);
+    background:rgba(8,9,12,.72);border-bottom:1px solid var(--line)}
+  .nav .row{display:flex;align-items:center;gap:12px;height:64px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{height:34px;filter:drop-shadow(0 4px 12px rgba(231,162,76,.4))}
+  .brand b{font-weight:900;font-size:16px}
+  .brand span.k{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .nav .back{font-weight:800;font-size:13px;color:var(--gold);
+    border:1px solid var(--line);padding:9px 15px;border-radius:30px;background:rgba(231,162,76,.08)}
+
+  /* hero */
+  .hero{text-align:center;padding:clamp(24px,5vw,46px) 0 8px}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;color:var(--gold);font-weight:800;
+    letter-spacing:.24em;text-transform:uppercase;font-size:11px;margin-bottom:14px}
+  .eyebrow::before,.eyebrow::after{content:"";width:26px;height:2px;background:linear-gradient(90deg,transparent,var(--gold))}
+  .eyebrow::after{background:linear-gradient(90deg,var(--gold),transparent)}
+  h1{font-size:clamp(28px,6.4vw,48px);font-weight:900;line-height:1.05;letter-spacing:-.02em}
+  .gold{background:var(--grad-gold);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{color:var(--muted);max-width:600px;margin:14px auto 0;font-size:clamp(14px,2.2vw,16px)}
+  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .badges span{font-size:12px;font-weight:700;color:var(--white);background:rgba(231,162,76,.08);
+    border:1px solid var(--line);padding:7px 13px;border-radius:30px}
+
+  /* cards */
+  .card{background:linear-gradient(180deg,#14141b,#0e0f14);border:1px solid var(--line);
+    border-radius:20px;box-shadow:var(--shadow);padding:clamp(16px,3vw,24px);margin:18px 0}
+  .card h2{font-size:15px;font-weight:900;letter-spacing:.02em;display:flex;align-items:center;gap:9px;margin-bottom:4px}
+  .card h2 .tag{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);
+    background:rgba(231,162,76,.1);border:1px solid var(--line);padding:3px 9px;border-radius:20px}
+  .hintline{color:var(--muted);font-size:12.5px;margin-top:2px}
+
+  label.lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--gold);margin:14px 0 8px}
+  textarea,input.txt,select{width:100%;background:#0c0d12;border:1px solid var(--line);color:var(--white);
+    border-radius:12px;padding:13px 14px;font-family:inherit;font-size:14.5px;resize:vertical}
+  textarea{min-height:96px;line-height:1.55}
+  textarea:focus,input.txt:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(231,162,76,.14)}
+  .row2{display:flex;gap:12px;flex-wrap:wrap}
+  .row2 > div{flex:1;min-width:150px}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800;border:none;
+    border-radius:12px;padding:13px 20px;cursor:pointer;font-size:14px;transition:transform .08s,box-shadow .2s;font-family:inherit}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .btn-g{background:var(--grad-gold);color:#241a08;box-shadow:0 8px 22px rgba(231,162,76,.32),inset 0 1px 0 rgba(255,255,255,.45)}
+  .btn-ghost{background:rgba(231,162,76,.08);border:1px solid var(--line);color:var(--gold)}
+  .btn-sm{padding:8px 13px;font-size:12.5px;border-radius:10px}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+
+  /* settings collapse */
+  .set-head{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+  .set-head .chev{margin-left:auto;transition:.2s;color:var(--muted)}
+  .set-head.open .chev{transform:rotate(180deg)}
+  .set-body{display:none;margin-top:14px}
+  .set-body.open{display:block}
+  .keyrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .keyrow input{flex:1;min-width:200px}
+  .pill{font-size:11.5px;font-weight:800;padding:5px 11px;border-radius:20px;border:1px solid var(--line)}
+  .pill.on{color:var(--ok);background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3)}
+  .pill.off{color:var(--muted);background:rgba(255,255,255,.03)}
+  .muted-link{color:var(--gold);font-weight:700}
+  .fineprint{color:var(--muted);font-size:12px;margin-top:10px;line-height:1.5}
+
+  /* mode toggle */
+  .modes{display:inline-flex;background:#0e0f14;border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;margin-top:6px}
+  .modes button{border:none;background:transparent;color:var(--muted);font-weight:800;font-size:12.5px;padding:9px 14px;border-radius:9px;cursor:pointer;font-family:inherit}
+  .modes button.active{background:var(--grad-gold);color:#241a08}
+
+  /* output */
+  #out{display:none}
+  .story-head h3{font-size:clamp(19px,4vw,26px);font-weight:900;line-height:1.15}
+  .story-head p{color:var(--muted);font-size:13.5px;margin-top:6px}
+
+  .block{background:#0c0d12;border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;position:relative}
+  .block .blabel{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .block pre{white-space:pre-wrap;word-wrap:break-word;font-family:inherit;font-size:13.5px;line-height:1.6;color:var(--white)}
+  .copy{position:absolute;top:10px;right:10px}
+  .copy.done{color:var(--ok)!important;border-color:rgba(52,211,153,.4)!important}
+
+  .scene{border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:16px;background:linear-gradient(180deg,#111319,#0d0f14)}
+  .scene-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .scene-n{width:30px;height:30px;border-radius:9px;background:var(--grad-gold);color:#241a08;font-weight:900;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .scene-top b{font-size:15px}
+  .chk{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+  .chk input{width:17px;height:17px;accent-color:var(--gold)}
+  .scene.done{opacity:.62}
+  .scene.done .scene-n{background:rgba(52,211,153,.85);color:#04240f}
+
+  .dlg{margin-top:12px;border:1px dashed var(--line);border-radius:12px;padding:12px 14px;background:rgba(231,162,76,.03)}
+  .dlg .ar{font-size:19px;font-weight:700;direction:rtl;text-align:right;line-height:1.7;font-family:"Segoe UI","Noto Naskh Arabic",serif}
+  .dlg .tr{color:var(--gold1);font-size:13px;font-style:italic;margin-top:6px}
+  .dlg .mn{color:var(--muted);font-size:13px;margin-top:4px}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(30px);opacity:0;
+    background:var(--panel);border:1px solid var(--line);color:var(--white);padding:11px 18px;border-radius:30px;
+    font-size:13px;font-weight:700;box-shadow:var(--shadow);z-index:80;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .overlay{display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    padding:34px 20px;text-align:center}
+  .overlay.show{display:flex}
+  .spin{width:44px;height:44px;border-radius:50%;border:4px solid rgba(231,162,76,.25);border-top-color:var(--gold);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .overlay .msg{font-size:14px;font-weight:800}
+  .overlay .sub{font-size:12px;color:var(--muted);max-width:340px}
+
+  .err{display:none;color:var(--err);background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);
+    border-radius:12px;padding:12px 16px;margin-top:12px;font-size:13px}
+  .warn{color:var(--gold1);background:rgba(231,162,76,.06);border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:12.5px;margin-top:10px}
+
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:8px 0 40px}
+  .step{background:linear-gradient(180deg,#111319,#0d0f14);border:1px solid var(--line);border-radius:14px;padding:15px}
+  .step .n{width:28px;height:28px;border-radius:8px;background:var(--grad-gold);color:#241a08;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:9px;font-size:13px}
+  .step b{display:block;margin-bottom:3px;font-size:14px}
+  .step p{color:var(--muted);font-size:12.5px}
+  footer{text-align:center;color:var(--muted);font-size:12.5px;padding:22px 0 40px;border-top:1px solid var(--line)}
+  footer b{color:var(--gold)}
+  @media(max-width:720px){.steps{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.nav .back.hideSm{display:none}}
+</style>
+</head>
+<body>
+  <nav class="nav"><div class="wrap row">
+    <a class="brand" href="index.html">
+      <img src="assets/mark.png" alt="Al Tariq" onerror="this.style.display='none'">
+      <span style="display:flex;flex-direction:column;line-height:1.1">
+        <b>Al Tariq Printers</b><span class="k">Khaleeji Drama Studio</span>
+      </span>
+    </a>
+    <a class="back hideSm" href="studio.html" style="margin-left:auto">✂ BG Remover</a>
+    <a class="back hideSm" href="upscale.html" style="margin-left:10px">⬆ Upscaler</a>
+    <a class="back" href="index.html" style="margin-left:auto">← Website</a>
+  </div></nav>
+
+  <div class="wrap">
+    <section class="hero">
+      <span class="eyebrow">Khaleeji · Family Drama · Veo 3</span>
+      <h1>Story do → poora <span class="gold">6-scene blueprint</span></h1>
+      <p class="lead">Ek idea likho, aur pao har scene ka <b style="color:var(--white)">Image Prompt</b> + <b style="color:var(--white)">Veo Video Prompt</b>,
+        fixed character bible, Arabic dialogue (translit + meaning), aur caption/hashtags — sab copy-ready.
+        Phir bas Veo/Flow mein paste karke banao.</p>
+      <div class="badges"><span>🎬 6 Scenes</span><span>👤 Consistent Faces</span><span>🗣 Arabic Dialogue</span><span>📱 Mobile + PC</span></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="card">
+      <div class="set-head" id="setHead">
+        <h2 style="margin:0">⚙️ Setup <span class="tag" id="keyPill2">1-time</span></h2>
+        <span class="pill off" id="keyPill">Key nahi lagi</span>
+        <span class="chev">▾</span>
+      </div>
+      <div class="set-body" id="setBody">
+        <label class="lbl">Google Gemini API Key (free) — taake app khud likh de</label>
+        <div class="keyrow">
+          <input class="txt" id="apiKey" type="password" placeholder="AIza… yahan paste karo" autocomplete="off" spellcheck="false">
+          <button class="btn btn-ghost btn-sm" id="saveKey">💾 Save</button>
+          <button class="btn btn-ghost btn-sm" id="showKey" title="Show/Hide">👁</button>
+        </div>
+        <div class="row2" style="margin-top:12px">
+          <div>
+            <label class="lbl" style="margin-top:0">Model</label>
+            <select id="model">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (best, free)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (free)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (behtareen, thoda slow)</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl" style="margin-top:0">Dialogue meaning language</label>
+            <select id="meaningLang">
+              <option value="Urdu">Urdu</option>
+              <option value="English">English</option>
+              <option value="both">Urdu + English</option>
+            </select>
+          </div>
+        </div>
+        <div class="fineprint">
+          Free key yahan se banao (1 minute): <a class="muted-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> →
+          <b>Create API key</b> → copy karke upar paste karo. Key <b>sirf aapke phone/PC ke browser</b> mein save hoti hai (localStorage), kisi server pe nahi jati.
+          <br>Key na ho? Neeche <b>“Master Prompt”</b> mode use karo — app ek ready prompt bana degi jo aap apne Claude/Gemini chat mein paste kar sakte ho.
+        </div>
+      </div>
+    </section>
+
+    <!-- INPUT -->
+    <section class="card">
+      <h2>📝 Story <span class="tag">Input</span></h2>
+      <div class="hintline">Kuch bhi likho — ya khaali chhod kar “🎲 Surprise” dabao, app khud emotional saas–bahu twist bana degi.</div>
+
+      <label class="lbl">Story idea (Urdu / Roman / English — jaisa marzi)</label>
+      <textarea id="idea" placeholder="Misaal: Saas bahu ko medicine ke paise nahi deti, bahu chup chaap apna bracelet bech kar dawai laati hai, saas ko pata chalta hai aur woh ro deti hai…"></textarea>
+
+      <div class="row2">
+        <div>
+          <label class="lbl">Scenes</label>
+          <select id="scenes">
+            <option value="6" selected>6 scenes (~1 min)</option>
+            <option value="4">4 scenes (~40s)</option>
+            <option value="5">5 scenes</option>
+            <option value="8">8 scenes (~80s)</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Tone</label>
+          <select id="tone">
+            <option value="tear-jerker saas–bahu conflict with a redemptive twist">Aansu + twist (default)</option>
+            <option value="tense family confrontation, betrayal then forgiveness">Betrayal → maafi</option>
+            <option value="poverty struggle, sacrifice, hopeful ending">Sacrifice / gharibi</option>
+            <option value="mother-daughter emotional bond, misunderstanding resolved">Maa–beti bond</option>
+            <option value="suspense mystery within the family, shocking reveal">Suspense / raaz</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Dialect</label>
+          <select id="dialect">
+            <option value="Modern Standard Arabic (fusha)" selected>Fusha (standard)</option>
+            <option value="Khaleeji / Gulf spoken Arabic">Khaleeji spoken</option>
+            <option value="Egyptian spoken Arabic">Egyptian</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="lbl">Character Bible reuse <span style="color:var(--muted);text-transform:none;font-weight:600">(optional — series ke liye)</span></label>
+      <textarea id="bibleReuse" placeholder="Agar aap chahte ho purane characters same rahein, to unka bible yahan paste karo. Khaali chhodo to app naye characters bana degi. (Har story ke baad ‘Bible save’ dabao to yahan yaad reh jayega.)" style="min-height:70px"></textarea>
+
+      <div style="margin-top:14px">
+        <span class="lbl" style="margin:0 0 8px;display:inline-block">Kaam ka tareeqa</span>
+        <div class="modes" id="modeToggle">
+          <button data-mode="auto" class="active">⚡ Auto (key se)</button>
+          <button data-mode="prompt">📋 Master Prompt (bina key)</button>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn btn-g" id="genBtn">✨ Generate blueprint</button>
+        <button class="btn btn-ghost" id="surpriseBtn">🎲 Surprise story</button>
+      </div>
+      <div class="err" id="err"></div>
+    </section>
+
+    <div class="overlay" id="overlay">
+      <div class="spin"></div>
+      <div class="msg" id="ovMsg">AI story likh raha hai…</div>
+      <div class="sub" id="ovSub">6 scenes, character bible, dialogue aur captions ban rahe hain — thoda sabar (10–25s).</div>
+    </div>
+
+    <!-- OUTPUT -->
+    <section id="out">
+      <div class="card story-head" id="storyHead"></div>
+      <div class="card" id="bibleCard"></div>
+      <div id="scenesWrap"></div>
+      <div class="card" id="socialCard"></div>
+      <div class="btnrow" style="margin:4px 0 30px">
+        <button class="btn btn-ghost" id="copyAllBtn">📄 Sab kuch copy karo</button>
+        <button class="btn btn-ghost" id="saveBibleBtn">👤 Bible save (agli story ke liye)</button>
+        <button class="btn btn-ghost" id="regenBtn">↺ Dobara banao</button>
+      </div>
+    </section>
+
+    <!-- PROMPT MODE OUTPUT -->
+    <section class="card" id="promptOut" style="display:none">
+      <h2>📋 Master Prompt <span class="tag">copy → paste in Claude/Gemini</span></h2>
+      <div class="hintline">Neeche wala poora text copy karke apne Claude ya Gemini chat mein paste karo — wahan aapko sab scenes mil jayenge (bilkul isi format mein).</div>
+      <div class="block" style="margin-top:14px">
+        <button class="btn btn-ghost btn-sm copy" data-copy="#masterPromptText">📋 Copy</button>
+        <div class="blabel">Master Prompt</div>
+        <pre id="masterPromptText"></pre>
+      </div>
+    </section>
+
+    <section class="steps">
+      <div class="step"><div class="n">1</div><b>Story do</b><p>Idea likho ya Surprise dabao.</p></div>
+      <div class="step"><div class="n">2</div><b>Blueprint milega</b><p>6 scenes: Image + Video prompt, dialogue, captions.</p></div>
+      <div class="step"><div class="n">3</div><b>Flow mein paste</b><p>Image Prompt se still, phir Video Prompt se video.</p></div>
+      <div class="step"><div class="n">4</div><b>Export 1080p</b><p>Scenes jodo, caption laga kar post karo.</p></div>
+    </section>
+
+    <footer>
+      Powered by <b>Al Tariq Printers</b> ·
+      <a href="index.html" style="color:var(--gold)">altariqprinters.store</a><br>
+      <span style="font-size:11.5px">Aapki key aur stories sirf is device ke browser mein rehti hain.</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const LS = { key:'atp_drama_key', model:'atp_drama_model', lang:'atp_drama_lang', bible:'atp_drama_bible' };
+let MODE = 'auto';
+let lastData = null;
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
+
+/* ---------- settings ---------- */
+$('#setHead').addEventListener('click', ()=>{ $('#setHead').classList.toggle('open'); $('#setBody').classList.toggle('open'); });
+function refreshKeyPill(){
+  const has = !!(localStorage.getItem(LS.key)||'').trim();
+  const p=$('#keyPill'); p.textContent = has?'Key lagi ✓':'Key nahi lagi';
+  p.className = 'pill '+(has?'on':'off');
+}
+(function initSettings(){
+  $('#apiKey').value = localStorage.getItem(LS.key)||'';
+  const m=localStorage.getItem(LS.model); if(m) $('#model').value=m;
+  const l=localStorage.getItem(LS.lang); if(l) $('#meaningLang').value=l;
+  const b=localStorage.getItem(LS.bible); if(b) $('#bibleReuse').value=b;
+  if(!(localStorage.getItem(LS.key)||'').trim()){ $('#setHead').classList.add('open'); $('#setBody').classList.add('open'); }
+  refreshKeyPill();
+})();
+$('#saveKey').addEventListener('click', ()=>{
+  localStorage.setItem(LS.key, $('#apiKey').value.trim());
+  refreshKeyPill(); toast('Key save ho gayi ✓');
+});
+$('#showKey').addEventListener('click', ()=>{ const i=$('#apiKey'); i.type = i.type==='password'?'text':'password'; });
+$('#model').addEventListener('change', e=>localStorage.setItem(LS.model,e.target.value));
+$('#meaningLang').addEventListener('change', e=>localStorage.setItem(LS.lang,e.target.value));
+
+/* ---------- mode ---------- */
+$('#modeToggle').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $('#modeToggle').querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); MODE=b.dataset.mode;
+  $('#genBtn').textContent = MODE==='auto' ? '✨ Generate blueprint' : '📋 Master Prompt banao';
+}));
+
+/* ---------- surprise seeds ---------- */
+const SEEDS = [
+  "Saas apni bahu ko taane deti hai ke woh ghar ke kaam nahi karti; ek din bahu bemaar saas ke liye raat bhar jaag kar dawai aur khana banati hai, saas ko apni ghalti ka ehsaas hota hai.",
+  "Bahu ke paas apni maa ke ilaaj ke paise nahi; saas chupke se apna sona bech kar paise deti hai par kisi ko nahi batati, bahu ko sach baad mein pata chalta hai.",
+  "Ek saas apni choti bahu ko bari bahu se kam samajhti hai; museebat mein sirf choti bahu saath deti hai aur saas ki soch badal jaati hai.",
+  "Beti shaadi ke baad maa se door ho jaati hai; ek phone call par purana jhagda yaad karke dono ro deti hain aur maaf kar deti hain.",
+  "Saas ko lagta hai bahu ne uska kangan chura liya; sach mein woh kangan saas ke pote ne chhupaya tha — saas sharminda ho jaati hai.",
+  "Ghar ki bahu apni sagi behen ki tarah nanad ka khayal rakhti hai jab nanad ka rishta toot-ta hai; poora ghar bahu ki izzat karne lagta hai."
+];
+$('#surpriseBtn').addEventListener('click', ()=>{ $('#idea').value = SEEDS[Math.floor(Math.random()*SEEDS.length)]; toast('Story daal di 🎲'); });
+
+/* ---------- build the instruction ---------- */
+function buildInstruction(forAPI){
+  const n = $('#scenes').value;
+  const tone = $('#tone').value;
+  const dialect = $('#dialect').value;
+  const lang = $('#meaningLang').value;
+  const meaning = lang==='both' ? 'Urdu AND English' : lang;
+  const idea = $('#idea').value.trim() || '(No idea given — invent a fresh, original emotional Khaleeji family micro-drama.)';
+  const reuse = $('#bibleReuse').value.trim();
+  const reuseBlock = reuse
+    ? `\nREUSE THESE EXACT CHARACTERS (do not change their name/age/skin/hair/eyes/outfit — this is a recurring series):\n${reuse}\n`
+    : '';
+
+  const spec =
+`You are an expert creative director for a vertical short-form (TikTok/Reels/Shorts) channel in the Khaleeji/Arab family-drama niche — emotional, cinematic, photorealistic AI micro-dramas (saas–bahu style conflict → aansu → ek twist → emotional resolution), same tone as accounts like "dramatots". Production pipeline is image-to-video in Veo 3: for each scene, a still first-frame is generated from an IMAGE PROMPT, then animated with a VIDEO PROMPT.
+
+TASK: Build a complete ${n}-scene story (~${Math.round(n*9)}s total, each scene ~8–10s) from this idea:
+"${idea}"
+Tone: ${tone}.
+Spoken dialogue dialect: ${dialect}. Meaning/translation language: ${meaning}.
+${reuseBlock}
+HARD RULES:
+- Character consistency is critical. Define a fixed CHARACTER BIBLE (name, age, skin tone, hair, eyes, exact outfit) and reuse the IDENTICAL wording in every scene's image prompt so faces & clothes never change. Keep recurring props (bags, medicine boxes, bracelet, etc.) consistent too.
+- Every IMAGE PROMPT: vertical 9:16, ultra-realistic cinematic, ARRI Alexa look, warm cinematic lighting, shallow depth of field; detailed characters, wardrobe, setting, composition. NO on-screen text/caption/watermark/logo. Keep the pose/emotion restrained and just beginning so the video has room to move.
+- Every VIDEO PROMPT: describe motion, camera movement, micro-expressions; include the spoken dialogue in Arabic (${dialect}); add ambient sound; no background music unless truly needed.
+- Dialogue for each scene: give Arabic script, a Latin transliteration, and the meaning in ${meaning}.
+- Also produce ONE TikTok caption (first-person dramatic hook + "..." + twist tease + emoji), a set of Arabic hashtags, and a thumbnail image prompt (9:16, bold expressive face; if any Arabic text is included, give the exact bold Arabic text and note that AI may misspell Arabic so the user should verify).`;
+
+  if(forAPI){
+    return spec + `
+
+Return ONLY valid minified JSON (no markdown, no backticks) with EXACTLY this shape:
+{
+ "title": string,
+ "logline": string,
+ "characters": [ { "name": string, "age": string, "skin": string, "hair": string, "eyes": string, "outfit": string, "note": string } ],
+ "props": [ string ],
+ "scenes": [ { "n": number, "beat": string, "imagePrompt": string, "videoPrompt": string, "dialogue": { "arabic": string, "translit": string, "meaning": string }, "sound": string } ],
+ "caption": string,
+ "hashtags": string,
+ "thumbnail": string
+}
+Make exactly ${n} scenes. Do not wrap in code fences.`;
+  } else {
+    return spec + `
+
+Respond scene-by-scene. For EACH scene clearly label and separate:
+(A) FIRST-FRAME IMAGE PROMPT
+(B) VEO IMAGE-TO-VIDEO PROMPT  (with the Arabic dialogue + transliteration + ${meaning} meaning under it)
+Start with the CHARACTER BIBLE and the recurring props list, then all ${n} scenes, then the TikTok caption + hashtags, then the thumbnail prompt.`;
+  }
+}
+
+/* ---------- Gemini call ---------- */
+async function callGemini(prompt){
+  const key = (localStorage.getItem(LS.key)||'').trim();
+  if(!key) throw new Error('NOKEY');
+  const model = $('#model').value;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  const body = {
+    contents:[{ role:'user', parts:[{ text: prompt }] }],
+    generationConfig:{ temperature:0.95, topP:0.95, maxOutputTokens:8192, responseMimeType:'application/json' }
+  };
+  const res = await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  if(!res.ok){
+    let msg = 'HTTP '+res.status;
+    try{ const j=await res.json(); msg = (j.error&&j.error.message)||msg; }catch(e){}
+    if(res.status===400 && /API key not valid/i.test(msg)) throw new Error('BADKEY');
+    if(res.status===429) throw new Error('Free limit abhi bhar gaya — 1 min baad dobara, ya Model change karke dekho.');
+    if(res.status===404) throw new Error('Ye model available nahi — Setup mein doosra Model chuno.');
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const txt = (((data.candidates||[])[0]||{}).content||{}).parts?.map(p=>p.text).join('') || '';
+  if(!txt) throw new Error('Khaali jawab aaya — dobara koshish karo.');
+  return txt;
+}
+function parseJSON(txt){
+  let t = txt.trim().replace(/^```[a-z]*\s*/i,'').replace(/```\s*$/,'').trim();
+  try{ return JSON.parse(t); }catch(e){}
+  const a=t.indexOf('{'), b=t.lastIndexOf('}');
+  if(a>=0&&b>a){ return JSON.parse(t.slice(a,b+1)); }
+  throw new Error('Jawab parse nahi hua — dobara Generate dabao.');
+}
+
+/* ---------- render ---------- */
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function copyBlockBtn(sel){ return `<button class="btn btn-ghost btn-sm copy" data-copy="${sel}">📋 Copy</button>`; }
+
+function render(d){
+  lastData = d;
+  $('#storyHead').innerHTML =
+    `<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span class="tag" style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:rgba(231,162,76,.1);border:1px solid var(--line);padding:3px 9px;border-radius:20px">Story</span></div>
+     <h3 style="margin-top:8px">${esc(d.title||'Untitled')}</h3>
+     <p>${esc(d.logline||'')}</p>`;
+
+  // bible
+  const chars = (d.characters||[]).map(c=>
+    `<div class="block" style="margin-top:10px"><div class="blabel">👤 ${esc(c.name||'Character')} · ${esc(c.age||'')}</div>
+      <pre>Skin: ${esc(c.skin)}
+Hair: ${esc(c.hair)}
+Eyes: ${esc(c.eyes)}
+Outfit: ${esc(c.outfit)}${c.note?'\nNote: '+esc(c.note):''}</pre></div>`).join('');
+  const props = (d.props&&d.props.length)?`<div class="block" style="margin-top:10px"><div class="blabel">🎒 Recurring props</div><pre>${esc((d.props||[]).join('\n'))}</pre></div>`:'';
+  $('#bibleCard').innerHTML = `<h2>👥 Character Bible <span class="tag">fixed — har scene same</span></h2>
+    <div class="hintline">Ye descriptions har scene mein same rehti hain taake faces/kapde na badlein.</div>${chars}${props}`;
+
+  // scenes
+  $('#scenesWrap').innerHTML = (d.scenes||[]).map((s,i)=>{
+    const idA=`imgP${i}`, idB=`vidP${i}`;
+    const dlg = s.dialogue||{};
+    return `<div class="scene" id="scene${i}">
+      <div class="scene-top">
+        <div class="scene-n">${esc(s.n||i+1)}</div>
+        <b>${esc(s.beat||('Scene '+(i+1)))}</b>
+        <label class="chk"><input type="checkbox" data-scene="${i}"> Flow mein ho gaya</label>
+      </div>
+      <div class="block"><button class="btn btn-ghost btn-sm copy" data-copy="#${idA}">📋 Copy</button>
+        <div class="blabel">🖼 (A) First-Frame Image Prompt</div><pre id="${idA}">${esc(s.imagePrompt)}</pre></div>
+      <div class="block"><button class="btn btn-ghost btn-sm copy" data-copy="#${idB}">📋 Copy</button>
+        <div class="blabel">🎬 (B) Veo Image-to-Video Prompt</div><pre id="${idB}">${esc(s.videoPrompt)}</pre></div>
+      <div class="dlg">
+        <div class="blabel" style="color:var(--gold)">🗣 Dialogue</div>
+        <div class="ar">${esc(dlg.arabic)}</div>
+        <div class="tr">${esc(dlg.translit)}</div>
+        <div class="mn">${esc(dlg.meaning)}</div>
+      </div>
+      ${s.sound?`<div class="warn">🔊 Ambient sound: ${esc(s.sound)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  // social
+  $('#socialCard').innerHTML = `<h2>📣 Caption · Hashtags · Thumbnail</h2>
+    <div class="block"><button class="btn btn-ghost btn-sm copy" data-copy="#capT">📋 Copy</button>
+      <div class="blabel">✍️ TikTok Caption</div><pre id="capT">${esc(d.caption)}</pre></div>
+    <div class="block"><button class="btn btn-ghost btn-sm copy" data-copy="#tagT">📋 Copy</button>
+      <div class="blabel"># Hashtags</div><pre id="tagT">${esc(d.hashtags)}</pre></div>
+    <div class="block"><button class="btn btn-ghost btn-sm copy" data-copy="#thT">📋 Copy</button>
+      <div class="blabel">🖼 Thumbnail Prompt</div><pre id="thT">${esc(d.thumbnail)}</pre></div>
+    <div class="warn">⚠️ Agar thumbnail/kisi prompt mein Arabic text hai to Veo/AI kabhi spelling ghalat kar sakta hai — final image mein Arabic zaroor check kar lena.</div>`;
+
+  bindCopy();
+  bindChecks(d);
+  $('#promptOut').style.display='none';
+  $('#out').style.display='block';
+  $('#out').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function bindCopy(){
+  $$('.copy').forEach(btn=>{
+    btn.onclick = ()=>{
+      const el = $(btn.dataset.copy); if(!el) return;
+      const txt = el.textContent;
+      navigator.clipboard.writeText(txt).then(()=>{
+        const o=btn.innerHTML; btn.innerHTML='✓ Copied'; btn.classList.add('done');
+        toast('Copy ho gaya ✓');
+        setTimeout(()=>{ btn.innerHTML=o; btn.classList.remove('done'); },1400);
+      }).catch(()=>toast('Copy nahi hua — manually select karo'));
+    };
+  });
+}
+function bindChecks(d){
+  $$('#scenesWrap input[type=checkbox]').forEach(cb=>{
+    cb.onchange = ()=>{ $('#scene'+cb.dataset.scene).classList.toggle('done', cb.checked); };
+  });
+}
+
+/* ---------- full text for copy-all / master prompt ---------- */
+function dataToText(d){
+  let t = `${d.title||''}\n${d.logline||''}\n\n=== CHARACTER BIBLE ===\n`;
+  (d.characters||[]).forEach(c=>{ t+=`\n${c.name} (${c.age})\n  Skin: ${c.skin}\n  Hair: ${c.hair}\n  Eyes: ${c.eyes}\n  Outfit: ${c.outfit}${c.note?'\n  Note: '+c.note:''}\n`; });
+  if(d.props&&d.props.length) t+=`\nRecurring props: ${d.props.join(', ')}\n`;
+  (d.scenes||[]).forEach(s=>{
+    t+=`\n\n===== SCENE ${s.n} — ${s.beat||''} =====\n`;
+    t+=`\n(A) IMAGE PROMPT:\n${s.imagePrompt}\n`;
+    t+=`\n(B) VEO VIDEO PROMPT:\n${s.videoPrompt}\n`;
+    const dl=s.dialogue||{};
+    t+=`\nDialogue (Arabic): ${dl.arabic}\nTransliteration: ${dl.translit}\nMeaning: ${dl.meaning}\n`;
+    if(s.sound) t+=`Ambient sound: ${s.sound}\n`;
+  });
+  t+=`\n\n=== CAPTION ===\n${d.caption||''}\n\n=== HASHTAGS ===\n${d.hashtags||''}\n\n=== THUMBNAIL ===\n${d.thumbnail||''}\n`;
+  return t;
+}
+
+/* ---------- actions ---------- */
+function showOverlay(on,msg){ const o=$('#overlay'); o.classList.toggle('show',on); if(msg) $('#ovMsg').textContent=msg; }
+function showErr(m){ const e=$('#err'); e.innerHTML=m; e.style.display='block'; }
+function hideErr(){ $('#err').style.display='none'; }
+
+$('#genBtn').addEventListener('click', async ()=>{
+  hideErr();
+  if(MODE==='prompt'){
+    const p = buildInstruction(false);
+    $('#masterPromptText').textContent = p;
+    $('#out').style.display='none';
+    $('#promptOut').style.display='block';
+    bindCopy();
+    $('#promptOut').scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  // auto mode
+  if(!(localStorage.getItem(LS.key)||'').trim()){
+    showErr('Pehle upar <b>Setup</b> mein apni free Gemini key daalo aur Save karo — ya <b>Master Prompt</b> mode chuno (bina key).');
+    $('#setHead').classList.add('open'); $('#setBody').classList.add('open'); return;
+  }
+  $('#genBtn').disabled=true; $('#surpriseBtn').disabled=true;
+  showOverlay(true,'AI story likh raha hai…');
+  $('#out').style.display='none'; $('#promptOut').style.display='none';
+  try{
+    const txt = await callGemini(buildInstruction(true));
+    const d = parseJSON(txt);
+    if(!d.scenes || !d.scenes.length) throw new Error('Scenes nahi bane — dobara Generate dabao.');
+    render(d);
+  }catch(err){
+    let m = err.message;
+    if(m==='NOKEY') m='Key nahi lagi — Setup mein daalo.';
+    else if(m==='BADKEY') m='Ye API key sahi nahi lag rahi — aistudio.google.com/apikey se nayi banao aur dobara Save karo.';
+    showErr('⚠️ '+m);
+  }finally{
+    showOverlay(false); $('#genBtn').disabled=false; $('#surpriseBtn').disabled=false;
+  }
+});
+
+$('#copyAllBtn').addEventListener('click', ()=>{
+  if(!lastData) return;
+  navigator.clipboard.writeText(dataToText(lastData)).then(()=>toast('Poori story copy ho gayi ✓'));
+});
+$('#saveBibleBtn').addEventListener('click', ()=>{
+  if(!lastData||!lastData.characters) return;
+  let t = (lastData.characters||[]).map(c=>`${c.name} (${c.age}) — Skin: ${c.skin}; Hair: ${c.hair}; Eyes: ${c.eyes}; Outfit: ${c.outfit}`).join('\n');
+  if(lastData.props&&lastData.props.length) t+=`\nProps: ${lastData.props.join(', ')}`;
+  $('#bibleReuse').value = t;
+  localStorage.setItem(LS.bible, t);
+  toast('Bible save ✓ — agli story mein same characters aayenge');
+  $('#bibleReuse').scrollIntoView({behavior:'smooth',block:'center'});
+});
+$('#regenBtn').addEventListener('click', ()=>{ $('#genBtn').click(); });
+</script>
+</body>
+</html>
