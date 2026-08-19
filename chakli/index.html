@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chakli Payments App</title>
+<!-- html2canvas Library (Page ki tasveer banane ke leay) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+    body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 10px; direction: ltr; }
+    .container { max-width: 450px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #1e3a8a; margin-top: 0; font-weight: bold; }
+
+    .summary-box { text-align: center; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; font-size: 22px; }
+    .balance-box { background-color: #0284c7; }
+    .row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
+    .col { flex: 1; padding: 12px; border-radius: 8px; color: white; text-align: center; font-weight: bold; font-size: 16px; }
+    .income-box { background-color: #16a34a; }
+    .expense-box { background-color: #dc2626; }
+
+    .current-month-box { background: #e0f2fe; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #bae6fd; text-align: center; }
+    .current-month-box h3 { margin-top: 0; color: #0369a1; font-size: 16px; margin-bottom: 8px; }
+    .current-month-box input[type="month"] { font-size: 16px; padding: 6px; border-radius: 5px; border: 1px solid #0284c7; font-weight: bold; color: #000; background: white; margin-bottom: 10px; }
+    .current-month-box .amount-display { font-size: 16px; font-weight: bold; color: #0f172a; }
+    .current-month-box .amount-display span { color: #16a34a; font-size: 22px; }
+
+    .form-group { margin-bottom: 12px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #4b5563; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 15px; color: #000000 !important; }
+    button.save-btn { width: 100%; padding: 12px; background-color: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    button.save-btn:hover { background-color: #1e40af; }
+
+    .shortcut-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 250px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 8px; border-radius: 6px; margin-bottom: 10px; background: #f9fafb; }
+    .shortcut-btn { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #e5e7eb; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 13px; text-align: left; color: #000000 !important; font-weight: bold; }
+    .shortcut-btn:hover { background: #d1d5db; }
+    .amt-green { color: #16a34a; font-weight: bold; font-size: 14px; }
+    .amt-red { color: #dc2626; font-size: 12px; }
+
+    .add-member-box { display: flex; gap: 5px; margin-bottom: 20px; background: #f3f4f6; padding: 10px; border-radius: 6px; border: 1px dashed #9ca3af; }
+    .add-member-box input { flex: 1; padding: 8px; }
+    .add-member-box button { background-color: #059669; color: white; border: none; border-radius: 5px; padding: 8px 12px; font-weight: bold; cursor: pointer; }
+
+    .history { margin-top: 25px; }
+    .history h3 { border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; color: #1f2937; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #000000 !important; }
+    .text-green { color: #16a34a; font-weight: bold; }
+    .text-red { color: #dc2626; font-weight: bold; }
+    .delete-btn { background: #ef4444; color: white; padding: 3px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 10px; }
+    button.share-btn { width: 100%; padding: 15px; background-color: #25d366; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px; }
+    button.share-btn:hover { background-color: #128c7e; }
+
+    /* ===== Backup & Restore box (naya) ===== */
+    .backup-box { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+    .backup-box h3 { margin: 0 0 6px 0; color: #b45309; text-align: center; font-size: 17px; }
+    .backup-box p.hint { margin: 0 0 12px 0; font-size: 12px; color: #92400e; text-align: center; }
+    .backup-box .count { text-align: center; font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 10px; }
+    button.backup-btn { width: 100%; padding: 14px; background-color: #d97706; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-bottom: 8px; }
+    button.backup-btn:hover { background-color: #b45309; }
+    button.small-btn { padding: 9px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; color: white; }
+    .btn-copy { background-color: #2563eb; }
+    .btn-restore { background-color: #059669; }
+    .btn-file { background-color: #6b7280; }
+    .backup-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+    .backup-actions button { flex: 1; }
+    .backup-box textarea { width: 100%; box-sizing: border-box; height: 70px; font-size: 11px; font-family: monospace; border: 1px solid #d1d5db; border-radius: 6px; padding: 8px; color: #000; }
+    .backup-box details { margin-top: 8px; }
+    .backup-box summary { font-size: 13px; font-weight: bold; color: #92400e; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="container" id="app-container">
+    <h2>🕌 Chakli Payments</h2>
+
+    <!-- ===== Backup & Restore (Data Hifazat) — naya ===== -->
+    <div class="backup-box" id="backup-section">
+        <h3>🔒 Data Backup / Restore</h3>
+        <p class="hint">Apna hisaab safe rakhein — file WhatsApp/Drive par bhej dein.</p>
+        <div class="count" id="backup-count">—</div>
+        <button class="backup-btn" onclick="exportData()">📥 BACKUP — Data Save / Share Karein</button>
+        <div class="backup-actions">
+            <button class="small-btn btn-copy" onclick="copyBackup()">📋 Copy Text</button>
+            <button class="small-btn btn-file" onclick="document.getElementById('restore-file').click()">📂 File Kholein</button>
+            <button class="small-btn btn-restore" onclick="importData()">♻️ Restore (Load)</button>
+        </div>
+        <input type="file" id="restore-file" accept="application/json,.json,.txt" style="display:none" onchange="loadFile(this)">
+        <details>
+            <summary>Backup text (copy/paste yahan)</summary>
+            <textarea id="backup-text" placeholder="Backup dabane par yahan data aayega. Restore ke liye yahan backup text paste karein."></textarea>
+        </details>
+    </div>
+
+    <div class="summary-box balance-box">Net Balance: <span id="balance">Rs 0</span></div>
+    <div class="row">
+        <div class="col income-box">Total Wasooli<br><span id="income">Rs 0</span></div>
+        <div class="col expense-box">Total Kharcha<br><span id="expense">Rs 0</span></div>
+    </div>
+
+    <div class="current-month-box" id="dashboard-section">
+        <h3>Hisaab Ka Mahina Select Karein:</h3>
+        <input type="month" id="view-month" onchange="updateUI()">
+        <div class="amount-display">Is Mahinay Ki Wasooli: <br><span id="current-month-total">Rs 0</span></div>
+    </div>
+
+    <label>Bande ka Naam select karein:</label>
+    <div class="shortcut-grid" id="members-grid"></div>
+
+    <div class="add-member-box" id="add-member-section">
+        <input type="text" id="new-member-name" placeholder="Naya naam likhein...">
+        <button onclick="addNewMember()">+ Add</button>
+    </div>
+
+    <div id="form-section">
+        <div class="form-group">
+            <label>Entry Ka Mahina:</label>
+            <input type="month" id="entry-month">
+        </div>
+        <div class="form-group">
+            <label>Tafseel (Naam ya Wajah):</label>
+            <input type="text" id="desc" placeholder="Naam likhein ya oopar se select karein...">
+        </div>
+        <div class="form-group">
+            <label>Raqam (Rs):</label>
+            <input type="number" id="amount" placeholder="Pese likhein...">
+        </div>
+        <div class="form-group">
+            <label>Qisam (Type):</label>
+            <select id="type">
+                <option value="income">Wasooli (Paise Aaye)</option>
+                <option value="expense">Kharcha (Paise Diye)</option>
+            </select>
+        </div>
+        <button class="save-btn" onclick="addTransaction()">Entry Save Karein</button>
+    </div>
+
+    <div class="history">
+        <h3>Pichli Entries:</h3>
+        <div id="history-list"></div>
+    </div>
+</div>
+
+<div style="max-width: 450px; margin: auto; padding: 0 10px;">
+    <button class="share-btn" onclick="shareHisaab()">📲 WhatsApp Par Share Karein</button>
+</div>
+
+<script>
+    const defaultMembers = [
+        "Niaz Muhammad", "Farooq", "SherDil", "Muhammad Haneef", "Khurshaid",
+        "Khalid", "Nawaz", "Mukhtiar", "Bashir", "Dildar",
+        "Noor Muhammad", "Faqeer Muhammad", "Amjad", "Ali Farman", "Luqman Khan",
+        "Abid Mansehra", "Iftekhar Haroon", "Nazakat Mansehra", "Chanwaiz Karachi", "Fayaz"
+    ];
+
+    let memberNames = JSON.parse(localStorage.getItem('chakliMembers_Final')) || defaultMembers;
+
+    function addNewMember() {
+        const newName = document.getElementById('new-member-name').value;
+        if (newName.trim() === '') { alert("Barae meharbani bande ka naam likhein!"); return; }
+        memberNames.push(newName.trim());
+        localStorage.setItem('chakliMembers_Final', JSON.stringify(memberNames));
+        document.getElementById('new-member-name').value = '';
+        updateUI();
+    }
+
+    const initialData = [
+        { desc: "April 2026 Total Collection", amount: 12300, type: "income", date: "20/04/2026", m: 4, y: 2026 },
+        { desc: "Qari Sahab Bheje", amount: 5000, type: "expense", date: "20/04/2026", m: 4, y: 2026 },
+        { desc: "Niaz Muhammad (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Farooq (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "SherDil (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Khurshaid (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Khalid (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Nawaz (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Mukhtiar (Monthly Payment)", amount: 300, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Bashir (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Dildar (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Noor Muhammad (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Faqeer Muhammad (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Amjad (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Ali Farman (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Luqman Khan (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Abid Mansehra (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Iftekhar Haroon (Monthly Payment)", amount: 500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Nazakat Mansehra (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Chanwaiz Karachi (Monthly Payment)", amount: 2500, type: "income", date: "15/05/2026", m: 5, y: 2026 },
+        { desc: "Fayaz (Monthly Payment)", amount: 1000, type: "income", date: "15/05/2026", m: 5, y: 2026 }
+    ];
+
+    let transactions = JSON.parse(localStorage.getItem('chakliApp_Pro_Version')) || initialData;
+
+    function selectMember(name) {
+        document.getElementById('desc').value = name + " (Monthly Payment)";
+        document.getElementById('type').value = "income";
+        document.getElementById('amount').focus();
+    }
+
+    function updateUI() {
+        let balance = 0, income = 0, expense = 0, currentMonthTotal = 0;
+        const listContainer = document.getElementById('history-list');
+        listContainer.innerHTML = '';
+
+        const viewMonthVal = document.getElementById('view-month').value;
+        const currentYear = parseInt(viewMonthVal.split('-')[0]);
+        const currentMonth = parseInt(viewMonthVal.split('-')[1]);
+
+        let memberPayments = {};
+        memberNames.forEach(name => memberPayments[name] = 0);
+
+        transactions.forEach((t, index) => {
+            if (t.type === 'income') { income += t.amount; balance += t.amount; }
+            else { expense += t.amount; balance -= t.amount; }
+
+            if (t.type === 'income' && t.m === currentMonth && t.y === currentYear) {
+                memberNames.forEach(name => {
+                    if (t.desc.includes(name)) {
+                        memberPayments[name] += t.amount;
+                        currentMonthTotal += t.amount;
+                    }
+                });
+            }
+
+            const sign = t.type === 'income' ? '+' : '-';
+            const colorClass = t.type === 'income' ? 'text-green' : 'text-red';
+            listContainer.innerHTML += `
+                <div class="list-item">
+                    <div><strong>${t.desc}</strong> <br><small style="color:gray">${t.date}</small></div>
+                    <div><span class="${colorClass}">${sign} Rs ${t.amount}</span>
+                    <button class="delete-btn" onclick="deleteTransaction(${index})">X</button></div>
+                </div>`;
+        });
+
+        document.getElementById('balance').innerText = `Rs ${balance}`;
+        document.getElementById('income').innerText = `Rs ${income}`;
+        document.getElementById('expense').innerText = `Rs ${expense}`;
+        document.getElementById('current-month-total').innerText = `Rs ${currentMonthTotal}`;
+
+        const grid = document.getElementById('members-grid');
+        grid.innerHTML = '';
+        memberNames.forEach(name => {
+            let amt = memberPayments[name];
+            let amtHtml = amt > 0 ? `<span class="amt-green">Rs ${amt}</span>` : `<span class="amt-red">Rs 0</span>`;
+            grid.innerHTML += `<button class="shortcut-btn" onclick="selectMember('${name}')"><span>👤 ${name}</span>${amtHtml}</button>`;
+        });
+
+        // Backup box: entries ki ginti dikhayein
+        const bc = document.getElementById('backup-count');
+        if (bc) bc.innerText = `Mojooda data: ${transactions.length} entries • ${memberNames.length} members`;
+    }
+
+    function addTransaction() {
+        const desc = document.getElementById('desc').value;
+        const amount = document.getElementById('amount').value;
+        const type = document.getElementById('type').value;
+        const entryMonthVal = document.getElementById('entry-month').value;
+
+        if (desc.trim() === '' || amount === '' || amount <= 0) { alert("Sahi tafseel likhein!"); return; }
+
+        const year = parseInt(entryMonthVal.split('-')[0]);
+        const month = parseInt(entryMonthVal.split('-')[1]);
+        const dateStr = new Date().toLocaleDateString('en-PK');
+
+        const transaction = { desc, amount: parseFloat(amount), type, date: dateStr, m: month, y: year };
+        transactions.push(transaction);
+        localStorage.setItem('chakliApp_Pro_Version', JSON.stringify(transactions));
+
+        document.getElementById('desc').value = ''; document.getElementById('amount').value = '';
+        updateUI();
+    }
+
+    function deleteTransaction(index) {
+        if(confirm("Kya aap waqai yeh entry delete karna chahte hain?")) {
+            transactions.splice(index, 1);
+            localStorage.setItem('chakliApp_Pro_Version', JSON.stringify(transactions));
+            updateUI();
+        }
+    }
+
+    // ===================== BACKUP / RESTORE (naya) =====================
+    function getBackupObject() {
+        return {
+            app: "ChakliPayments",
+            format: 1,
+            exportedAt: new Date().toISOString(),
+            transactions: JSON.parse(localStorage.getItem('chakliApp_Pro_Version')) || transactions || [],
+            members: JSON.parse(localStorage.getItem('chakliMembers_Final')) || memberNames || []
+        };
+    }
+
+    function exportData() {
+        const data = getBackupObject();
+        const json = JSON.stringify(data);
+        const count = data.transactions.length;
+        document.getElementById('backup-text').value = json;
+
+        const stamp = new Date().toISOString().slice(0,10);
+        const fname = `Chakli_Backup_${stamp}.json`;
+        const blob = new Blob([json], { type: "application/json" });
+        const file = new File([blob], fname, { type: "application/json" });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: "Chakli Backup", text: `Chakli hisaab backup — ${count} entries` })
+                .catch(e => console.log(e));
+        } else {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fname;
+            link.click();
+            alert(`Backup file download ho gayi (${count} entries).`);
+        }
+    }
+
+    function copyBackup() {
+        const t = document.getElementById('backup-text');
+        if (!t.value.trim()) { t.value = JSON.stringify(getBackupObject()); }
+        t.select();
+        t.setSelectionRange(0, 999999);
+        const done = () => alert("Copy ho gaya! Ab WhatsApp/Notes par paste kar ke mehfooz kar lein.");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(t.value).then(done).catch(() => { document.execCommand('copy'); done(); });
+        } else { document.execCommand('copy'); done(); }
+    }
+
+    function loadFile(input) {
+        const f = input.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = e => {
+            document.getElementById('backup-text').value = e.target.result;
+            alert('File load ho gayi. Ab "♻️ Restore (Load)" dabayein.');
+        };
+        r.readAsText(f);
+        input.value = '';
+    }
+
+    function importData() {
+        const txt = document.getElementById('backup-text').value.trim();
+        if (!txt) { alert('Pehle backup text box mein paste karein, ya "📂 File Kholein" se backup file chunein.'); return; }
+        let data;
+        try { data = JSON.parse(txt); } catch (e) { alert('Ghalat/adhoora data. Poora backup text sahi paste karein.'); return; }
+        const tx = Array.isArray(data) ? data : data.transactions;
+        if (!Array.isArray(tx)) { alert('Is text mein hisaab (transactions) nahi mila.'); return; }
+        if (!confirm(`Yeh backup load karne se mojooda data (${transactions.length} entries) REPLACE ho jayega.\n\nNaya: ${tx.length} entries.\n\nAage barhein?`)) return;
+
+        localStorage.setItem('chakliApp_Pro_Version', JSON.stringify(tx));
+        if (data.members && Array.isArray(data.members)) {
+            localStorage.setItem('chakliMembers_Final', JSON.stringify(data.members));
+        }
+        alert(`Backup load ho gaya! ${tx.length} entries. App refresh ho rahi hai...`);
+        location.reload();
+    }
+    // ================================================================
+
+    function shareHisaab() {
+        const appContainer = document.getElementById('app-container');
+        const formSection = document.getElementById('form-section');
+        const addMemberSection = document.getElementById('add-member-section');
+        const backupSection = document.getElementById('backup-section');
+
+        formSection.style.display = 'none'; addMemberSection.style.display = 'none';
+        if (backupSection) backupSection.style.display = 'none';
+
+        html2canvas(appContainer, { scale: 2, backgroundColor: "#f4f7f6" }).then(canvas => {
+            formSection.style.display = 'block'; addMemberSection.style.display = 'flex';
+            if (backupSection) backupSection.style.display = 'block';
+            canvas.toBlob(function(blob) {
+                const file = new File([blob], "Chakli_Hisaab.jpg", { type: "image/jpeg" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({ files: [file], title: 'Chakli Payments' }).catch(e => console.log(e));
+                } else {
+                    const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+                    link.download = 'Chakli_Hisaab.jpg'; link.click();
+                    alert("Tasveer download ho gayi hai.");
+                }
+            }, 'image/jpeg');
+        });
+    }
+
+    window.onload = function() {
+        const now = new Date();
+        const mStr = (now.getMonth() + 1).toString().padStart(2, '0');
+        const currentMonthVal = now.getFullYear() + '-' + mStr;
+        document.getElementById('view-month').value = currentMonthVal;
+        document.getElementById('entry-month').value = currentMonthVal;
+        updateUI();
+    };
+</script>
+</body>
+</html>
