@@ -38,7 +38,16 @@ Edge mein bhi same: `edge://extensions` → Developer mode → Load unpacked.
   tod kar queue bana deti hai. Format: har scene mein `IMAGE PROMPT:` aur `VIDEO PROMPT:`
   labels (aur ho sake to `Scene 1/2…`) hon.
 
-### B) Veo pe chalao
+### B2) Export → "VEO Automation" jaisi Flow bulk-extension ke liye (recommended)
+Best combo: **prompts mera brain banaye, Flow pe bulk-clicking wo mature extension kare.**
+- Panel ke **📤 Export** card se: **image prompts** ka blank-line list (Text-to-Image /
+  Nano Banana mode ke liye) aur **video prompts** ka list (Frame-to-Video mode ke liye) —
+  Copy ya `.txt`, ya dono ka `.csv`.
+- Phir [VEO Automation](https://chromewebstore.google.com/detail/veo-automation-auto-veo-n/fnmijgmnjpealnnadjpjilaanhhambeb)
+  kholo → Text-to-Image mode → image list paste/import → run → images ban-ne ke baad
+  Frame-to-Video mode → wahi images + video list → run → auto-download.
+
+### B) Veo pe chalao (meri apni best-effort automation)
 1. Ek tab mein apna **Veo / Flow** (labs.google / gemini / flow) khol lo, login rakho.
 2. Panel ke **🚀 Veo pe chalao** mein wo tab chuno (**↻** refresh).
 3. **🔎 Test** dabao — "prompt box mil gaya" aaye to ready.

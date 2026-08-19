@@ -235,6 +235,28 @@ $('#grabClaude').onclick=async()=>{
   }catch(e){ log('✗ '+e.message,'err'); }
 };
 
+/* ---------- export for VEO Automation (blank-line lists / txt / csv) ---------- */
+function imgList(){ return SCENES.map(s=>(s.imagePrompt||'').trim()).filter(Boolean).join('\n\n'); }
+function vidList(){ return SCENES.map(s=>(s.videoPrompt||'').trim()).filter(Boolean).join('\n\n'); }
+function csvCell(v){ v=(v==null?'':String(v)); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function csvBuild(){
+  const rows=[['scene','image_prompt','video_prompt']];
+  SCENES.forEach((s,i)=>rows.push([s.n||i+1, s.imagePrompt||'', s.videoPrompt||'']));
+  return rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+}
+function downloadText(filename, text, mime){
+  if(!text || !text.trim()){ toast('Pehle scenes banao'); return; }
+  const blob=new Blob([text],{type:(mime||'text/plain')+';charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  chrome.downloads.download({url, filename, saveAs:false}, ()=>{ setTimeout(()=>URL.revokeObjectURL(url),5000); toast('Download: '+filename); });
+}
+function copyText(t){ if(!t||!t.trim()){ toast('Pehle scenes banao'); return; } navigator.clipboard.writeText(t); toast('Copy ✓'); }
+$('#copyImgs').onclick=()=>copyText(imgList());
+$('#copyVids').onclick=()=>copyText(vidList());
+$('#dlImgs').onclick=()=>downloadText('drama-image-prompts.txt', imgList());
+$('#dlVids').onclick=()=>downloadText('drama-video-prompts.txt', vidList());
+$('#dlCsv').onclick=()=>downloadText('drama-prompts.csv', csvBuild(), 'text/csv');
+
 /* ---------- run automation ---------- */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function runOne(i,kind){

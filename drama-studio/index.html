@@ -280,6 +280,21 @@
       <div class="card" id="bibleCard"></div>
       <div id="scenesWrap"></div>
       <div class="card" id="socialCard"></div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>📤 Export → VEO Automation (Google Flow) <span class="tag">bulk</span></h2>
+        <div class="hintline">Prompts ko us format mein nikaalo jo "VEO Automation" jaisi Flow bulk-extension khaati hai (blank-line list / .txt / .csv). Image aur Video alag.</div>
+        <div class="warn" style="margin-top:12px">🖼 <b>Image prompts</b> (Text-to-Image / Nano Banana mode ke liye)</div>
+        <div class="btnrow" style="margin-top:8px">
+          <button class="btn btn-ghost" id="copyImgs">📋 Copy image list</button>
+          <button class="btn btn-ghost" id="dlImgs">⬇ images.txt</button>
+        </div>
+        <div class="warn" style="margin-top:12px">🎬 <b>Video prompts</b> (Frame-to-Video mode ke liye)</div>
+        <div class="btnrow" style="margin-top:8px">
+          <button class="btn btn-ghost" id="copyVids">📋 Copy video list</button>
+          <button class="btn btn-ghost" id="dlVids">⬇ videos.txt</button>
+          <button class="btn btn-ghost" id="dlCsv">⬇ prompts.csv (dono)</button>
+        </div>
+      </div>
       <div class="btnrow" style="margin:4px 0 30px">
         <button class="btn btn-ghost" id="copyAllBtn">📄 Sab kuch copy karo</button>
         <button class="btn btn-ghost" id="saveBibleBtn">👤 Bible save (agli story ke liye)</button>
@@ -600,6 +615,19 @@ $('#saveBibleBtn').addEventListener('click', ()=>{
   $('#bibleReuse').scrollIntoView({behavior:'smooth',block:'center'});
 });
 $('#regenBtn').addEventListener('click', ()=>{ $('#genBtn').click(); });
+
+/* ---------- export for Flow bulk tools ---------- */
+function imgList(){ return (lastData?.scenes||[]).map(s=>(s.imagePrompt||'').trim()).filter(Boolean).join('\n\n'); }
+function vidList(){ return (lastData?.scenes||[]).map(s=>(s.videoPrompt||'').trim()).filter(Boolean).join('\n\n'); }
+function csvCell(v){ v=(v==null?'':String(v)); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function csvBuild(){ const rows=[['scene','image_prompt','video_prompt']]; (lastData?.scenes||[]).forEach((s,i)=>rows.push([s.n||i+1,s.imagePrompt||'',s.videoPrompt||''])); return rows.map(r=>r.map(csvCell).join(',')).join('\r\n'); }
+function dl(name,text,mime){ if(!text||!text.trim()){ toast('Pehle story banao'); return; } const b=new Blob([text],{type:(mime||'text/plain')+';charset=utf-8'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),4000); toast('Download: '+name); }
+function cp(t){ if(!t||!t.trim()){ toast('Pehle story banao'); return; } navigator.clipboard.writeText(t).then(()=>toast('Copy ✓')); }
+$('#copyImgs').addEventListener('click', ()=>cp(imgList()));
+$('#copyVids').addEventListener('click', ()=>cp(vidList()));
+$('#dlImgs').addEventListener('click', ()=>dl('drama-image-prompts.txt', imgList()));
+$('#dlVids').addEventListener('click', ()=>dl('drama-video-prompts.txt', vidList()));
+$('#dlCsv').addEventListener('click', ()=>dl('drama-prompts.csv', csvBuild(), 'text/csv'));
 </script>
 </body>
 </html>
