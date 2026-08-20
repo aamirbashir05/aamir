@@ -23,6 +23,10 @@
     box-shadow:0 8px 18px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7); }
   .brand h1 { font-size:21px; font-weight:850; }
   .brand .tag { font-size:11px; font-weight:800; letter-spacing:2.5px; color:var(--gold); margin-top:2px; }
+  .sync-badge { position:absolute; top:16px; right:16px; z-index:2; font-size:11px; font-weight:800; color:#eafff6;
+    background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.28); padding:5px 11px; border-radius:20px; }
+  .sync-badge[data-s="off"] { background:rgba(220,38,38,0.35); border-color:rgba(255,255,255,0.3); }
+  .sync-badge:empty { display:none; }
 
   .balcard { background:linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.07));
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
@@ -239,6 +243,7 @@
   <div id="tab-home" class="scroll">
     <div class="header">
       <div class="brand"><div class="logo"></div><div><h1>CHAKLI PAYMENTS</h1></div></div>
+      <div id="sync-badge" class="sync-badge"></div>
       <div class="balcard">
         <div class="lbl">NET BALANCE</div>
         <div class="amt" id="h-balance">Rs 0</div>
@@ -426,6 +431,7 @@ function saveData(){
   DATA.lastUpdate=Date.now();
   DATA.lastUpdateBy=currentAdmin? currentAdmin.name : (DATA.lastUpdateBy||'');
   localStorage.setItem(DATA_KEY, JSON.stringify(DATA));
+  if(typeof pushSync==='function') pushSync();
 }
 function blankData(){ return {admins:[], members:[], txns:[], lastUpdate:Date.now(), lastUpdateBy:''}; }
 
@@ -448,6 +454,7 @@ function boot(){ applyLogo();
   } else {
     show('screen-login'); renderDots();
   }
+  initSync();
 }
 
 /* ---------- login ---------- */
@@ -771,6 +778,60 @@ function buildMembersReport(){
       <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:850;font-size:16px;border-top:1px solid #eee;padding-top:8px;"><span>Net Balance</span><span style="color:#0f5132;">${money(mt.bal)}</span></div></div>`:''}
     <div style="text-align:center;font-size:11px;color:#9ca3af;margin-top:12px;">Generated ${todayStr()} · By ${esc(currentAdmin?currentAdmin.name:'')}</div>`;
   return d;
+}
+
+/* ===================== CLOUD SYNC (Firebase) — Al Tariq jaisa =====================
+   Offline persistence + realtime onSnapshot + debounced push + retry.
+   Slow/no net par bhi app chalti hai; net aate hi khud sync (bina refresh). */
+const FB_CONFIG = /*__FB_CONFIG__*/ null;
+const SYNC_ID = 'chakli_main_v1_7QpZ2Rk9wf';   // permanent shared doc — dono devices yehi use karte hain
+const fb = { ready:false, db:null, ref:null, unsub:null, dirty:false, pushT:null, retryT:null, applying:false };
+
+function syncBadge(state){
+  const el=document.getElementById('sync-badge'); if(!el) return;
+  const map={ on:'☁️ Synced', sync:'☁️ …', off:'⚠️ Offline', '' :'' };
+  el.textContent = map[state]||''; el.dataset.s = state||'';
+}
+function loadScript(src){ return new Promise((res,rej)=>{ if(document.querySelector('script[src="'+src+'"]')) return res(); const s=document.createElement('script'); s.src=src; s.onload=()=>res(); s.onerror=()=>rej(new Error('load '+src)); document.head.appendChild(s); }); }
+async function loadFirebaseSDK(){ if(window.firebase && window.firebase.firestore) return; const b='https://www.gstatic.com/firebasejs/10.12.2/'; await loadScript(b+'firebase-app-compat.js'); await loadScript(b+'firebase-auth-compat.js'); await loadScript(b+'firebase-firestore-compat.js'); }
+
+async function initSync(){
+  if(!FB_CONFIG || !FB_CONFIG.apiKey){ syncBadge(''); return; }
+  syncBadge('sync');
+  try{
+    await loadFirebaseSDK();
+    firebase.apps.length ? firebase.app() : firebase.initializeApp(FB_CONFIG);
+    await firebase.auth().signInAnonymously();
+    fb.db = firebase.firestore();
+    try{ await fb.db.enablePersistence({ synchronizeTabs:true }); }catch(e){ console.warn('persist', e && e.code); }
+    fb.ref = fb.db.collection('khatas').doc(SYNC_ID);
+    fb.unsub = fb.ref.onSnapshot(snap=>{
+      const d=snap.data(); if(!d || !d.payload) return;
+      let remote; try{ remote=JSON.parse(d.payload); }catch(e){ return; }
+      if((remote.lastUpdate||0) > (DATA.lastUpdate||0)){
+        fb.applying=true;
+        localStorage.setItem(DATA_KEY, d.payload); DATA=remote; ensureOthers();
+        refreshCurrent(); fb.applying=false;
+        if(!(snap.metadata && snap.metadata.fromCache)) toast('☁️ Naya hisaab mila');
+      }
+    }, err=>{ console.warn('snapshot', err); syncBadge('off'); });
+    fb.ready=true; syncBadge('on');
+    window.addEventListener('online', ()=>{ flushSync(); });
+    pushSync(); // agar local naya ho to cloud par
+  }catch(e){ console.warn('sync init', e); fb.ready=false; syncBadge('off'); }
+}
+function pushSync(){ if(!fb.ready){ fb.dirty=true; return; } if(fb.applying) return; fb.dirty=true; clearTimeout(fb.pushT); fb.pushT=setTimeout(flushSync, 700); }
+function flushSync(){
+  if(!fb.ready || !fb.ref || fb.applying || !fb.dirty) return;
+  fb.dirty=false; syncBadge('sync');
+  fb.ref.set({ payload:JSON.stringify(DATA), lastUpdate:DATA.lastUpdate||0, by:(currentAdmin?currentAdmin.name:''), at:Date.now() })
+    .then(()=> syncBadge('on'))
+    .catch(e=>{ console.warn('push', e); fb.dirty=true; syncBadge('off'); clearTimeout(fb.retryT); fb.retryT=setTimeout(flushSync, 5000); });
+}
+function refreshCurrent(){
+  const app=document.getElementById('screen-app'); if(!app || app.classList.contains('hidden')) return;
+  const tab=['home','members','more'].find(x=> !document.getElementById('tab-'+x).classList.contains('hidden'));
+  if(tab==='home') renderHome(); else if(tab==='members') renderMembers(); else if(tab==='more') renderMore();
 }
 
 boot();
