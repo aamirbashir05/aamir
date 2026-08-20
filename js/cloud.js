@@ -7,6 +7,7 @@
 const Cloud = (() => {
   let ready = false, syncOn = false, db = null, docRef = null, unsub = null, pushT = null, onRemote = null;
   let status = 'idle', onStatusCb = null, dirty = false, retryT = null, onlineHooked = false, curSyncId = null;
+  let shareDb = null; // share/PDF links ke liye alag instance (persistence OFF — seedha server)
   // FAST BACKUP: delta doc — sirf nayi/badli hui entries chhoti si upload hoti hain
   // (slow net par bhi foran), poora bara snapshot background me kabhi kabhi jata hai.
   let deltaRef = null, deltaUnsub = null, deltaT = null, fullT = null;
@@ -51,6 +52,14 @@ const Cloud = (() => {
       // OFFLINE PERSISTENCE: data local par cache ho jaye taake net na hone par bhi
       // aakhri synced hisaab dikhe, aur net aate hi khud (bina refresh) update ho jaye.
       try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) { console.warn('persistence', e && e.code); }
+      // Share/PDF links ke liye ALAG Firestore instance jisme persistence NAHI —
+      // is se share write offline-queue (bade backup writes) me nahi phasta, SEEDHA
+      // server par jata hai, aur customer ko PDF foran updated milti hai.
+      try {
+        const sApp = (firebase.apps || []).find(a => a && a.name === 'share') || firebase.initializeApp(cfg, 'share');
+        await sApp.auth().signInAnonymously();
+        shareDb = sApp.firestore(); // koi enablePersistence nahi -> writes direct-to-server
+      } catch (e) { console.warn('shareApp', e); shareDb = null; }
       ready = true;
       // reset-marker ko durable (IndexedDB) rakho: localStorage clear ho jaye to bhi
       // marker mehfooz — taake purana import-reset dobara chal kar entries na mita de.
@@ -326,14 +335,15 @@ const Cloud = (() => {
 
   /* ---- live share links ---- */
   async function publishShare(token, data) {
-    if (!ready || !db || !token) return false;
+    if (!ready || !token) return false;
+    const sdb = shareDb || db; if (!sdb) return false;   // shareDb: persistence-off -> seedha server
     // JSON string me store karo — Firestore nested arrays (txn payload) ko allow nahi karta.
-    try { await db.collection('share').doc(token).set({ data: JSON.stringify(data), updatedAt: new Date().toISOString() }); return true; }
+    try { await sdb.collection('share').doc(token).set({ data: JSON.stringify(data), updatedAt: new Date().toISOString() }); return true; }
     catch (e) { console.warn('publishShare', e); return false; }
   }
   async function fetchShare(token) {
-    if (!db || !token) return null;
-    try { const s = await db.collection('share').doc(token).get(); return s.exists ? s.data() : null; }
+    const sdb = shareDb || db; if (!sdb || !token) return null;
+    try { const s = await sdb.collection('share').doc(token).get(); return s.exists ? s.data() : null; }
     catch (e) { console.warn('fetchShare', e); return null; }
   }
 
