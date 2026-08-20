@@ -651,17 +651,34 @@ function buildBackup(){
     'chakli:data:v1': JSON.stringify(DATA),
     'chakli:config:v1': localStorage.getItem(CONFIG_KEY) };
 }
+
+// Universal file share — Capacitor (APK) par native, warna web (Chrome) par navigator.share/download.
+function blobToBase64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(',')[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
+async function shareBlob(blob, filename, mime, title, text){
+  const CAP=window.Capacitor;
+  if(CAP && CAP.isNativePlatform && CAP.isNativePlatform() && CAP.Plugins && CAP.Plugins.Share && CAP.Plugins.Filesystem){
+    try{
+      const data=await blobToBase64(blob);
+      await CAP.Plugins.Filesystem.writeFile({ path:filename, data:data, directory:'CACHE' });
+      const u=await CAP.Plugins.Filesystem.getUri({ path:filename, directory:'CACHE' });
+      await CAP.Plugins.Share.share({ title:title, text:text, files:[u.uri] });
+      return;
+    }catch(e){ console.log('native share fail', e); }
+  }
+  const file=new File([blob], filename, {type:mime});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({ files:[file], title:title, text:text }); return; }
+    catch(e){ if(e && e.name==='AbortError') return; }
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  toast('File save ho gayi');
+}
+
 function exportData(){
   const json=JSON.stringify(buildBackup(), null, 2);
   const fname='Chakli_Backup_'+new Date().toISOString().slice(0,10)+'.json';
   const blob=new Blob([json],{type:'application/json'});
-  const file=new File([blob],fname,{type:'application/json'});
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    navigator.share({files:[file], title:'Chakli Backup', text:'Chakli hisaab backup — '+DATA.txns.length+' entries'}).catch(()=>{});
-  } else {
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
-    toast('Backup file download ho gayi');
-  }
+  shareBlob(blob, fname, 'application/json', 'Chakli Backup', 'Chakli hisaab backup — '+DATA.txns.length+' entries');
 }
 function openRestore(){ $('restore-text').value=''; restorePayload=null; openModal('modal-restore'); }
 function loadRestoreFile(input){ const f=input.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{ $('restore-text').value=e.target.result; toast('File load hui — ab Load dabayein'); }; r.readAsText(f); input.value=''; }
@@ -690,13 +707,7 @@ function shareReport(kind){
   html2canvas(node,{scale:2, backgroundColor:'#eef2f0', useCORS:true, logging:false}).then(canvas=>{
     stage.innerHTML=''; $('share-status').textContent='';
     canvas.toBlob(blob=>{
-      const file=new File([blob],'Chakli_Hisaab.jpg',{type:'image/jpeg'});
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:'CHAKLI PAYMENTS'}).catch(()=>{});
-      } else {
-        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Chakli_Hisaab.jpg'; a.click();
-        toast('Tasveer download ho gayi');
-      }
+      shareBlob(blob, 'CHAKLI_Hisaab.jpg', 'image/jpeg', 'CHAKLI PAYMENTS', 'Chakli hisaab');
     },'image/jpeg',0.95);
   }).catch(e=>{ stage.innerHTML=''; $('share-status').textContent=''; toast('Share mein masla, dobara koshish karein'); });
 }
