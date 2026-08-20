@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v77'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v78'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1224,7 +1224,7 @@ function loadSettings() {
   $('#setCloudSyncId').value = cl.syncId || PERMANENT_SYNC_ID;
   $('#setCloudConfig').value = cl.config || '';
   $('#cloudStatus').textContent = Cloud.isReady() ? (Cloud.isSyncOn() ? '☁️ Cloud connected + sync on.' : '☁️ Cloud connected (live links on).') : (cl.enabled ? 'Cloud on hai lekin connect nahi hua — Test karein.' : '');
-  $('#logoPreview').src = s.logo || 'assets/logo.png';
+  $('#logoPreview').src = s.logo || 'assets/mark.png';
   const lb = Store.lastBackup();
   $('#storageInfo').textContent = 'Data phone me mehfooz hai. ' + (lb ? 'Aakhri backup: ' + fmtDateTime(new Date(lb).toISOString()) : 'Abhi tak file-backup nahi hua.');
   $('#lockStatus').textContent = Store.getShop().pinHash
@@ -1242,7 +1242,7 @@ $('#logoFile').addEventListener('change', async e => {
     applyBranding(); toast('Logo save ho gaya ✅');
   } catch (err) { toast('Logo load na hua'); }
 });
-$('#btnRemoveLogo').addEventListener('click', () => { Store.setShop({ logo: '', logoSmall: '' }); $('#logoPreview').src = 'assets/logo.png'; applyBranding(); toast('Default logo laga diya'); });
+$('#btnRemoveLogo').addEventListener('click', () => { Store.setShop({ logo: '', logoSmall: '' }); $('#logoPreview').src = 'assets/mark.png'; applyBranding(); toast('Default logo laga diya'); });
 
 // Hamesha PERMANENT id — dobara koi naya random ID nahi banta.
 function genSyncId() { return PERMANENT_SYNC_ID; }

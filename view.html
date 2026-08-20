@@ -28,7 +28,7 @@
       color: #fff; padding: 24px; display: flex; align-items: center; gap: 14px;
       border-bottom: 3px solid #e7a24c;
     }
-    .header img.logo { height: 56px; width: auto; max-width: 84px; object-fit: contain; border-radius: 12px; }
+    .header img.logo { height: 74px; width: auto; max-width: 96px; object-fit: contain; filter: drop-shadow(0 0 12px rgba(231,162,76,.8)) drop-shadow(0 3px 10px rgba(231,162,76,.5)); }
     .header .htext { min-width: 0; }
     .header .shop { font-size: 23px; font-weight: 900;
       background: linear-gradient(180deg, #ffe0a3, #e7a24c); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -191,7 +191,7 @@
 
       document.title = 'Hisaab — ' + (data.name || '');
 
-      const _hi = '<img class="logo" src="' + (data.logo || 'assets/logo.png') + '" alt="logo"><div class="htext"><div class="shop">' + esc(data.shop || 'Al Tariq Printers') + '</div><div class="sub">' + (data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Hisaab / Ledger') + '</div></div>';
+      const _hi = '<img class="logo" src="' + (data.logo || 'assets/mark.png') + '" alt="logo"><div class="htext"><div class="shop">' + esc(data.shop || 'Al Tariq Printers') + '</div><div class="sub">' + (data.shopPhone ? 'Rabta: ' + esc(data.shopPhone) : 'Hisaab / Ledger') + '</div></div>';
       const headerHtml = '<div class="header">' + (data.bl ? '<a href="' + esc(data.bl) + '" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:14px;color:inherit;text-decoration:none">' + _hi + '</a>' : _hi) + '</div>';
 
       sheet.innerHTML = `
