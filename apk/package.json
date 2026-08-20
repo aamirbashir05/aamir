@@ -1,0 +1,15 @@
+{
+  "name": "chakli-apk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CHAKLI PAYMENTS - Android APK (Capacitor wrapper)",
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/share": "^6.0.3",
+    "@capacitor/filesystem": "^6.0.3"
+  }
+}
