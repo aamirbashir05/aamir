@@ -433,7 +433,8 @@ function saveData(){
   localStorage.setItem(DATA_KEY, JSON.stringify(DATA));
   if(typeof pushSync==='function') pushSync();
 }
-function blankData(){ return {admins:[], members:[], txns:[], lastUpdate:Date.now(), lastUpdateBy:''}; }
+function blankData(){ return {admins:[], members:[], txns:[], lastUpdate:0, lastUpdateBy:''}; }
+function hasData(d){ return !!(d && ((d.txns && d.txns.length) || (d.admins && d.admins.length))); }
 
 /* ---------- calculations ---------- */
 function totals(){ let inc=0,exp=0; DATA.txns.forEach(t=> t.type==='income'? inc+=t.amount : exp+=t.amount); return {inc,exp,bal:inc-exp}; }
@@ -446,13 +447,21 @@ function isMemberId(id){ return DATA.members.some(mm=>mm.id===id); }
 function show(el){ ['screen-login','screen-setup','screen-app'].forEach(s=> $(s).classList.toggle('hidden', s!==el)); }
 
 function applyLogo(){ document.querySelectorAll('.logo,.llogo').forEach(function(el){ el.style.background='url('+LOGO+') center/cover'; el.textContent=''; }); }
+function setLoginHint(t){ const el=document.getElementById('login-hint'); if(el) el.textContent=t; }
 function boot(){ applyLogo();
   DATA = loadData();
-  if(!DATA || !DATA.admins || DATA.admins.length===0){
-    if(!DATA) DATA=blankData();
-    show('screen-setup');
-  } else {
+  if(DATA && DATA.admins && DATA.admins.length>0){
     show('screen-login'); renderDots();
+  } else {
+    if(!DATA) DATA=blankData();
+    if(FB_CONFIG && FB_CONFIG.apiKey){
+      // Naya device: pehle cloud se data laane do, setup baad mein (agar cloud khali ho)
+      show('screen-login'); renderDots(); setLoginHint('☁️ Cloud se data aa raha hai…');
+      clearTimeout(window._setupT);
+      window._setupT=setTimeout(function(){ if(!(DATA.admins && DATA.admins.length)) show('screen-setup'); }, 9000);
+    } else {
+      show('screen-setup');
+    }
   }
   initSync();
 }
@@ -806,27 +815,50 @@ async function initSync(){
     try{ await fb.db.enablePersistence({ synchronizeTabs:true }); }catch(e){ console.warn('persist', e && e.code); }
     fb.ref = fb.db.collection('khatas').doc(SYNC_ID);
     fb.unsub = fb.ref.onSnapshot(snap=>{
-      const d=snap.data(); if(!d || !d.payload) return;
-      let remote; try{ remote=JSON.parse(d.payload); }catch(e){ return; }
-      if((remote.lastUpdate||0) > (DATA.lastUpdate||0)){
-        fb.applying=true;
-        localStorage.setItem(DATA_KEY, d.payload); DATA=remote; ensureOthers();
-        refreshCurrent(); fb.applying=false;
-        if(!(snap.metadata && snap.metadata.fromCache)) toast('☁️ Naya hisaab mila');
+      const d=snap.data();
+      const remote = (d && d.payload) ? (function(){ try{ return JSON.parse(d.payload); }catch(e){ return null; } })() : null;
+      const rNewer = remote && (remote.lastUpdate||0) > (DATA.lastUpdate||0);
+      const lNewer = (DATA.lastUpdate||0) > ((remote&&remote.lastUpdate)||0);
+      if(remote){
+        if(rNewer && (hasData(remote) || !hasData(DATA))){
+          // cloud naya + (asli data ya local khali) → apnao
+          fb.applying=true;
+          localStorage.setItem(DATA_KEY, d.payload); DATA=remote; ensureOthers();
+          fb.applying=false;
+          routeAfterSync(); refreshCurrent();
+          if(!(snap.metadata && snap.metadata.fromCache)) toast('☁️ Naya hisaab mila');
+        } else if(rNewer && !hasData(remote) && hasData(DATA)){
+          // cloud khali ho gaya lekin local mein asli data → cloud ko heal karo (local ko naya bana kar)
+          DATA.lastUpdate=Date.now(); localStorage.setItem(DATA_KEY, JSON.stringify(DATA)); pushSync();
+        } else if(lNewer && hasData(DATA)){
+          pushSync(); // local naya + asli → cloud update
+        }
+      } else {
+        // cloud bilkul khali/na-mojood → agar local mein data hai to seed karo
+        if(hasData(DATA)) pushSync();
       }
     }, err=>{ console.warn('snapshot', err); syncBadge('off'); });
     fb.ready=true; syncBadge('on');
     window.addEventListener('online', ()=>{ flushSync(); });
-    pushSync(); // agar local naya ho to cloud par
   }catch(e){ console.warn('sync init', e); fb.ready=false; syncBadge('off'); }
 }
 function pushSync(){ if(!fb.ready){ fb.dirty=true; return; } if(fb.applying) return; fb.dirty=true; clearTimeout(fb.pushT); fb.pushT=setTimeout(flushSync, 700); }
 function flushSync(){
   if(!fb.ready || !fb.ref || fb.applying || !fb.dirty) return;
+  if(!hasData(DATA)){ fb.dirty=false; return; }   // khali data KABHI cloud par na chadhe
   fb.dirty=false; syncBadge('sync');
   fb.ref.set({ payload:JSON.stringify(DATA), lastUpdate:DATA.lastUpdate||0, by:(currentAdmin?currentAdmin.name:''), at:Date.now() })
     .then(()=> syncBadge('on'))
     .catch(e=>{ console.warn('push', e); fb.dirty=true; syncBadge('off'); clearTimeout(fb.retryT); fb.retryT=setTimeout(flushSync, 5000); });
+}
+// Naya device: cloud se data aate hi login screen par bhej do (setup ki bajaye)
+function routeAfterSync(){
+  const app=document.getElementById('screen-app');
+  if(app && !app.classList.contains('hidden')) return;
+  if(DATA.admins && DATA.admins.length>0){
+    clearTimeout(window._setupT);
+    show('screen-login'); renderDots(); setLoginHint('☁️ Data aa gaya — apna PIN daalein');
+  }
 }
 function refreshCurrent(){
   const app=document.getElementById('screen-app'); if(!app || app.classList.contains('hidden')) return;
