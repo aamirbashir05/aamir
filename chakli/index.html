@@ -783,7 +783,7 @@ function buildMembersReport(){
 /* ===================== CLOUD SYNC (Firebase) — Al Tariq jaisa =====================
    Offline persistence + realtime onSnapshot + debounced push + retry.
    Slow/no net par bhi app chalti hai; net aate hi khud sync (bina refresh). */
-const FB_CONFIG = /*__FB_CONFIG__*/ null;
+const FB_CONFIG = { apiKey:"AIzaSyBnFGHWCXmRAAbo8rwjPYWma9jD0q2ZPYI", authDomain:"chakli-payments.firebaseapp.com", projectId:"chakli-payments" };
 const SYNC_ID = 'chakli_main_v1_7QpZ2Rk9wf';   // permanent shared doc — dono devices yehi use karte hain
 const fb = { ready:false, db:null, ref:null, unsub:null, dirty:false, pushT:null, retryT:null, applying:false };
 
