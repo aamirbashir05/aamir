@@ -112,7 +112,31 @@
     return {ok:false, elapsed:maxMs, src: kind==='video'?newestVid():newestImg()};
   }
 
-  function doGenerate(map){ if(map.generate && clickSel(map.generate)) return true; return clickByText(['generate','create','submit']); }
+  function isDisabled(b){ try{ return b.disabled || b.getAttribute('aria-disabled')==='true' || getComputedStyle(b).pointerEvents==='none'; }catch(e){ return false; } }
+  // prompt bar ka submit arrow: box ke paas, icon-only, enabled, sabse dayein
+  function findSubmitNearPrompt(){
+    const box=promptBox(); if(!box) return null;
+    let cont=box; for(let k=0;k<6&&cont.parentElement;k++) cont=cont.parentElement;
+    const btns=[...cont.querySelectorAll('button,[role="button"]')].filter(b=>vis(b)&&!isDisabled(b));
+    if(!btns.length) return null;
+    const icon=btns.filter(b=>norm(b.textContent).length<=2);
+    const pool=icon.length?icon:btns;
+    pool.sort((a,b)=>b.getBoundingClientRect().left-a.getBoundingClientRect().left); // rightmost pehle
+    return pool[0]||null;
+  }
+  function findGenerate(map){
+    if(map&&map.generate){ const e=q(map.generate); if(e&&vis(e)) return e; }
+    const all=[...document.querySelectorAll('button,[role="button"]')].filter(vis);
+    // aria-label / title / data-testid
+    const aria=all.find(b=>/generate|create|submit|run|send|arrow|prompt/i.test(((b.getAttribute&&(b.getAttribute('aria-label')||''))+' '+(b.getAttribute&&(b.getAttribute('title')||''))+' '+(b.getAttribute&&(b.getAttribute('data-testid')||'')))));
+    if(aria&&!isDisabled(aria)) return aria;
+    // text
+    const t=all.find(b=>['generate','create','submit','run','send'].includes(norm(b.textContent)) && !isDisabled(b));
+    if(t) return t;
+    // prompt bar ke paas
+    return findSubmitNearPrompt();
+  }
+  function doGenerate(map){ const g=findGenerate(map); if(g&&vis(g)){ g.click(); return true; } return false; }
 
   async function runImage(map, prompt, waitMs){
     (map.modeImage && clickSel(map.modeImage)) || clickByText(['image']); await sleep(700);
@@ -120,8 +144,8 @@
     (map.outputs_val ? await openClick(map.outputs_open,map.outputs_val) : clickByText(['x1'])); await sleep(300);
     if(map.model_val) { await openClick(map.model_open,map.model_val); await sleep(300); }
     if(!setPrompt(map.prompt, prompt)) return {ok:false, error:'prompt box nahi mila'};
-    await sleep(500);
-    if(!doGenerate(map)) return {ok:false, error:'Generate (→) nahi mila — usay “pick” karo'};
+    await sleep(1200); // Slate/React ko button enable karne do
+    if(!doGenerate(map)) return {ok:false, error:'Generate (→) nahi mila — 1-time “→ Generate” Pick karo'};
     const r=await waitResult('image', waitMs, map);
     return {ok:r.ok, imageSrc:r.src, elapsed:r.elapsed, error:r.ok?'':'image confirm nahi hua (wait barhao)'};
   }
@@ -134,8 +158,8 @@
     if(imageSrc){ frame=await attachFrame(map.startFrame, imageSrc); await sleep(1000); }
     if(map.model_v_val){ await openClick(map.model_v_open,map.model_v_val); await sleep(300); }
     if(!setPrompt(map.prompt, prompt)) return {ok:false, error:'prompt box nahi mila'};
-    await sleep(500);
-    if(!doGenerate(map)) return {ok:false, error:'Generate (→) nahi mila — usay “pick” karo'};
+    await sleep(1200);
+    if(!doGenerate(map)) return {ok:false, error:'Generate (→) nahi mila — 1-time “→ Generate” Pick karo'};
     const r=await waitResult('video', waitMs, map);
     let dl=false;
     if(autoDownload && r.ok){
