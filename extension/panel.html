@@ -9,149 +9,51 @@
 <body>
   <div class="brand">
     <span class="lg">🎬</span>
-    <span style="line-height:1.15"><b>Drama Studio</b><span>Veo Copilot</span></span>
+    <span style="line-height:1.15"><b>Drama Studio</b><span>Flow Copilot</span></span>
   </div>
 
-  <!-- SETUP -->
-  <div class="card collapsed" id="cSetup">
-    <h2 data-toggle="cSetup">⚙️ Setup <span class="pill off" id="keyPill">key nahi</span><span class="chev">▾</span></h2>
+  <!-- 1) IMPORT PROMPTS -->
+  <div class="card" id="cImport">
+    <h2 data-toggle="cImport">📥 Prompts (Claude se) <span class="chev">▾</span></h2>
     <div class="body">
-      <label class="lbl">Gemini API key (free) — story likhne ke liye</label>
-      <div class="row">
-        <input id="apiKey" type="password" placeholder="AIza…" autocomplete="off" style="flex:2">
-        <button class="btn btn-ghost btn-sm" id="saveKey" style="flex:0">💾</button>
-        <button class="btn btn-ghost btn-sm" id="showKey" style="flex:0">👁</button>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <div>
-          <label class="lbl" style="margin-top:0">Model</label>
-          <select id="model">
-            <option value="gemini-2.5-flash">2.5 Flash (free)</option>
-            <option value="gemini-2.0-flash">2.0 Flash (free)</option>
-            <option value="gemini-2.5-pro">2.5 Pro</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl" style="margin-top:0">Meaning</label>
-          <select id="meaningLang"><option value="Urdu">Urdu</option><option value="English">English</option><option value="both">Urdu+Eng</option></select>
-        </div>
-      </div>
-      <div class="fine">Free key: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>. Key sirf is browser mein rehti hai.</div>
-    </div>
-  </div>
-
-  <!-- STORY -->
-  <div class="card" id="cStory">
-    <h2 data-toggle="cStory">📝 Story <span class="chev">▾</span></h2>
-    <div class="body">
-      <textarea id="idea" placeholder="Story idea likho… ya khaali chhod kar 🎲 Surprise dabao"></textarea>
-      <div class="row" style="margin-top:8px">
-        <div><label class="lbl" style="margin-top:0">Scenes</label>
-          <select id="scenes"><option value="6" selected>6</option><option value="4">4</option><option value="5">5</option><option value="8">8</option></select></div>
-        <div><label class="lbl" style="margin-top:0">Tone</label>
-          <select id="tone">
-            <option value="tear-jerker saas–bahu conflict with a redemptive twist">Aansu+twist</option>
-            <option value="tense family confrontation, betrayal then forgiveness">Betrayal→maafi</option>
-            <option value="poverty struggle, sacrifice, hopeful ending">Sacrifice</option>
-            <option value="mother-daughter emotional bond, misunderstanding resolved">Maa–beti</option>
-            <option value="suspense mystery within the family, shocking reveal">Suspense</option>
-          </select></div>
-        <div><label class="lbl" style="margin-top:0">Dialect</label>
-          <select id="dialect"><option value="Modern Standard Arabic (fusha)">Fusha</option><option value="Khaleeji / Gulf spoken Arabic">Khaleeji</option><option value="Egyptian spoken Arabic">Egyptian</option></select></div>
-      </div>
-      <label class="lbl">Character bible reuse (optional — series)</label>
-      <textarea id="bibleReuse" placeholder="Purane characters same rakhne ke liye unka bible yahan paste karo. Khaali = naye characters." style="min-height:44px"></textarea>
+      <div class="fine">Apne <b>Claude</b> se saare prompts banwa kar yahan paste karo, ya <b>.txt</b> file chuno. App khud har scene ka image + video prompt tod kar queue bana degi.</div>
+      <textarea id="pasteBox" placeholder="Yahan saare prompts paste karo — har scene mein 'IMAGE PROMPT:' aur 'VIDEO PROMPT:' labels (aur ho sake to 'Scene 1/2…')." style="min-height:120px"></textarea>
       <div class="btnrow">
-        <button class="btn btn-g" id="genBtn">✨ Generate</button>
-        <button class="btn btn-ghost" id="surpriseBtn">🎲</button>
-      </div>
-      <div class="fine">Ya apne <b>Claude</b> se banwao: <a href="https://claude.ai" target="_blank">claude.ai</a> khol kar story banwao, phir neeche “Claude tab se lao”.</div>
-      <div class="btnrow">
-        <button class="btn btn-ghost btn-sm" id="copyMaster">📋 Master prompt copy</button>
-        <button class="btn btn-ghost btn-sm" id="grabClaude">⬇ Claude tab se lao</button>
-      </div>
-
-      <label class="lbl">Ya saare prompts paste / .txt se lao</label>
-      <textarea id="pasteBox" placeholder="Claude ke saare prompts yahan paste karo — (A) IMAGE PROMPT / (B) VIDEO PROMPT wale format mein. Ya neeche .txt file chuno." style="min-height:58px"></textarea>
-      <div class="btnrow">
-        <button class="btn btn-ghost btn-sm" id="loadPaste">📥 Load prompts</button>
-        <label class="btn btn-ghost btn-sm" for="pasteFile" style="cursor:pointer;margin:0">📄 .txt file</label>
+        <button class="btn btn-g" id="loadPaste">📥 Load prompts</button>
+        <label class="btn btn-ghost" for="pasteFile" style="cursor:pointer;margin:0">📄 .txt file</label>
         <input id="pasteFile" type="file" accept=".txt,text/plain" style="display:none">
       </div>
-      <div class="fine">Format: har scene mein <b>IMAGE PROMPT:</b> aur <b>VIDEO PROMPT:</b> labels hon (aur ho sake to “Scene 1/2…”). App inhein khud tod kar queue bana degi.</div>
       <div class="err" id="err"></div>
     </div>
   </div>
 
-  <!-- QUEUE -->
+  <!-- 2) QUEUE -->
   <div class="card" id="cQueue">
     <h2 data-toggle="cQueue">🎞 Scenes <span class="tag" id="qCount">0</span><span class="chev">▾</span></h2>
     <div class="body">
-      <div id="scenesWrap"><div class="fine">Abhi koi scene nahi — upar se Generate karo.</div></div>
+      <div id="scenesWrap"><div class="fine">Abhi koi scene nahi — upar se prompts load karo.</div></div>
     </div>
   </div>
 
-  <!-- EXPORT (for VEO Automation extension) -->
-  <div class="card" id="cExport">
-    <h2 data-toggle="cExport">📤 Export → VEO Automation <span class="tag">Flow</span><span class="chev">▾</span></h2>
+  <!-- 3) FLOW AUTO -->
+  <div class="card" id="cFlow">
+    <h2 data-toggle="cFlow">🎯 Flow Auto — image → video → 1080p <span class="tag">beta</span><span class="chev">▾</span></h2>
     <div class="body">
-      <div class="fine">Prompts ko us format mein nikaalo jo <b>"VEO Automation"</b> extension khata hai (blank-line separated / .txt / .csv). Image aur Video alag.</div>
-      <div class="plab" style="margin-top:10px">🖼 Image prompts (Text-to-Image / Nano Banana)</div>
-      <div class="btnrow" style="margin-top:4px">
-        <button class="btn btn-ghost btn-sm" id="copyImgs">📋 Copy list</button>
-        <button class="btn btn-ghost btn-sm" id="dlImgs">⬇ images.txt</button>
-      </div>
-      <div class="plab" style="margin-top:10px">🎬 Video prompts (Frame-to-Video)</div>
-      <div class="btnrow" style="margin-top:4px">
-        <button class="btn btn-ghost btn-sm" id="copyVids">📋 Copy list</button>
-        <button class="btn btn-ghost btn-sm" id="dlVids">⬇ videos.txt</button>
-      </div>
-      <div class="btnrow" style="margin-top:10px">
-        <button class="btn btn-ghost btn-sm" id="dlCsv">⬇ prompts.csv (dono)</button>
-      </div>
-      <div class="warnbox">Use: VEO Automation kholo → <b>Text-to-Image</b> mode → image list paste → run → images ban-ne ke baad <b>Frame-to-Video</b> mode → wahi images + video list → run. (CSV import mein column pick kar lena.)</div>
-    </div>
-  </div>
-
-  <!-- VEO RUN -->
-  <div class="card" id="cVeo">
-    <h2 data-toggle="cVeo">🚀 Veo pe chalao <span class="tag">experimental</span><span class="chev">▾</span></h2>
-    <div class="body">
-      <label class="lbl">Veo / Flow tab chuno</label>
+      <label class="lbl">Google Flow tab chuno</label>
       <div class="row">
         <select id="veoTab" style="flex:3"><option value="">— refresh dabao —</option></select>
         <button class="btn btn-ghost btn-sm" id="refreshTabs" style="flex:0">↻</button>
       </div>
       <button class="btn btn-ghost btn-sm" id="pingVeo" style="margin-top:8px">🔎 Test: prompt box mila?</button>
 
-      <div class="row" style="margin-top:10px">
-        <div><label class="lbl" style="margin-top:0">Har video wait (sec)</label><input id="waitSec" type="number" value="120" min="20"></div>
-        <div><label class="lbl" style="margin-top:0">Steps ke beech (sec)</label><input id="gapSec" type="number" value="6" min="2"></div>
-      </div>
-      <label class="chkline"><input type="checkbox" id="autoDownload" checked> Ban-ne ke baad Download button auto-dabao</label>
-
-      <div class="btnrow">
-        <button class="btn btn-g" id="runImages">▶ Sab IMAGE prompts chalao</button>
-        <button class="btn btn-ghost" id="runVideos">▶ Sab VIDEO prompts</button>
-        <button class="btn btn-ghost btn-sm" id="stopRun">⏹ Stop</button>
-      </div>
-      <div class="warnbox">⚠️ Yeh aapke apne Veo account ki website ko automate karta hai (Google ki terms ke against, thoda ban-risk). Video ban-ne mein minutes lagte hain. <b>Image→Video</b> ka “image ko first-frame banao” step Veo ki UI pe manual click maang sakta hai — log dekhte raho.</div>
-    </div>
-  </div>
-
-  <!-- FLOW AUTO (full recipe) -->
-  <div class="card" id="cFlow">
-    <h2 data-toggle="cFlow">🎯 Flow Auto — full (Nano Banana → Frame video) <span class="tag">beta</span><span class="chev">▾</span></h2>
-    <div class="body">
-      <div class="fine">Google Flow pe poora recipe khud click karta hai: <b>Image→9:16→x1→prompt→Generate</b>, phir <b>Video→Frames→9:16→start-frame(image)→video prompt→Generate→Download 1080p</b>. Buttons text se auto-milte hain; sirf <b>→ (Generate)</b> aur <b>Download</b> ek dafa sikhane padte hain.</div>
-
-      <div class="plab" style="margin-top:12px">1-time: 2 buttons sikhao (Flow tab khula ho)</div>
+      <div class="plab" style="margin-top:14px">1-time: 3 button sikhao (Flow tab pe click karke)</div>
       <div class="btnrow" style="margin-top:4px">
-        <button class="btn btn-ghost btn-sm" data-pick="generate">🎯 Pick “→ Generate” <span id="m_generate">✗</span></button>
-        <button class="btn btn-ghost btn-sm" data-pick="download">🎯 Pick “Download” <span id="m_download">✗</span></button>
+        <button class="btn btn-ghost btn-sm" data-pick="generate">🎯 “→ Generate” <span id="m_generate">✗</span></button>
+        <button class="btn btn-ghost btn-sm" data-pick="download">🎯 “Download” <span id="m_download">✗</span></button>
+        <button class="btn btn-ghost btn-sm" data-pick="quality_val">🎯 “1080p” <span id="m_quality_val">✗</span></button>
       </div>
       <div class="btnrow">
-        <button class="btn btn-ghost btn-sm" id="moreMap">＋ aur buttons (agar auto na chale)</button>
+        <button class="btn btn-ghost btn-sm" id="moreMap">＋ aur buttons</button>
         <button class="btn btn-ghost btn-sm" id="resetMap">↺ reset</button>
       </div>
       <div id="moreMapBox" style="display:none">
@@ -160,19 +62,25 @@
           <button class="btn btn-ghost btn-sm" data-pick="modeImage">Image tab <span id="m_modeImage">✗</span></button>
           <button class="btn btn-ghost btn-sm" data-pick="modeVideo">Video tab <span id="m_modeVideo">✗</span></button>
           <button class="btn btn-ghost btn-sm" data-pick="modeFrames">Frames <span id="m_modeFrames">✗</span></button>
-          <button class="btn btn-ghost btn-sm" data-pick="ratio_val">9:16 (image) <span id="m_ratio_val">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="ratio_val">9:16 (img) <span id="m_ratio_val">✗</span></button>
           <button class="btn btn-ghost btn-sm" data-pick="outputs_val">x1 <span id="m_outputs_val">✗</span></button>
-          <button class="btn btn-ghost btn-sm" data-pick="vratio_val">9:16 (video) <span id="m_vratio_val">✗</span></button>
-          <button class="btn btn-ghost btn-sm" data-pick="startFrame">Start-frame box <span id="m_startFrame">✗</span></button>
-          <button class="btn btn-ghost btn-sm" data-pick="quality_val">1080p <span id="m_quality_val">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="vratio_val">9:16 (vid) <span id="m_vratio_val">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="startFrame">Start-frame <span id="m_startFrame">✗</span></button>
         </div>
       </div>
 
-      <div class="row" style="margin-top:12px">
-        <div><label class="lbl" style="margin-top:0">Image wait (sec)</label><input id="fImgWait" type="number" value="90" min="15"></div>
-        <div><label class="lbl" style="margin-top:0">Video wait (sec)</label><input id="fVidWait" type="number" value="180" min="30"></div>
+      <label class="lbl">Download folder ka naam</label>
+      <input id="fFolder" class="txt" type="text" value="DramaStudio" placeholder="DramaStudio">
+
+      <div class="row" style="margin-top:10px">
+        <div><label class="lbl" style="margin-top:0">Image wait (s)</label><input id="fImgWait" type="number" value="90" min="15"></div>
+        <div><label class="lbl" style="margin-top:0">Video wait (s)</label><input id="fVidWait" type="number" value="180" min="30"></div>
+        <div><label class="lbl" style="margin-top:0">Steps gap (s)</label><input id="fGap" type="number" value="6" min="2"></div>
       </div>
-      <label class="chkline"><input type="checkbox" id="fAutoDl" checked> Video ban-ne ke baad Download(1080p) auto</label>
+      <div class="row" style="margin-top:8px">
+        <div><label class="lbl" style="margin-top:0">1080p upscale wait (s)</label><input id="fQualWait" type="number" value="12" min="3"></div>
+      </div>
+      <label class="chkline"><input type="checkbox" id="fAutoDl" checked> Video ban-ne ke baad Download → 1080p auto</label>
 
       <div class="btnrow">
         <button class="btn btn-g" id="fRunAll">▶ Full auto (image+video, saare)</button>
@@ -182,23 +90,26 @@
         <button class="btn btn-ghost btn-sm" id="fRunVids">sirf videos</button>
         <button class="btn btn-ghost btn-sm" id="fStop">⏹ Stop</button>
       </div>
-      <div class="warnbox">⚠️ Video-generation mein minutes lagte hain — wait theek rakho. Agar kisi scene mein start-frame attach fail ho (CORS), log batayega — us scene ka image haath se laga dena. Google UI badle to “aur buttons” se map kar lo.</div>
+      <div class="warnbox">⚠️ Video-gen mein minutes lagte hain — wait theek rakho. Start-frame CORS se fail ho to log batayega (us scene ka image haath se laga dena). Files <b>Downloads/&lt;folder&gt;/scene-01.mp4…</b> mein jayengi. Yeh aapke apne Flow account ko automate karta hai (Google terms; thoda risk).</div>
     </div>
   </div>
 
-  <!-- ADVANCED SELECTORS -->
-  <div class="card collapsed" id="cSel">
-    <h2 data-toggle="cSel">🛠 Selectors (agar auto na chale) <span class="chev">▾</span></h2>
+  <!-- 4) EXPORT (optional, kisi doosre bulk tool ke liye) -->
+  <div class="card collapsed" id="cExport">
+    <h2 data-toggle="cExport">📤 Export (doosre tool ke liye) <span class="chev">▾</span></h2>
     <div class="body">
-      <div class="fine">Google UI badle to yahan CSS selector daalo (Veo page pe right-click → Inspect se milta hai). Khaali = smart auto-detect.</div>
-      <label class="lbl">Prompt box</label><input id="selPrompt" placeholder="e.g. textarea#PromptInput">
-      <label class="lbl">Generate button</label><input id="selGenerate" placeholder="e.g. button[aria-label='Generate']">
-      <label class="lbl">Download button</label><input id="selDownload" placeholder="e.g. button[aria-label='Download']">
-      <div class="btnrow"><button class="btn btn-ghost btn-sm" id="saveSel">💾 Save selectors</button></div>
+      <div class="fine">Blank-line list / .txt / .csv — agar kisi aur bulk-extension mein daalna ho.</div>
+      <div class="btnrow" style="margin-top:8px">
+        <button class="btn btn-ghost btn-sm" id="copyImgs">📋 image list</button>
+        <button class="btn btn-ghost btn-sm" id="dlImgs">⬇ images.txt</button>
+        <button class="btn btn-ghost btn-sm" id="copyVids">📋 video list</button>
+        <button class="btn btn-ghost btn-sm" id="dlVids">⬇ videos.txt</button>
+        <button class="btn btn-ghost btn-sm" id="dlCsv">⬇ prompts.csv</button>
+      </div>
     </div>
   </div>
 
-  <!-- LOG -->
+  <!-- 5) LOG -->
   <div class="card" id="cLog">
     <h2 data-toggle="cLog">📜 Log <span class="chev">▾</span></h2>
     <div class="body"><div id="log">ready.</div>

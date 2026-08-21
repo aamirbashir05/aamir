@@ -104,7 +104,7 @@
     return {ok:r.ok, imageSrc:r.src, elapsed:r.elapsed, error:r.ok?'':'image confirm nahi hua (wait barhao)'};
   }
 
-  async function runVideo(map, prompt, imageSrc, waitMs, autoDownload){
+  async function runVideo(map, prompt, imageSrc, waitMs, autoDownload, qualityWaitMs){
     (map.modeVideo && clickSel(map.modeVideo)) || clickByText(['video']); await sleep(700);
     (map.modeFrames && clickSel(map.modeFrames)) || clickByText(['frames']); await sleep(600);
     (map.vratio_val ? await openClick(map.vratio_open,map.vratio_val) : clickByText(['9:16'])); await sleep(300);
@@ -116,7 +116,18 @@
     if(!doGenerate(map)) return {ok:false, error:'Generate (→) nahi mila — usay “pick” karo'};
     const r=await waitResult('video', waitMs, map);
     let dl=false;
-    if(autoDownload && r.ok){ await sleep(1500); if(clickSel(map.download)||clickByText(['download'])){ await sleep(700); (map.quality_val && clickSel(map.quality_val)) || clickByText(['1080p','1080']); dl=true; } }
+    if(autoDownload && r.ok){
+      await sleep(1500);
+      // download control kholo (menu aata hai; direct = 720p)
+      const opened = clickSel(map.download) || clickByText(['download','export']);
+      if(opened){
+        await sleep(1400);
+        // 1080p option -> Flow ise upscale karke download karta hai
+        const hi = (map.quality_val && clickSel(map.quality_val)) || clickByText(['1080p','1080p (upscaled)','1080','full hd','1080 p']);
+        dl = true;
+        if(hi){ await sleep(qualityWaitMs||8000); } // upscale ko thoda waqt do (download background mein hoga)
+      }
+    }
     return {ok:r.ok, elapsed:r.elapsed, downloaded:dl, frameWarn:frame.ok?'':frame.why, error:r.ok?'':'video confirm nahi hua (wait barhao)'};
   }
 
@@ -143,14 +154,14 @@
 
   chrome.runtime.onMessage.addListener((msg,_s,reply)=>{
     if(!msg||msg.__drama!==true) return;
-    if(!['startPick','cancelPick','testClick','runImage','runVideo'].includes(msg.cmd)) return; // veo-agent handles ping/fill/etc
+    if(!['ping','startPick','cancelPick','testClick','runImage','runVideo'].includes(msg.cmd)) return;
     (async()=>{ try{
       if(msg.cmd==='ping'){ const box=promptBox(msg.map&&msg.map.prompt); return reply({ok:true,url:location.href,isFlow:/labs\.google\/fx\/tools\/flow/.test(location.href),promptFound:!!box}); }
       if(msg.cmd==='startPick'){ startPick(msg.key); return reply({ok:true}); }
       if(msg.cmd==='cancelPick'){ finishPick('',''); return reply({ok:true}); }
       if(msg.cmd==='testClick'){ return reply({ok:clickSel(msg.sel)}); }
       if(msg.cmd==='runImage'){ return reply(await runImage(msg.map||{}, msg.prompt, msg.waitMs||180000)); }
-      if(msg.cmd==='runVideo'){ return reply(await runVideo(msg.map||{}, msg.prompt, msg.imageSrc, msg.waitMs||240000, msg.autoDownload)); }
+      if(msg.cmd==='runVideo'){ return reply(await runVideo(msg.map||{}, msg.prompt, msg.imageSrc, msg.waitMs||240000, msg.autoDownload, msg.qualityWaitMs||8000)); }
       return reply({ok:false,error:'unknown cmd'});
     }catch(e){ reply({ok:false,error:String(e&&e.message||e)}); } })();
     return true;
