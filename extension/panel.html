@@ -139,6 +139,53 @@
     </div>
   </div>
 
+  <!-- FLOW AUTO (full recipe) -->
+  <div class="card" id="cFlow">
+    <h2 data-toggle="cFlow">🎯 Flow Auto — full (Nano Banana → Frame video) <span class="tag">beta</span><span class="chev">▾</span></h2>
+    <div class="body">
+      <div class="fine">Google Flow pe poora recipe khud click karta hai: <b>Image→9:16→x1→prompt→Generate</b>, phir <b>Video→Frames→9:16→start-frame(image)→video prompt→Generate→Download 1080p</b>. Buttons text se auto-milte hain; sirf <b>→ (Generate)</b> aur <b>Download</b> ek dafa sikhane padte hain.</div>
+
+      <div class="plab" style="margin-top:12px">1-time: 2 buttons sikhao (Flow tab khula ho)</div>
+      <div class="btnrow" style="margin-top:4px">
+        <button class="btn btn-ghost btn-sm" data-pick="generate">🎯 Pick “→ Generate” <span id="m_generate">✗</span></button>
+        <button class="btn btn-ghost btn-sm" data-pick="download">🎯 Pick “Download” <span id="m_download">✗</span></button>
+      </div>
+      <div class="btnrow">
+        <button class="btn btn-ghost btn-sm" id="moreMap">＋ aur buttons (agar auto na chale)</button>
+        <button class="btn btn-ghost btn-sm" id="resetMap">↺ reset</button>
+      </div>
+      <div id="moreMapBox" style="display:none">
+        <div class="btnrow" style="margin-top:8px">
+          <button class="btn btn-ghost btn-sm" data-pick="prompt">prompt <span id="m_prompt">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="modeImage">Image tab <span id="m_modeImage">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="modeVideo">Video tab <span id="m_modeVideo">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="modeFrames">Frames <span id="m_modeFrames">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="ratio_val">9:16 (image) <span id="m_ratio_val">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="outputs_val">x1 <span id="m_outputs_val">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="vratio_val">9:16 (video) <span id="m_vratio_val">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="startFrame">Start-frame box <span id="m_startFrame">✗</span></button>
+          <button class="btn btn-ghost btn-sm" data-pick="quality_val">1080p <span id="m_quality_val">✗</span></button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div><label class="lbl" style="margin-top:0">Image wait (sec)</label><input id="fImgWait" type="number" value="90" min="15"></div>
+        <div><label class="lbl" style="margin-top:0">Video wait (sec)</label><input id="fVidWait" type="number" value="180" min="30"></div>
+      </div>
+      <label class="chkline"><input type="checkbox" id="fAutoDl" checked> Video ban-ne ke baad Download(1080p) auto</label>
+
+      <div class="btnrow">
+        <button class="btn btn-g" id="fRunAll">▶ Full auto (image+video, saare)</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn btn-ghost btn-sm" id="fRunImgs">sirf images</button>
+        <button class="btn btn-ghost btn-sm" id="fRunVids">sirf videos</button>
+        <button class="btn btn-ghost btn-sm" id="fStop">⏹ Stop</button>
+      </div>
+      <div class="warnbox">⚠️ Video-generation mein minutes lagte hain — wait theek rakho. Agar kisi scene mein start-frame attach fail ho (CORS), log batayega — us scene ka image haath se laga dena. Google UI badle to “aur buttons” se map kar lo.</div>
+    </div>
+  </div>
+
   <!-- ADVANCED SELECTORS -->
   <div class="card collapsed" id="cSel">
     <h2 data-toggle="cSel">🛠 Selectors (agar auto na chale) <span class="chev">▾</span></h2>

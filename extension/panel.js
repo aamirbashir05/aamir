@@ -293,3 +293,67 @@ async function runBatch(kind){
 $('#runImages').onclick=()=>runBatch('img');
 $('#runVideos').onclick=()=>runBatch('vid');
 $('#stopRun').onclick=()=>{ STOP=true; toast('Rukega agle step pe'); };
+
+/* ========== FLOW AUTO (full recipe via flow-agent.js) ========== */
+let FLOWMAP={};
+(async()=>{ FLOWMAP=await store.get('flow_map')||{}; updateMapBadges(); })();
+function updateMapBadges(){ document.querySelectorAll('[data-pick]').forEach(b=>{ const k=b.dataset.pick; const el=$('#m_'+k); if(el){ el.textContent=FLOWMAP[k]?'✓':'✗'; el.style.color=FLOWMAP[k]?'var(--ok)':'var(--muted)'; } }); }
+async function injectFlow(tabId){ await chrome.scripting.executeScript({target:{tabId},files:['flow-agent.js']}); }
+
+$('#moreMap').onclick=()=>{ const b=$('#moreMapBox'); b.style.display=b.style.display==='none'?'block':'none'; };
+$('#resetMap').onclick=async()=>{ FLOWMAP={}; await store.set('flow_map',{}); updateMapBadges(); toast('Mapping reset'); };
+
+let PICKING=null;
+document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{
+  const id=await veoTabId(); if(!id){ toast('Pehle Flow tab kholo + refresh'); return; }
+  try{ await injectFlow(id); PICKING=b.dataset.pick; await sendTab(id,{cmd:'startPick',key:PICKING});
+    log('👆 Flow tab pe jao aur "'+PICKING+'" wale button pe click karo…','warn'); toast('Flow tab pe click karo'); }
+  catch(e){ log('✗ pick: '+e.message,'err'); }
+});
+chrome.runtime.onMessage.addListener((msg)=>{
+  if(!msg||msg.__drama!==true||msg.type!=='pickResult') return;
+  if(!msg.selector){ log('pick cancel','warn'); PICKING=null; return; }
+  FLOWMAP[msg.key]=msg.selector; store.set('flow_map',FLOWMAP); updateMapBadges();
+  log('✓ mapped "'+msg.key+'" → '+msg.selector.slice(0,50)+(msg.text?('  ('+msg.text+')'):''),'ok'); PICKING=null;
+});
+
+async function flowImage(id,i){
+  const s=SCENES[i]; if(!s.imagePrompt){ log('scene '+(i+1)+': image prompt khaali','warn'); return null; }
+  setStatus(i,'image chal raha…','busy'); log('Scene '+(i+1)+' IMAGE: recipe chala raha…');
+  const r=await sendTab(id,{cmd:'runImage',map:FLOWMAP,prompt:s.imagePrompt,waitMs:(parseInt($('#fImgWait').value)||90)*1000});
+  if(!r.ok){ setStatus(i,'image fail',''); log('✗ scene '+(i+1)+' image: '+(r.error||'?'),'err'); return null; }
+  s.imageSrc=r.imageSrc||''; s.imgDone=true; setStatus(i,'image ✓','img');
+  log('✓ scene '+(i+1)+' image ready ('+Math.round((r.elapsed||0)/1000)+'s)'+(s.imageSrc?'':' — src na mila, video attach fail ho sakta'),'ok');
+  return s.imageSrc;
+}
+async function flowVideo(id,i){
+  const s=SCENES[i]; if(!s.videoPrompt){ log('scene '+(i+1)+': video prompt khaali','warn'); return false; }
+  setStatus(i,'video chal raha…','busy'); log('Scene '+(i+1)+' VIDEO: recipe chala raha…');
+  const r=await sendTab(id,{cmd:'runVideo',map:FLOWMAP,prompt:s.videoPrompt,imageSrc:s.imageSrc||'',waitMs:(parseInt($('#fVidWait').value)||180)*1000,autoDownload:$('#fAutoDl').checked});
+  if(r.frameWarn) log('  ⚠️ start-frame: '+r.frameWarn,'warn');
+  if(!r.ok){ setStatus(i,'video fail',''); log('✗ scene '+(i+1)+' video: '+(r.error||'?'),'err'); return false; }
+  s.vidDone=true; setStatus(i,'video ✓','vid');
+  log('✓ scene '+(i+1)+' video ready ('+Math.round((r.elapsed||0)/1000)+'s)'+(r.downloaded?' ⬇ downloaded':''),'ok');
+  return true;
+}
+async function flowRun(mode){ // 'all' | 'img' | 'vid'
+  if(RUNNING){ toast('Pehle se chal raha'); return; }
+  if(!SCENES.length){ toast('Pehle scenes banao'); return; }
+  const id=await veoTabId(); if(!id){ toast('Flow tab chuno + refresh'); return; }
+  if(!FLOWMAP.generate){ log('⚠️ “→ Generate” map nahi hai — pehle usay Pick karo warna auto-detect pe depend karega.','warn'); }
+  RUNNING=true; STOP=false; const gap=(parseInt($('#gapSec')?.value)||6)*1000;
+  try{ await injectFlow(id); }catch(e){ log('✗ inject: '+e.message,'err'); RUNNING=false; return; }
+  log('=== Flow Auto ('+mode+') start — '+SCENES.length+' scenes ===');
+  for(let i=0;i<SCENES.length;i++){
+    if(STOP){ log('⏹ Stopped.','warn'); break; }
+    if(mode==='all'){ const src=await flowImage(id,i); await sleep(gap); if(STOP)break; await flowVideo(id,i); }
+    else if(mode==='img'){ await flowImage(id,i); }
+    else { await flowVideo(id,i); }
+    if(i<SCENES.length-1) await sleep(gap);
+  }
+  RUNNING=false; log('=== Flow Auto done ===','ok'); toast('Flow batch done');
+}
+$('#fRunAll').onclick=()=>flowRun('all');
+$('#fRunImgs').onclick=()=>flowRun('img');
+$('#fRunVids').onclick=()=>flowRun('vid');
+$('#fStop').onclick=()=>{ STOP=true; toast('Rukega agle step pe'); };

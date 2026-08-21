@@ -47,7 +47,26 @@ Best combo: **prompts mera brain banaye, Flow pe bulk-clicking wo mature extensi
   kholo → Text-to-Image mode → image list paste/import → run → images ban-ne ke baad
   Frame-to-Video mode → wahi images + video list → run → auto-download.
 
-### B) Veo pe chalao (meri apni best-effort automation)
+### B0) 🎯 Flow Auto — full (Nano Banana → Frame video) — meri apni
+
+Ye poora recipe Google Flow pe khud click karta hai (aap ke exact steps):
+- **IMAGE:** Image tab → 9:16 → x1 → prompt → Generate
+- **VIDEO:** Video tab → Frames → 9:16 → us image ko start-frame → video prompt → Generate → Download 1080p
+
+**Kaise:**
+1. Ek tab mein apna Flow project kholo (`labs.google/fx/tools/flow/project/...`), login rakho.
+2. Panel ke **🚀 Veo** section mein wo tab chuno (**↻** refresh).
+3. **🎯 Flow Auto** card mein **2 buttons ek dafa sikhao** (Flow tab pe click karke):
+   **“→ Generate”** (prompt bar ka arrow) aur **“Download”**. Baaki (Image/Video/Frames/
+   9:16/x1/Start/prompt-box) **text se khud** mil jaate hain — “aur buttons” tabhi map karo
+   jab auto na chale.
+4. **▶ Full auto** dabao — har scene ka image banega, phir usi se video, phir 1080p download.
+   Log live status deta hai; **⏹ Stop** kabhi bhi.
+
+> Note: kabhi image ka data cross-origin (CORS) hone se start-frame auto-attach fail ho sakta —
+> log warning dega, us ek scene ka image haath se laga dena, baaki chalta rahega.
+
+### B) Veo pe chalao (basic best-effort — koi bhi Veo/Gemini page)
 1. Ek tab mein apna **Veo / Flow** (labs.google / gemini / flow) khol lo, login rakho.
 2. Panel ke **🚀 Veo pe chalao** mein wo tab chuno (**↻** refresh).
 3. **🔎 Test** dabao — "prompt box mil gaya" aaye to ready.

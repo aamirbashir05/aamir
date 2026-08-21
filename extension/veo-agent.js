@@ -89,6 +89,7 @@
 
   chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     if (!msg || msg.__drama !== true) return;
+    if (!['ping','fill','generate','download','fillAndGenerate'].includes(msg.cmd)) return; // let flow-agent handle its own
     (async () => {
       try {
         const sel = msg.selectors || {};
