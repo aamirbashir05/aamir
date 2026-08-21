@@ -34,6 +34,20 @@
   /* ---------- prompt (Slate) ---------- */
   const PROMPT_SEL = '[data-slate-editor="true"],[role="textbox"][contenteditable="true"]';
   function promptBox(sel){ return q(sel) || [...document.querySelectorAll(PROMPT_SEL)].filter(vis).pop() || null; }
+  // asli paste event simulate — Slate/React model ko update karta hai (button enable hota hai)
+  function simulatePaste(el, text){
+    try{
+      const dt = new DataTransfer();
+      dt.setData('text/plain', text);
+      try{ dt.setData('text', text); }catch(e){}
+      let ev;
+      try{ ev = new ClipboardEvent('paste', { bubbles:true, cancelable:true, clipboardData:dt }); }
+      catch(e){ ev = new Event('paste', { bubbles:true, cancelable:true }); }
+      if(!ev.clipboardData){ try{ Object.defineProperty(ev,'clipboardData',{ value:dt }); }catch(e){} }
+      el.dispatchEvent(ev);
+      return true;
+    }catch(e){ return false; }
+  }
   function setPrompt(sel, text){
     const el = promptBox(sel); if(!el) return false;
     el.focus();
@@ -43,13 +57,23 @@
       el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true}));
       return true;
     }
-    // contenteditable / Slate
+    // ---- contenteditable / Slate ----
+    // 1) purana text clear (native beforeinput -> Slate model)
     try{ document.execCommand('selectAll',false); document.execCommand('delete',false); }catch(e){}
-    let ok=false; try{ ok=document.execCommand('insertText',false,text); }catch(e){}
-    if(!ok){
-      el.dispatchEvent(new InputEvent('beforeinput',{bubbles:true,cancelable:true,inputType:'insertText',data:text}));
-      el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));
+    // 2) PASTE simulate (yehi manual paste jaisa hai -> model + button update)
+    let before = (el.textContent||'');
+    simulatePaste(el, text);
+    // 3) agar paste ne kaam na kiya to beforeinput insertFromPaste + execCommand fallback
+    if((el.textContent||'') === before){
+      try{
+        el.dispatchEvent(new InputEvent('beforeinput',{bubbles:true,cancelable:true,inputType:'insertFromPaste',data:text}));
+      }catch(e){}
+      try{ document.execCommand('insertText',false,text); }catch(e){}
     }
+    // 4) frameworks ko nudge (canSubmit recompute)
+    el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertFromPaste',data:text}));
+    el.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'End'}));
+    el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'End'}));
     return true;
   }
 
