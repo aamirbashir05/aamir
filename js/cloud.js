@@ -214,8 +214,20 @@ const Cloud = (() => {
     const delStr = JSON.stringify(payload.del);
     if (!payload.c.length && !payload.s.length && delStr === lastDelStr) { setStatus('saved'); return; } // kuch naya nahi — bar clear
     lastDelStr = delStr;
-    try { deltaRef.set({ d: JSON.stringify(payload), updatedAt: new Date().toISOString() }).catch(e => console.warn('delta', e)); } catch (e) { console.warn('delta', e); }
-    setStatus('saved'); // locally durable + queue me — foran "ho gaya"
+    const body = { d: JSON.stringify(payload), updatedAt: new Date().toISOString() };
+    // shareDb (persistence OFF) se SEEDHA server -> doosre phone (Abu) par entry FORAN
+    // pohanch jaye. Pehle db (persistence ON) me delta local-queue me (bade snapshot
+    // writes ke peeche) phas jata tha, is liye Abu ko der se + tukron me milta tha.
+    const dref = (shareDb && curSyncId) ? shareDb.collection('khatas').doc(curSyncId + '_d') : deltaRef;
+    try {
+      dref.set(body).catch(e => {
+        // direct-to-server fail (shayad abhi offline) -> persistence-on se queue kar do
+        // (net aate hi khud chala jayega); 12s wala poora snapshot bhi cover karta hai.
+        if (dref !== deltaRef && deltaRef) { try { deltaRef.set(body).catch(() => {}); } catch (_) {} }
+        console.warn('delta', e);
+      });
+    } catch (e) { console.warn('delta', e); }
+    setStatus('saved'); // seedha server par ja raha — foran "ho gaya"
   }
 
   async function push() {
@@ -330,6 +342,9 @@ const Cloud = (() => {
   // cloud se seedha taza data khud maang lo (onSnapshot ka intezaar na karo)
   function refresh() {
     if (!docRef) return Promise.resolve(false);
+    // App khulte/foreground par delta bhi foran le lo — warm-resume par listener kabhi
+    // miss kar sakta hai; is se Aamir ki aakhri chhoti entry Abu ko turant mil jaye.
+    if (deltaRef) { try { deltaRef.get().then(s => { if (s.exists) pullDelta(s.data()); }).catch(() => {}); } catch (e) {} }
     return docRef.get().then(s => (s.exists ? pull(s.data()) : false)).catch(() => false);
   }
 
