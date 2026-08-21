@@ -107,6 +107,13 @@ async function refreshTabs(){
 $('#refreshTabs').onclick=refreshTabs;
 async function veoTabId(){ if(!$('#veoTab').value) await refreshTabs(); return parseInt($('#veoTab').value)||null; }
 function originOf(url){ try{ return new URL(url).origin+'/*'; }catch(e){ return ''; } }
+function selectedOrigin(){ const sel=$('#veoTab'); const opt=sel&&sel.options[sel.selectedIndex]; return originOf(opt&&opt.dataset.url); }
+// user-gesture ke andar hi call karo: agar access nahi to Chrome permission prompt dikhata hai
+async function ensureAccess(){
+  const o=selectedOrigin(); if(!o) return false;
+  try{ return await chrome.permissions.request({origins:[o]}); }
+  catch(e){ try{ return await chrome.permissions.contains({origins:[o]}); }catch(_){ return false; } }
+}
 // Grant access to the selected Flow tab's origin (must be a direct user gesture)
 $('#grantAccess').onclick=async()=>{
   const sel=$('#veoTab'); const opt=sel.options[sel.selectedIndex];
@@ -121,11 +128,15 @@ async function injectFlow(tabId){
   const tab=await chrome.tabs.get(tabId).catch(()=>null);
   const origin=tab?originOf(tab.url):'';
   if(origin){ const has=await chrome.permissions.contains({origins:[origin]}).catch(()=>false);
-    if(!has) throw new Error('Is site ka access nahi — pehle “🔓 Grant access” dabao (Flow tab chun kar).'); }
-  await chrome.scripting.executeScript({target:{tabId},files:['flow-agent.js']});
+    if(!has){ try{ await chrome.permissions.request({origins:[origin]}); }catch(e){} } }
+  try{
+    await chrome.scripting.executeScript({target:{tabId},files:['flow-agent.js']});
+  }catch(e){
+    throw new Error('Access nahi mila. chrome://extensions → Drama Studio → Details → "Site access" → "On all sites" karo, ya Flow tab pe extension icon se allow karo. ('+(e.message||e)+')');
+  }
 }
 function sendTab(tabId,msg){ return new Promise(res=>{ chrome.tabs.sendMessage(tabId,{__drama:true,...msg},r=>{ if(chrome.runtime.lastError) res({ok:false,error:chrome.runtime.lastError.message}); else res(r||{ok:false,error:'no reply'}); }); }); }
-$('#pingVeo').onclick=async()=>{ const id=await veoTabId(); if(!id) return toast('Pehle Flow tab kholo + refresh'); try{ await injectFlow(id); const r=await sendTab(id,{cmd:'ping',map:FLOWMAP}); if(r.ok&&r.promptFound) log('✓ Prompt box mil gaya'+(r.isFlow?' (Flow page).':'.'),'ok'); else log('⚠️ Prompt box nahi mila — “aur buttons” se prompt map karo.','warn'); }catch(e){ log('✗ '+e.message,'err'); } };
+$('#pingVeo').onclick=async()=>{ await ensureAccess(); const id=await veoTabId(); if(!id) return toast('Pehle Flow tab kholo + refresh'); try{ await injectFlow(id); const r=await sendTab(id,{cmd:'ping',map:FLOWMAP}); if(r.ok&&r.promptFound) log('✓ Prompt box mil gaya'+(r.isFlow?' (Flow page).':'.'),'ok'); else log('⚠️ Prompt box nahi mila — “aur buttons” se prompt map karo.','warn'); }catch(e){ log('✗ '+e.message,'err'); } };
 
 /* ================= MAPPING (learn/pick) ================= */
 (async()=>{ FLOWMAP=await store.get('flow_map')||{}; updateMapBadges(); refreshTabs(); })();
@@ -133,6 +144,7 @@ function updateMapBadges(){ $$('[data-pick]').forEach(b=>{ const el=$('#m_'+b.da
 $('#moreMap').onclick=()=>{ const b=$('#moreMapBox'); b.style.display=b.style.display==='none'?'block':'none'; };
 $('#resetMap').onclick=async()=>{ FLOWMAP={}; await store.set('flow_map',{}); updateMapBadges(); toast('Mapping reset'); };
 $$('[data-pick]').forEach(b=>b.onclick=async()=>{
+  await ensureAccess();
   const id=await veoTabId(); if(!id){ toast('Pehle Flow tab kholo + refresh'); return; }
   try{ await injectFlow(id); await sendTab(id,{cmd:'startPick',key:b.dataset.pick}); log('👆 Flow tab pe "'+b.dataset.pick+'" wale button pe click karo…','warn'); toast('Flow tab pe click karo'); }
   catch(e){ log('✗ pick: '+e.message,'err'); }
@@ -172,6 +184,7 @@ async function flowVideo(id,i){
   return true;
 }
 async function flowRunOne(i,kind){
+  await ensureAccess();
   const id=await veoTabId(); if(!id){ toast('Flow tab chuno + refresh'); return; }
   try{ await injectFlow(id); await setDlState(true); if(kind==='vid') await flowVideo(id,i); else await flowImage(id,i); }
   catch(e){ log('✗ '+e.message,'err'); }
@@ -179,6 +192,7 @@ async function flowRunOne(i,kind){
 async function flowRun(mode){
   if(RUNNING){ toast('Pehle se chal raha'); return; }
   if(!SCENES.length){ toast('Pehle prompts load karo'); return; }
+  await ensureAccess();
   const id=await veoTabId(); if(!id){ toast('Flow tab chuno + refresh'); return; }
   if(!FLOWMAP.generate) log('⚠️ “→ Generate” map nahi — auto-detect pe depend karega. Behtar hai pehle Pick kar lo.','warn');
   RUNNING=true; STOP=false; const gap=(parseInt($('#fGap').value)||6)*1000;
