@@ -102,11 +102,28 @@ async function refreshTabs(){
   const veo=tabs.filter(t=>isVeoUrl(t.url));
   const sel=$('#veoTab'); sel.innerHTML='';
   if(!veo.length){ sel.innerHTML='<option value="">— koi Flow tab khula nahi —</option>'; return; }
-  veo.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=(t.title||t.url).slice(0,42); sel.appendChild(o); });
+  veo.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.dataset.url=t.url||''; o.textContent=(t.title||t.url).slice(0,42); sel.appendChild(o); });
 }
 $('#refreshTabs').onclick=refreshTabs;
 async function veoTabId(){ if(!$('#veoTab').value) await refreshTabs(); return parseInt($('#veoTab').value)||null; }
-async function injectFlow(tabId){ await chrome.scripting.executeScript({target:{tabId},files:['flow-agent.js']}); }
+function originOf(url){ try{ return new URL(url).origin+'/*'; }catch(e){ return ''; } }
+// Grant access to the selected Flow tab's origin (must be a direct user gesture)
+$('#grantAccess').onclick=async()=>{
+  const sel=$('#veoTab'); const opt=sel.options[sel.selectedIndex];
+  const url=opt&&opt.dataset.url; const origin=originOf(url);
+  if(!origin){ toast('Pehle Flow tab chuno + refresh'); return; }
+  try{ const g=await chrome.permissions.request({origins:[origin]});
+    if(g){ log('✓ access mil gaya: '+origin,'ok'); toast('Access ✓ — ab Test/Run karo'); }
+    else log('✗ access nahi diya ('+origin+')','warn');
+  }catch(e){ log('✗ grant: '+e.message,'err'); }
+};
+async function injectFlow(tabId){
+  const tab=await chrome.tabs.get(tabId).catch(()=>null);
+  const origin=tab?originOf(tab.url):'';
+  if(origin){ const has=await chrome.permissions.contains({origins:[origin]}).catch(()=>false);
+    if(!has) throw new Error('Is site ka access nahi — pehle “🔓 Grant access” dabao (Flow tab chun kar).'); }
+  await chrome.scripting.executeScript({target:{tabId},files:['flow-agent.js']});
+}
 function sendTab(tabId,msg){ return new Promise(res=>{ chrome.tabs.sendMessage(tabId,{__drama:true,...msg},r=>{ if(chrome.runtime.lastError) res({ok:false,error:chrome.runtime.lastError.message}); else res(r||{ok:false,error:'no reply'}); }); }); }
 $('#pingVeo').onclick=async()=>{ const id=await veoTabId(); if(!id) return toast('Pehle Flow tab kholo + refresh'); try{ await injectFlow(id); const r=await sendTab(id,{cmd:'ping',map:FLOWMAP}); if(r.ok&&r.promptFound) log('✓ Prompt box mil gaya'+(r.isFlow?' (Flow page).':'.'),'ok'); else log('⚠️ Prompt box nahi mila — “aur buttons” se prompt map karo.','warn'); }catch(e){ log('✗ '+e.message,'err'); } };
 

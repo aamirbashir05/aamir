@@ -5,13 +5,14 @@
   "description": "Khaleeji drama shorts: story se 6-scene prompts banao, phir Veo/Flow pe best-effort auto image+video+download.",
   "permissions": ["storage", "downloads", "scripting", "sidePanel", "tabs"],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/*",
     "https://labs.google/*",
-    "https://gemini.google.com/*",
-    "https://aistudio.google.com/*",
+    "https://*.labs.google/*",
     "https://flow.google/*",
-    "https://claude.ai/*"
+    "https://*.flow.google/*",
+    "https://gemini.google.com/*",
+    "https://aistudio.google.com/*"
   ],
+  "optional_host_permissions": ["https://*/*"],
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Drama Studio — Veo Copilot" },
   "side_panel": { "default_path": "panel.html" }

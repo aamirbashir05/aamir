@@ -17,12 +17,14 @@
   const q = sel => { try { return sel ? document.querySelector(sel) : null; } catch(e){ return null; } };
 
   /* ---------- text-based click (Flow labels) ---------- */
+  // leading/trailing icons/emoji/space hata do; beech ka waisa hi (e.g. "🖼 Image"->"image", "9:16"->"9:16")
+  function norm(s){ return (s||'').trim().toLowerCase().replace(/^[^\p{L}\p{N}]+/u,'').replace(/[^\p{L}\p{N}]+$/u,''); }
   function clickByText(labels){
-    const set = labels.map(s=>s.toLowerCase());
+    const set = labels.map(norm);
     const els = [...document.querySelectorAll('button,[role="button"],[role="tab"],[role="radio"],div,span,li,a,p')].filter(vis);
     let best=null, bestLen=1e9;
     for(const el of els){
-      const t=(el.textContent||'').trim().toLowerCase();
+      const t=norm(el.textContent);
       if(!t || t.length>=bestLen) continue;
       if(set.includes(t) && el.querySelectorAll('*').length<=6){ best=el; bestLen=t.length; }
     }
@@ -60,20 +62,16 @@
     // ---- contenteditable / Slate ----
     // 1) purana text clear (native beforeinput -> Slate model)
     try{ document.execCommand('selectAll',false); document.execCommand('delete',false); }catch(e){}
-    // 2) PASTE simulate (yehi manual paste jaisa hai -> model + button update)
-    let before = (el.textContent||'');
-    simulatePaste(el, text);
-    // 3) agar paste ne kaam na kiya to beforeinput insertFromPaste + execCommand fallback
-    if((el.textContent||'') === before){
-      try{
-        el.dispatchEvent(new InputEvent('beforeinput',{bubbles:true,cancelable:true,inputType:'insertFromPaste',data:text}));
-      }catch(e){}
+    // 2) PASTE simulate (yehi manual paste jaisa hai -> Slate onPaste model update -> button enable)
+    const pasted = simulatePaste(el, text);
+    // 3) sirf tab fallback jab paste hi dispatch na ho paya (double-insert se bachne ke liye)
+    if(!pasted){
+      try{ el.dispatchEvent(new InputEvent('beforeinput',{bubbles:true,cancelable:true,inputType:'insertText',data:text})); }catch(e){}
       try{ document.execCommand('insertText',false,text); }catch(e){}
     }
     // 4) frameworks ko nudge (canSubmit recompute)
-    el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertFromPaste',data:text}));
-    el.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'End'}));
-    el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'End'}));
+    el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));
+    el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'a'}));
     return true;
   }
 

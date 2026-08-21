@@ -24,7 +24,10 @@ ek **folder** ke andar download kar de. Bas.
 
 ### 2) Flow tab set karo
 - Ek tab mein apna Flow project kholo: `labs.google/fx/tools/flow/project/...` (login rakho).
-- Panel ke **🎯 Flow Auto** mein wo tab chuno (**↻**), phir **🔎 Test** — “prompt box mil gaya” aaye to ready.
+- Panel ke **🎯 Flow Auto** mein wo tab chuno (**↻**).
+- **Pehli baar:** **🔓 Grant access** dabao → Chrome us site ka permission maangega → **Allow**.
+  (Bina iske “Cannot access contents of the page” error aata hai — Chrome ka site-access rule.)
+- Phir **🔎 Test** — “prompt box mil gaya” aaye to ready.
 
 ### 3) 1-time: 3 button sikhao
 Icon-only buttons ko ek dafa **pick** karna hota hai (Flow tab pe click karke):
