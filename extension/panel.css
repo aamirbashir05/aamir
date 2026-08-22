@@ -17,6 +17,7 @@
   --glow:0 0 0 1px rgba(139,123,255,.35), 0 8px 24px rgba(56,224,255,.16);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{background:#0a0e1a}
 body{
   font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;font-size:13px;line-height:1.5;color:var(--ink);
   padding:14px 12px 44px;min-height:100vh;
