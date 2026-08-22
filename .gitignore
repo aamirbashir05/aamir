@@ -89,3 +89,6 @@ scratchpad/
 
 # Extension build artifact (source lives in extension/)
 *.zip
+
+# UI preview screenshots (generated)
+veopilot-ui*.jpg
