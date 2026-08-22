@@ -1,4 +1,9 @@
-# 🎬 Drama Studio — Flow Copilot (Chrome extension)
+# 🎬 VeoPilot — Text → Image → Video (Chrome/mobile extension)
+
+> Universal batch tool for Google Flow (VEO + Nano Banana): apne prompts se **text→image**,
+> phir **image→video**, auto **1080p** download. Kisi bhi niche ke liye — story/prompts aap
+> jahan se marzi banao (Claude, etc.), yahan .txt/paste karo aur chala do.
+
 
 Aap **Claude** se prompts banao → extension mein **.txt / paste** karo → extension Google Flow pe
 khud **images** banaye, phir un images se **videos** (Frame-to-Video) banaye, aur **1080p** mein
@@ -54,6 +59,21 @@ hain — “**＋ aur buttons**” tabhi map karo jab kuch auto na chale.
   us **ek** scene ka image haath se laga dena, baaki chalta rahega.
 - **1080p** = Flow ka download-menu option (720p direct hota hai). Upscale mein thoda waqt lagta —
   “1080p upscale wait” usi ke liye hai.
+
+## 📱 Mobile (Quetta / Kiwi Browser)
+Yeh extension mobile pe bhi chalti hai un browsers me jo Chrome extensions support karte hain
+(Quetta, Kiwi, etc.):
+1. Browser me `chrome://extensions` (ya browser ka Extensions menu) → Developer mode → **Load**
+   (zip nahi — unzipped `extension` folder; ya browser jaise install karta ho).
+2. Extension icon tap → **popup UI** khulega (mobile pe side panel nahi hota, is liye popup).
+3. Prompts load karo → **🎯 Flow Auto** me Flow tab chuno → **🔓/Test** → 3 button **Pick**.
+4. **▶ Full auto** dabao — **poora loop ab Flow tab ke andar chalta hai**, is liye aap popup band
+   karke Flow tab dekh sakte ho, kaam chalta rahega. Popup dobara khologe to “(pichla)” status
+   dikhega. **⏹ Stop** kabhi bhi.
+
+> Mobile note: `chrome.downloads` folder-rename har mobile browser me kaam na kare — us surat me
+> videos default naam se download hongi (folder-naming sirf tab jab browser support kare). Baaki
+> sab (image→video→1080p) content-script me chalta hai.
 
 ## Privacy
 Prompts, mapping, folder-naam — sab sirf browser ke `chrome.storage.local` mein. Koi server nahi.

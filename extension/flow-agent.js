@@ -16,6 +16,13 @@
   const vis = el => { if(!el) return false; const r=el.getBoundingClientRect(); const s=getComputedStyle(el); return r.width>2&&r.height>2&&s.visibility!=='hidden'&&s.display!=='none'&&s.opacity!=='0'; };
   const q = sel => { try { return sel ? document.querySelector(sel) : null; } catch(e){ return null; } };
 
+  // storage + progress (mobile: loop content-script me chalta hai, popup band ho to bhi)
+  const S = {
+    get: k => new Promise(r=>{ try{ chrome.storage.local.get(k,o=>r(o&&o[k])); }catch(e){ r(); } }),
+    set: o => new Promise(r=>{ try{ chrome.storage.local.set(o,r); }catch(e){ r(); } })
+  };
+  function prog(text, cls){ try{ chrome.runtime.sendMessage({__drama:true,type:'flowLog',text,cls:cls||''}); }catch(e){} S.set({flow_last:{text,cls:cls||'',t:Date.now()}}); }
+
   /* ---------- text-based click (Flow labels) ---------- */
   // leading/trailing icons/emoji/space hata do; beech ka waisa hi (e.g. "🖼 Image"->"image", "9:16"->"9:16")
   function norm(s){ return (s||'').trim().toLowerCase().replace(/^[^\p{L}\p{N}]+/u,'').replace(/[^\p{L}\p{N}]+$/u,''); }
@@ -196,11 +203,47 @@
   const onClick=e=>{ e.preventDefault(); e.stopPropagation(); const el=e.target; finishPick(selectorFor(el),(el.innerText||el.getAttribute?.('aria-label')||'').trim().slice(0,40)); };
   const onKey=e=>{ if(e.key==='Escape') finishPick('',''); };
   function startPick(key){ picking=key; document.addEventListener('mousemove',onMove,true); document.addEventListener('click',onClick,true); document.addEventListener('keydown',onKey,true); showBanner('👆 "'+key+'" wale button pe click karo  (Esc = cancel)'); }
-  function finishPick(sel,text){ document.removeEventListener('mousemove',onMove,true); document.removeEventListener('click',onClick,true); document.removeEventListener('keydown',onKey,true); hideUI(); const k=picking; picking=null; try{ chrome.runtime.sendMessage({__drama:true,type:'pickResult',key:k,selector:sel,text}); }catch(e){} }
+  function finishPick(sel,text){ document.removeEventListener('mousemove',onMove,true); document.removeEventListener('click',onClick,true); document.removeEventListener('keydown',onKey,true); hideUI(); const k=picking; picking=null;
+    // storage me bhi save (popup band ho to bhi mapping bach jaye — mobile)
+    if(sel){ try{ chrome.storage.local.get('flow_map',o=>{ const m=(o&&o.flow_map)||{}; m[k]=sel; chrome.storage.local.set({flow_map:m}); }); }catch(e){} }
+    try{ chrome.runtime.sendMessage({__drama:true,type:'pickResult',key:k,selector:sel,text}); }catch(e){}
+  }
+
+  // poora batch content-script me (popup band ho to bhi chalta rahe — mobile-safe)
+  async function runAll(scenes, map, opts){
+    opts=opts||{}; scenes=scenes||[];
+    await S.set({ flow_stop:false, flow_dl:{active:true, folder:opts.folder||'DramaStudio', queue:[], count:0} });
+    prog('=== Flow Auto start — '+scenes.length+' scenes ('+(opts.mode||'all')+') ===');
+    for(let i=0;i<scenes.length;i++){
+      if(await S.get('flow_stop')){ prog('⏹ Stopped','warn'); break; }
+      const s=scenes[i]||{}; let imgSrc='';
+      if(opts.mode!=='vid' && s.imagePrompt){
+        prog('Scene '+(i+1)+' image…');
+        const im=await runImage(map, s.imagePrompt, opts.imgWait||90000);
+        if(!im.ok){ prog('✗ scene '+(i+1)+' image: '+(im.error||'?'),'err'); }
+        else { imgSrc=im.imageSrc||''; prog('✓ scene '+(i+1)+' image'+(imgSrc?'':' (src na mila)'),'ok'); }
+        await sleep(opts.gap||6000);
+      }
+      if(await S.get('flow_stop')){ prog('⏹ Stopped','warn'); break; }
+      if(opts.mode!=='img' && s.videoPrompt){
+        if(opts.autoDl){ const cur=(await S.get('flow_dl'))||{}; const dq=Array.isArray(cur.queue)?cur.queue:[]; dq.push('scene-'+String(i+1).padStart(2,'0')); await S.set({flow_dl:{...cur,active:true,queue:dq}}); }
+        prog('Scene '+(i+1)+' video…');
+        const vd=await runVideo(map, s.videoPrompt, imgSrc, opts.vidWait||180000, !!opts.autoDl, opts.qualWait||8000);
+        if(vd.frameWarn) prog('⚠️ scene '+(i+1)+' start-frame: '+vd.frameWarn,'warn');
+        if(vd.ok) prog('✓ scene '+(i+1)+' video'+(vd.downloaded?' ⬇1080p':''),'ok');
+        else prog('✗ scene '+(i+1)+' video: '+(vd.error||'?'),'err');
+        await sleep(opts.gap||6000);
+      }
+    }
+    prog('=== Flow Auto done ===','ok');
+    const cur=(await S.get('flow_dl'))||{}; await S.set({flow_dl:{...cur,active:false}});
+    return {ok:true};
+  }
 
   chrome.runtime.onMessage.addListener((msg,_s,reply)=>{
     if(!msg||msg.__drama!==true) return;
-    if(!['ping','startPick','cancelPick','testClick','runImage','runVideo'].includes(msg.cmd)) return;
+    if(!['ping','startPick','cancelPick','testClick','runImage','runVideo','runAll'].includes(msg.cmd)) return;
+    if(msg.cmd==='runAll'){ runAll(msg.scenes,msg.map,msg.opts); reply({ok:true,started:true}); return true; }
     (async()=>{ try{
       if(msg.cmd==='ping'){ const box=promptBox(msg.map&&msg.map.prompt); return reply({ok:true,url:location.href,isFlow:/labs\.google\/fx\/tools\/flow/.test(location.href),promptFound:!!box}); }
       if(msg.cmd==='startPick'){ startPick(msg.key); return reply({ok:true}); }

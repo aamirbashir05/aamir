@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Drama Studio — Veo Copilot",
-  "version": "0.1.0",
-  "description": "Khaleeji drama shorts: story se 6-scene prompts banao, phir Veo/Flow pe best-effort auto image+video+download.",
+  "name": "VeoPilot — Text to Image to Video",
+  "version": "0.2.0",
+  "description": "Batch automation for Google Flow (VEO + Nano Banana): apne prompts se text→image, phir image→video, auto 1080p download ek folder me. Universal — jise bhi bulk text-to-image + image-to-video chahiye.",
   "permissions": ["storage", "downloads", "scripting", "sidePanel", "tabs"],
   "host_permissions": [
     "https://labs.google/*",
@@ -14,6 +14,6 @@
   ],
   "optional_host_permissions": ["https://*/*"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Drama Studio — Veo Copilot" },
+  "action": { "default_title": "VeoPilot — Text to Image to Video", "default_popup": "panel.html" },
   "side_panel": { "default_path": "panel.html" }
 }

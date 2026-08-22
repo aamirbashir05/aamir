@@ -132,14 +132,16 @@ async function injectFlow(tabId){
   try{
     await chrome.scripting.executeScript({target:{tabId},files:['flow-agent.js']});
   }catch(e){
-    throw new Error('Access nahi mila. chrome://extensions → Drama Studio → Details → "Site access" → "On all sites" karo, ya Flow tab pe extension icon se allow karo. ('+(e.message||e)+')');
+    throw new Error('Access nahi mila. chrome://extensions → VeoPilot → Details → "Site access" → "On all sites" karo, ya Flow tab pe extension icon se allow karo. ('+(e.message||e)+')');
   }
 }
 function sendTab(tabId,msg){ return new Promise(res=>{ chrome.tabs.sendMessage(tabId,{__drama:true,...msg},r=>{ if(chrome.runtime.lastError) res({ok:false,error:chrome.runtime.lastError.message}); else res(r||{ok:false,error:'no reply'}); }); }); }
 $('#pingVeo').onclick=async()=>{ await ensureAccess(); const id=await veoTabId(); if(!id) return toast('Pehle Flow tab kholo + refresh'); try{ await injectFlow(id); const r=await sendTab(id,{cmd:'ping',map:FLOWMAP}); if(r.ok&&r.promptFound) log('✓ Prompt box mil gaya'+(r.isFlow?' (Flow page).':'.'),'ok'); else log('⚠️ Prompt box nahi mila — “aur buttons” se prompt map karo.','warn'); }catch(e){ log('✗ '+e.message,'err'); } };
 
 /* ================= MAPPING (learn/pick) ================= */
-(async()=>{ FLOWMAP=await store.get('flow_map')||{}; updateMapBadges(); refreshTabs(); })();
+(async()=>{ FLOWMAP=await store.get('flow_map')||{}; updateMapBadges(); refreshTabs();
+  const last=await store.get('flow_last'); if(last&&last.text) log('(pichla) '+last.text, last.cls||undefined);
+})();
 function updateMapBadges(){ $$('[data-pick]').forEach(b=>{ const el=$('#m_'+b.dataset.pick); if(el){ el.textContent=FLOWMAP[b.dataset.pick]?'✓':'✗'; el.style.color=FLOWMAP[b.dataset.pick]?'var(--ok)':'var(--muted)'; } }); }
 $('#moreMap').onclick=()=>{ const b=$('#moreMapBox'); b.style.display=b.style.display==='none'?'block':'none'; };
 $('#resetMap').onclick=async()=>{ FLOWMAP={}; await store.set('flow_map',{}); updateMapBadges(); toast('Mapping reset'); };
@@ -150,7 +152,9 @@ $$('[data-pick]').forEach(b=>b.onclick=async()=>{
   catch(e){ log('✗ pick: '+e.message,'err'); }
 });
 chrome.runtime.onMessage.addListener(msg=>{
-  if(!msg||msg.__drama!==true||msg.type!=='pickResult') return;
+  if(!msg||msg.__drama!==true) return;
+  if(msg.type==='flowLog'){ log(msg.text, msg.cls||undefined); return; }   // content-script se live progress
+  if(msg.type!=='pickResult') return;
   if(!msg.selector){ log('pick cancel','warn'); return; }
   FLOWMAP[msg.key]=msg.selector; store.set('flow_map',FLOWMAP); updateMapBadges();
   log('✓ mapped "'+msg.key+'" → '+msg.selector.slice(0,48)+(msg.text?('  ('+msg.text+')'):''),'ok');
@@ -190,25 +194,21 @@ async function flowRunOne(i,kind){
   catch(e){ log('✗ '+e.message,'err'); }
 }
 async function flowRun(mode){
-  if(RUNNING){ toast('Pehle se chal raha'); return; }
   if(!SCENES.length){ toast('Pehle prompts load karo'); return; }
   await ensureAccess();
   const id=await veoTabId(); if(!id){ toast('Flow tab chuno + refresh'); return; }
-  if(!FLOWMAP.generate) log('⚠️ “→ Generate” map nahi — auto-detect pe depend karega. Behtar hai pehle Pick kar lo.','warn');
-  RUNNING=true; STOP=false; const gap=(parseInt($('#fGap').value)||6)*1000;
-  try{ await injectFlow(id); await setDlState(true); }catch(e){ log('✗ inject: '+e.message,'err'); RUNNING=false; return; }
-  log('=== Flow Auto ('+mode+') start — '+SCENES.length+' scenes, folder: '+($('#fFolder').value||'DramaStudio')+' ===');
-  for(let i=0;i<SCENES.length;i++){
-    if(STOP){ log('⏹ Stopped.','warn'); break; }
-    if(mode==='all'){ await flowImage(id,i); await sleep(gap); if(STOP) break; await flowVideo(id,i); }
-    else if(mode==='img'){ await flowImage(id,i); }
-    else { await flowVideo(id,i); }
-    if(i<SCENES.length-1) await sleep(gap);
-  }
-  await setDlState(false);
-  RUNNING=false; log('=== Flow Auto done ===','ok'); toast('Flow batch done');
+  if(!FLOWMAP.generate) log('⚠️ “→ Generate” map nahi — auto-detect pe depend karega. Behtar: pehle Pick kar lo.','warn');
+  try{ await injectFlow(id); }catch(e){ log('✗ inject: '+e.message,'err'); return; }
+  const opts={ mode, folder:($('#fFolder').value||'DramaStudio'),
+    imgWait:(parseInt($('#fImgWait').value)||90)*1000, vidWait:(parseInt($('#fVidWait').value)||180)*1000,
+    gap:(parseInt($('#fGap').value)||6)*1000, qualWait:(parseInt($('#fQualWait').value)||12)*1000, autoDl:$('#fAutoDl').checked };
+  const scenes=SCENES.map(s=>({imagePrompt:s.imagePrompt,videoPrompt:s.videoPrompt}));
+  await store.set('flow_stop',false);
+  sendTab(id,{cmd:'runAll',scenes,map:FLOWMAP,opts});   // loop Flow tab me chalega (popup band ho to bhi)
+  log('▶ Flow tab mein chal pada — folder: '+opts.folder+'. Aap Flow tab pe ja sakte / popup band kar sakte ho, chalta rahega.','ok');
+  toast('Chal pada — Flow tab dekho');
 }
 $('#fRunAll').onclick=()=>flowRun('all');
 $('#fRunImgs').onclick=()=>flowRun('img');
 $('#fRunVids').onclick=()=>flowRun('vid');
-$('#fStop').onclick=async()=>{ STOP=true; await setDlState(false); toast('Rukega agle step pe'); };
+$('#fStop').onclick=async()=>{ await store.set('flow_stop',true); toast('Stop bheja'); log('⏹ Stop signal bhej diya — agle step pe rukega','warn'); };
