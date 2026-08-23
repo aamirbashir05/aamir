@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b7bff"/><stop offset="1" stop-color="#38e0ff"/>
+    </linearGradient>
+    <linearGradient id="gl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".38"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#0a1030" flood-opacity=".5"/>
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#g)"/>
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#gl)"/>
+  <rect x="8.75" y="8.75" width="110.5" height="110.5" rx="29.25" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.5"/>
+  <path d="M50 42 L88 64 L50 86 Z" fill="#ffffff" filter="url(#sh)"/>
+  <path d="M93 30 l3.2 8 8 3.2 -8 3.2 -3.2 8 -3.2 -8 -8 -3.2 8 -3.2 z" fill="#ffffff" opacity=".96"/>
+</svg>

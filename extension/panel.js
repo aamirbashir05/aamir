@@ -17,6 +17,12 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show')
 function log(m,cls){ const el=$('#log'); const d=document.createElement('div'); if(cls) d.className='log-'+cls; d.textContent=new Date().toLocaleTimeString()+'  '+m; el.appendChild(d); el.scrollTop=el.scrollHeight; }
 $('#clearLog').onclick=()=>{ $('#log').innerHTML='ready.'; };
 $$('h2[data-toggle]').forEach(h=>h.onclick=()=>$('#'+h.dataset.toggle).classList.toggle('collapsed'));
+// PC: poori window (wide 2-column) me kholo
+(function(){ const b=$('#expandBtn'); if(!b) return;
+  const isTab = !location.search.includes('full') ? false : true;
+  if(new URLSearchParams(location.search).get('full')==='1'){ b.style.display='none'; document.documentElement.classList.add('full'); return; }
+  b.onclick=()=>{ try{ chrome.tabs.create({url:chrome.runtime.getURL('panel.html')+'?full=1'}); }catch(e){ window.open('panel.html?full=1','_blank'); } };
+})();
 
 /* ================= IMPORT PROMPTS ================= */
 function parseFreeText(text){
