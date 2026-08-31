@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v81'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v82'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -883,11 +883,35 @@ function setBulkType(t) {
 }
 $('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
   $('#bulkText').value = ''; $('#bulkResult').innerHTML = ''; $('#bulkNotify').checked = true;
-  setBulkType('debit');
+  setBulkType('debit'); refreshBulkTags();
   openModal('bulkModal');
 });
 $('#bulkDebit') && $('#bulkDebit').addEventListener('click', () => setBulkType('debit'));
 $('#bulkCredit') && $('#bulkCredit').addEventListener('click', () => setBulkType('credit'));
+// Bulk quick-tags: har paste ki hui line ke start me VC / VC LP / STICKER / UV lagayein.
+// (TXN_TAGS upar define hai — lambe tag pehle taake 'VC LP' ko 'VC' na samjhe.)
+function tagOfLine(s) { const up = (s || '').toUpperCase(); for (const t of TXN_TAGS) { if (up === t || up.startsWith(t + ' ')) return t; } return ''; }
+function applyBulkTag(tag) {
+  const ta = $('#bulkText'); if (!ta) return;
+  ta.value = (ta.value || '').split('\n').map(raw => {
+    if (!raw.trim()) return raw;
+    let s = raw.replace(/^\s+/, ''); const cur = tagOfLine(s);
+    if (cur) s = (s.length === cur.length) ? '' : s.slice(cur.length + 1); // purana tag hata do (stack na ho)
+    return (tag + ' ' + s).trimEnd();
+  }).join('\n');
+  ta.focus(); refreshBulkTags();
+}
+function currentBulkTag() {
+  const lines = ($('#bulkText').value || '').split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  const first = tagOfLine(lines[0]);
+  return first && lines.every(l => tagOfLine(l) === first) ? first : '';
+}
+function refreshBulkTags() {
+  const cur = currentBulkTag();
+  document.querySelectorAll('#bulkTags .tag-btn').forEach(b => b.classList.toggle('act', b.dataset.tag === cur));
+}
+document.querySelectorAll('#bulkTags .tag-btn').forEach(b => b.addEventListener('click', () => applyBulkTag(b.dataset.tag)));
 
 // har line: "naam ... raqam" — aakhri number raqam, baqi naam
 // "Kohistan Press 1000rs" -> { name:'Kohistan Press', amount:1000 }
@@ -933,14 +957,20 @@ function matchCustomer(typed, idx) {
 function parseBulkLines(text) {
   const out = [];
   (text || '').split('\n').forEach(raw => {
-    const line = raw.trim(); if (!line) return;
+    const line0 = raw.trim(); if (!line0) return;
+    // Leading quick-tag (VC / VC LP / STICKER / UV) alag karo — ye note ke START me
+    // lagega. Baaki parsing (payment/order) tag-hataye hue text par hoti hai taake
+    // "VC 6000 Amjad Press" phir bhi payment (credit) pehchana jaye.
+    const tag = tagOfLine(line0);
+    const line = tag ? line0.slice(tag.length).trim() : line0;
+    const withTag = d => tag ? (d ? (tag + ' ' + d) : tag) : d;
     const hasParen = line.includes('(') && line.includes(')');
     // PAYMENT line (Payment group): koi bracket nahi + number se shuru => "6000 Amjad Press"
     // amount pehle, naam baad me, type = credit (paisa aaya).
     if (!hasParen) {
       const pm = line.match(/^([\d][\d,]*(?:\.\d+)?)\s+(.+)$/);
       if (pm && pm[2].trim()) {
-        out.push({ raw: line, detail: 'Payment received', name: pm[2].trim(), amount: parseFloat(pm[1].replace(/,/g, '')), type: 'credit' });
+        out.push({ raw: line0, detail: withTag('Payment received'), name: pm[2].trim(), amount: parseFloat(pm[1].replace(/,/g, '')), type: 'credit' });
         return;
       }
     }
@@ -956,7 +986,7 @@ function parseBulkLines(text) {
     }
     detail = detail.replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
     const na = parseNameAmount(naStr);
-    out.push({ raw: line, detail, name: na ? na.name : naStr.replace(/[()]/g, ' ').trim(), amount: na ? na.amount : 0, type: (hasParen || isOrder) ? 'debit' : null });
+    out.push({ raw: line0, detail: withTag(detail), name: na ? na.name : naStr.replace(/[()]/g, ' ').trim(), amount: na ? na.amount : 0, type: (hasParen || isOrder) ? 'debit' : null });
   });
   return out;
 }

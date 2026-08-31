@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=81">
+  <link rel="stylesheet" href="css/styles.css?v=82">
 </head>
 <body>
 
@@ -329,7 +329,14 @@
       <div class="type-toggle"><button id="bulkDebit">− Maal / Kaam Diya</button><button id="bulkCredit">+ Payment Aayi</button></div>
       <p class="hint" style="margin-top:-4px;color:var(--muted)">Uper wala default hai — sirf un lines ke liye jo khud pehchani na jayein.</p>
       <div class="field"><label>Yahan paste karein</label>
-        <textarea id="bulkText" rows="7" placeholder="(Saad Charpai) - (Aslam Al Madinah 1000)&#10;(Hotel Royal Samaa) - (Kohistan Press 1000)&#10;(Mishal Tag VC 3 Size) - (Sohaill Press 1000)" autocomplete="off"></textarea></div>
+        <div class="tag-row" id="bulkTags">
+          <button type="button" class="tag-btn" data-tag="VC">VC</button>
+          <button type="button" class="tag-btn" data-tag="VC LP">VC LP</button>
+          <button type="button" class="tag-btn" data-tag="STICKER">STICKER</button>
+          <button type="button" class="tag-btn" data-tag="UV">UV</button>
+        </div>
+        <textarea id="bulkText" rows="7" placeholder="(Saad Charpai) - (Aslam Al Madinah 1000)&#10;(Hotel Royal Samaa) - (Kohistan Press 1000)&#10;(Mishal Tag VC 3 Size) - (Sohaill Press 1000)" autocomplete="off"></textarea>
+        <div class="settings-note">Paste karne ke baad tag dabayein — har line ke start me wo lag jayega (VC / VC LP / STICKER / UV).</div></div>
       <label class="switch-row"><span>💬 Har customer ko WhatsApp bhejein</span><input type="checkbox" id="bulkNotify" checked></label>
       <div class="modal-actions"><button class="cancel" data-close>Cancel</button><button class="save" id="bulkPreview">Aage barhein →</button></div>
       <div id="bulkResult" class="bulk-result"></div>
@@ -381,10 +388,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=81"></script>
-  <script src="js/logo.js?v=81"></script>
-  <script src="js/store.js?v=81"></script>
-  <script src="js/cloud.js?v=81"></script>
-  <script src="js/app.js?v=81"></script>
+  <script src="js/firebase-config.js?v=82"></script>
+  <script src="js/logo.js?v=82"></script>
+  <script src="js/store.js?v=82"></script>
+  <script src="js/cloud.js?v=82"></script>
+  <script src="js/app.js?v=82"></script>
 </body>
 </html>
