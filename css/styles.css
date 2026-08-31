@@ -348,6 +348,11 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .img-btns { display: flex; gap: 10px; }
 .img-btn { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: #0e0f14; font-weight: 700; font-size: 14px; color: var(--gold1); }
 .img-btn:active { transform: translateY(2px); }
+/* Quick-tag buttons (VC / VC LP / STICKER / UV) — note ke shuru me label lagayein */
+.tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.tag-btn { flex: 1 1 auto; min-width: 58px; padding: 9px 8px; border: 1px solid rgba(231,162,76,.5); border-radius: 10px; background: rgba(231,162,76,.08); font-weight: 800; font-size: 13px; letter-spacing: .3px; color: var(--gold2); cursor: pointer; transition: transform .08s ease, box-shadow .12s ease, background .12s ease; }
+.tag-btn:active { transform: translateY(2px); }
+.tag-btn.act { background: var(--orange); border-color: var(--orange); color: #fff; box-shadow: 0 2px 10px rgba(231,162,76,.55); }
 .img-preview { display: block; margin-top: 10px; max-width: 100%; max-height: 180px; border-radius: 10px; border: 1px solid var(--border); }
 
 /* Snapshot list */

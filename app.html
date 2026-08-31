@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=80">
+  <link rel="stylesheet" href="css/styles.css?v=81">
 </head>
 <body>
 
@@ -226,7 +226,14 @@
         <div class="calc-eq" id="txnEq"></div>
         <div class="calc-pad" id="txnPad"></div>
       </div>
-      <div class="field"><label>Tafseel / Note (optional)</label><input id="txnNote" placeholder="Misaal: Visiting cards 1000" autocomplete="off"></div>
+      <div class="field"><label>Tafseel / Note (optional)</label>
+        <div class="tag-row" id="txnTags">
+          <button type="button" class="tag-btn" data-tag="VC">VC</button>
+          <button type="button" class="tag-btn" data-tag="VC LP">VC LP</button>
+          <button type="button" class="tag-btn" data-tag="STICKER">STICKER</button>
+          <button type="button" class="tag-btn" data-tag="UV">UV</button>
+        </div>
+        <input id="txnNote" placeholder="Misaal: Visiting cards 1000" autocomplete="off"></div>
       <div class="field"><label>Tareekh &amp; Waqt</label><div class="dt-row"><input id="txnDate" type="date"><input id="txnTime" type="time"></div></div>
       <div class="field"><label>Tasveer (optional) — design/parchi ki photo</label>
         <div class="img-btns">
@@ -374,10 +381,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=80"></script>
-  <script src="js/logo.js?v=80"></script>
-  <script src="js/store.js?v=80"></script>
-  <script src="js/cloud.js?v=80"></script>
-  <script src="js/app.js?v=80"></script>
+  <script src="js/firebase-config.js?v=81"></script>
+  <script src="js/logo.js?v=81"></script>
+  <script src="js/store.js?v=81"></script>
+  <script src="js/cloud.js?v=81"></script>
+  <script src="js/app.js?v=81"></script>
 </body>
 </html>

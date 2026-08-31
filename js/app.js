@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v80'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v81'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -581,7 +581,7 @@ function openTxn(type) {
   $('#typeCredit').textContent = '+ ' + L.credit;
   $('#txnModalTitle').textContent = type === 'debit' ? L.debit : L.credit;
   updateTypeToggle();
-  txnCalc.reset(); $('#txnNote').value = '';
+  txnCalc.reset(); $('#txnNote').value = ''; refreshTxnTags();
   // "Entry date" mode on ho to nayi entry usi date par, warna aaj
   $('#txnDate').value = workDate || new Date().toISOString().slice(0, 10);
   const tt = $('#txnTime'); if (tt) tt.value = new Date().toTimeString().slice(0, 5); // abhi ka waqt (badla ja sakta hai)
@@ -603,7 +603,7 @@ function openTxnEdit(t) {
   $('#txnModalTitle').textContent = '✏️ Entry Edit';
   updateTypeToggle();
   txnCalc.set(t.amount);
-  $('#txnNote').value = t.note || '';
+  $('#txnNote').value = t.note || ''; refreshTxnTags();
   $('#txnDate').value = (t.date || '').slice(0, 10);
   const tt = $('#txnTime'); if (tt) tt.value = t.date ? new Date(t.date).toTimeString().slice(0, 5) : '';
   const notifyRow = $('#txnNotify').closest('.switch-row');
@@ -621,6 +621,32 @@ $('#btnGave').addEventListener('click', () => openTxn('debit'));
 $('#btnGot').addEventListener('click', () => openTxn('credit'));
 $('#typeDebit').addEventListener('click', () => { txnType = 'debit'; updateTypeToggle(); });
 $('#typeCredit').addEventListener('click', () => { txnType = 'credit'; updateTypeToggle(); });
+// Quick tags: note ke bilkul shuru me VC / VC LP / STICKER / UV lag jaye (aik click).
+// Lambe tag pehle check hote hain taake 'VC LP' ko 'VC' na samajh le.
+const TXN_TAGS = ['VC LP', 'STICKER', 'VC', 'UV'];
+function currentTxnTag() {
+  const v = ($('#txnNote').value || '').replace(/^\s+/, '').toUpperCase();
+  for (const t of TXN_TAGS) { if (v === t || v.startsWith(t + ' ')) return t; }
+  return '';
+}
+function refreshTxnTags() {
+  const cur = currentTxnTag();
+  document.querySelectorAll('#txnTags .tag-btn').forEach(b => b.classList.toggle('act', b.dataset.tag === cur));
+}
+document.querySelectorAll('#txnTags .tag-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const tag = b.dataset.tag, inp = $('#txnNote');
+    let v = (inp.value || '').replace(/^\s+/, ''); const up = v.toUpperCase();
+    // agar pehle se koi tag laga hai to hata do (dobara dabane par 'VC VC LP' na bane)
+    for (const t of TXN_TAGS) {
+      if (up === t) { v = ''; break; }
+      if (up.startsWith(t + ' ')) { v = v.slice(t.length + 1); break; }
+    }
+    inp.value = tag + ' ' + v;
+    inp.focus(); try { const n = inp.value.length; inp.setSelectionRange(n, n); } catch (e) {}
+    refreshTxnTags();
+  });
+});
 async function handleTxnImage(e) {
   const f = e.target.files[0]; if (!f) return;
   try { pendingTxnImg = await fileToDataURL(f, 1200, 0.7); const p = $('#txnImgPreview'); p.src = pendingTxnImg; p.classList.remove('hidden'); }
