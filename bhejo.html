@@ -52,6 +52,23 @@
   .muted{color:var(--muted);font-size:12px}
   .status{font-size:12px;color:var(--muted);margin-bottom:10px}
   .status.ok{color:#0f7a52}
+  .cb-cols{display:flex;gap:8px}
+  .cb-col{flex:1;background:rgba(231,162,76,.06);border:1px solid var(--border);border-radius:10px;padding:9px 6px;text-align:center}
+  .cb-lbl{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .cb-val{font-size:16px;font-weight:900;color:var(--green)}
+  .cb-val.ep{color:#2563c9}
+  .cb-val.tot{color:var(--text)}
+  .cb-list{max-height:300px;overflow-y:auto}
+  .cb-empty{text-align:center;color:var(--muted);font-size:13px;padding:14px 0}
+  .cb-item{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)}
+  .cb-i-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .cb-i-m{font-weight:800;font-size:13px;color:var(--text)}
+  .cb-i-n{font-size:12px;color:var(--text)}
+  .cb-i-t{font-size:11px;color:var(--muted)}
+  .cb-i-amt{font-weight:900;font-size:14px;white-space:nowrap}
+  .cb-i-amt.pos{color:var(--green)}
+  .cb-i-amt.neg{color:var(--red)}
+  .cb-del{flex:0 0 auto;width:30px;height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--red);font-weight:800}
 </style>
 </head>
 <body>
@@ -71,7 +88,8 @@
       <div class="status" id="status">Connect ho raha hai…</div>
       <div class="type-toggle" id="modeToggle">
         <button id="mSingle" class="deb">➊ Aik aik</button>
-        <button id="mBulk">📋 Paste (kai entries)</button>
+        <button id="mBulk">📋 Paste</button>
+        <button id="mCash">💰 Jama</button>
       </div>
 
       <div class="card" id="singlePanel">
@@ -122,6 +140,23 @@
         <div class="note-hint" style="margin:8px 0">Bracket wali line = Maal · number se shuru = Payment. Aik customer ke kai cards alag alag lines me — Aamir bhai ke app me khud <b>aik entry</b> ban jayenge.</div>
         <div class="total" id="bTotal">Total: Rs 0 · 0 entries</div>
         <button class="send" id="bSend">📤 Sab Bhejo</button>
+      </div>
+
+      <div class="card" id="cashPanel" style="display:none">
+        <div class="cb-cols">
+          <div class="cb-col"><div class="cb-lbl">Cash 💵</div><div class="cb-val" id="jCash">Rs 0</div></div>
+          <div class="cb-col"><div class="cb-lbl">Easypaisa 📲</div><div class="cb-val ep" id="jEp">Rs 0</div></div>
+          <div class="cb-col"><div class="cb-lbl">Total</div><div class="cb-val tot" id="jTotal">Rs 0</div></div>
+        </div>
+        <div class="type-toggle" style="margin-top:14px"><button id="jIn" class="cre">+ Jama (aaya)</button><button id="jOut">− Nikala (diya)</button></div>
+        <div class="type-toggle"><button id="jCashB" class="cre">💵 Cash</button><button id="jEpB">📲 Easypaisa</button></div>
+        <label class="lbl">Raqam (Rs)</label>
+        <input id="jAmt" type="number" inputmode="decimal" placeholder="0" autocomplete="off">
+        <label class="lbl" style="margin-top:10px">Tafseel (optional)</label>
+        <input id="jNote" placeholder="Misaal: Ahmad ki payment / Bank jama / saman" autocomplete="off">
+        <button class="send" id="jAdd" style="margin-top:12px">➕ Add karein</button>
+        <div class="note-hint" style="margin-top:8px">Cash aur Easypaisa alag alag jama hota rahega. Kuch dena/saman ho to "Nikala" karke minus karein. Ye total Aamir bhai ke app me bhi nazar aata hai.</div>
+        <div class="cb-list" id="jList" style="margin-top:12px"></div>
       </div>
 
       <div id="sentWrap" style="display:none">
@@ -235,14 +270,16 @@
 
   // ================= BULK PASTE (app jaisa) =================
   function setMode(m){
-    const single = m==='single';
-    $('#singlePanel').style.display = single ? 'block' : 'none';
-    $('#bulkPanel').style.display = single ? 'none' : 'block';
-    $('#mSingle').classList.toggle('deb', single);
-    $('#mBulk').classList.toggle('cre', !single);
+    $('#singlePanel').style.display = m==='single' ? 'block' : 'none';
+    $('#bulkPanel').style.display = m==='bulk' ? 'block' : 'none';
+    $('#cashPanel').style.display = m==='cash' ? 'block' : 'none';
+    $('#mSingle').classList.toggle('deb', m==='single');
+    $('#mBulk').classList.toggle('cre', m==='bulk');
+    $('#mCash').classList.toggle('cre', m==='cash');
   }
   $('#mSingle').addEventListener('click', ()=>setMode('single'));
   $('#mBulk').addEventListener('click', ()=>setMode('bulk'));
+  $('#mCash').addEventListener('click', ()=>setMode('cash'));
   function setBType(t){ bType=t; $('#bDeb').classList.toggle('deb', t==='debit'); $('#bCre').classList.toggle('cre', t==='credit'); }
   $('#bDeb').addEventListener('click', ()=>setBType('debit'));
   $('#bCre').addEventListener('click', ()=>setBType('credit'));
@@ -319,6 +356,42 @@
   }
   $('#bSend').addEventListener('click', submitBulk);
 
+  // ================= CASH BOOK (rozana jama: cash / easypaisa) =================
+  let cashArr = [], jDir='in', jMethod='cash';
+  function cashTotals(list){ let cash=0,ep=0; (list||[]).forEach(e=>{ const a=(Number(e.amount)||0)*(e.dir==='out'?-1:1); if(e.method==='easypaisa') ep+=a; else cash+=a; }); return {cash,ep,total:cash+ep}; }
+  function fmtRs(n){ return 'Rs '+Math.round(n).toLocaleString('en-PK'); }
+  function renderJama(){
+    const t=cashTotals(cashArr);
+    $('#jCash').textContent=fmtRs(t.cash); $('#jEp').textContent=fmtRs(t.ep); $('#jTotal').textContent=fmtRs(t.total);
+    const list=cashArr.slice().sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')).slice(0,60);
+    const el=$('#jList');
+    if(!list.length){ el.innerHTML='<div class="cb-empty">Abhi koi entry nahi.</div>'; return; }
+    el.innerHTML=list.map(e=>{ const out=e.dir==='out'; const m=e.method==='easypaisa'?'📲 Easypaisa':'💵 Cash';
+      const tm=e.ts?new Date(e.ts).toLocaleString('en-PK',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}):'';
+      return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span></div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
+    }).join('');
+    el.querySelectorAll('.cb-del').forEach(b=>b.addEventListener('click',()=>{ if(!confirm('Ye entry hata dein?')) return; db.collection('khatas').doc(syncId).collection('cashbook').doc(b.dataset.cid).delete().catch(()=>toast('Nahi hua')); }));
+  }
+  function jToggles(){ $('#jIn').classList.toggle('cre',jDir==='in'); $('#jOut').classList.toggle('deb',jDir==='out'); $('#jCashB').classList.toggle('cre',jMethod==='cash'); $('#jEpB').classList.toggle('cre',jMethod==='easypaisa'); }
+  $('#jIn').addEventListener('click',()=>{ jDir='in'; jToggles(); });
+  $('#jOut').addEventListener('click',()=>{ jDir='out'; jToggles(); });
+  $('#jCashB').addEventListener('click',()=>{ jMethod='cash'; jToggles(); });
+  $('#jEpB').addEventListener('click',()=>{ jMethod='easypaisa'; jToggles(); });
+  $('#jAdd').addEventListener('click',()=>{
+    const amt=parseFloat($('#jAmt').value);
+    if(!isFinite(amt)||amt<=0){ toast('Raqam daalein'); return; }
+    const btn=$('#jAdd'); btn.disabled=true;
+    db.collection('khatas').doc(syncId).collection('cashbook').add({ method:jMethod, dir:jDir, amount:Math.round(amt*100)/100, note:$('#jNote').value||'', ts:new Date().toISOString(), by:'Muzammil' })
+      .then(()=>{ $('#jAmt').value=''; $('#jNote').value=''; toast('✅ Add ho gaya'); })
+      .catch(()=>toast('Nahi hua — internet check karein'))
+      .finally(()=>{ btn.disabled=false; });
+  });
+  function startCashListener(){
+    db.collection('khatas').doc(syncId).collection('cashbook').onSnapshot(snap=>{
+      cashArr=snap.docs.map(d=>Object.assign({id:d.id},d.data())); renderJama();
+    }, e=>console.warn('cash',e));
+  }
+
   async function loadCustomers(){
     try{
       const doc=await db.collection('khatas').doc(syncId).get();
@@ -340,9 +413,13 @@
     firebase.initializeApp(window.FIREBASE_CONFIG);
     await firebase.auth().signInAnonymously();
     db=firebase.firestore();
+    // Offline persistence: entry/jama foran LOCAL par durable (koi wait nahi) + background
+    // me server par turant chali jaye (chhoti writes, koi bara backup muqabla nahi).
+    try{ await db.enablePersistence(); }catch(e){ console.warn('persist', e && e.code); }
     $('#app').style.display='block'; $('#setup').style.display='none';
     setType('debit'); clearForm(false);
     setMode('single'); setBType('debit'); refreshBTags(); updateBTotal();
+    jToggles(); startCashListener();
     loadCustomers();
   }
 

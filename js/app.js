@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v84'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v85'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -148,6 +148,7 @@ $$('.bottomnav button').forEach(b => b.addEventListener('click', () => nav(b.dat
 function renderOverview() {
   applyBranding();
   try { refreshInboxBanner(); } catch (e) {}
+  try { renderCashBox(); } catch (e) {}
   const { lena, dena, customers } = Store.totals();
   $('#ovLena').textContent = fmtMoney(lena);
   $('#ovDena').textContent = fmtMoney(dena);
@@ -1536,6 +1537,8 @@ function setupAutoUpdate() {
   if (Cloud.onStatus) Cloud.onStatus(renderBackupBar);
   // n8n/automation inbox — external tool ki bheji entries khud ledger me daalo
   if (Cloud.onInbox) Cloud.onInbox(handleInboxEntry);
+  // Cash Book (rozana jama) — live totals box + modal
+  if (Cloud.onCash) Cloud.onCash(list => { cashList = list || []; renderCashBox(); if ($('#cashModal').classList.contains('open')) renderCashList(); });
   const bb = document.getElementById('backupBar');
   if (bb) bb.addEventListener('click', () => {
     const st = Cloud.getStatus ? Cloud.getStatus().state : '';
@@ -1548,6 +1551,73 @@ function setupAutoUpdate() {
     maybeRunImport();
   }).catch(() => { maybeRunImport(); });
 })();
+
+/* ================= CASH BOOK (rozana jama: cash / easypaisa) ================= */
+let cashList = [];
+let cmDir = 'in', cmMethod = 'cash';
+function cashTotals(list) {
+  let cash = 0, ep = 0;
+  (list || []).forEach(e => {
+    const amt = (Number(e.amount) || 0) * (e.dir === 'out' ? -1 : 1);
+    if (e.method === 'easypaisa') ep += amt; else cash += amt;
+  });
+  return { cash, ep, total: cash + ep };
+}
+function renderCashBox() {
+  const box = $('#cashBox'); if (!box) return;
+  const on = Cloud.isSyncOn && Cloud.isSyncOn();
+  box.style.display = on ? 'block' : 'none';
+  if (!on) return;
+  const t = cashTotals(cashList);
+  $('#cbCash').textContent = fmtMoney(t.cash);
+  $('#cbEp').textContent = fmtMoney(t.ep);
+  $('#cbTotal').textContent = fmtMoney(t.total);
+}
+function cmUpdateToggles() {
+  $('#cmIn').classList.toggle('act-credit', cmDir === 'in');
+  $('#cmOut').classList.toggle('act-debit', cmDir === 'out');
+  $('#cmCashB').classList.toggle('act-credit', cmMethod === 'cash');
+  $('#cmEpB').classList.toggle('act-credit', cmMethod === 'easypaisa');
+}
+function renderCashList() {
+  const t = cashTotals(cashList);
+  $('#cmCash').textContent = fmtMoney(t.cash);
+  $('#cmEp').textContent = fmtMoney(t.ep);
+  $('#cmTotal').textContent = fmtMoney(t.total);
+  const list = (cashList || []).slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 60);
+  const el = $('#cmList');
+  if (!list.length) { el.innerHTML = '<div class="cb-empty">Abhi koi entry nahi. Upar se add karein.</div>'; return; }
+  el.innerHTML = list.map(e => {
+    const out = e.dir === 'out';
+    const m = e.method === 'easypaisa' ? '📲 Easypaisa' : '💵 Cash';
+    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${e.ts ? fmtDateTime(e.ts) : ''}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
+  }).join('');
+  $$('#cmList .cb-del').forEach(b => b.addEventListener('click', () => {
+    if (!confirm('Ye entry hata dein?')) return;
+    Cloud.deleteCash(b.dataset.cid).catch(() => toast('Nahi hua — dobara'));
+  }));
+}
+function openCash() {
+  if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein (Settings)'); return; }
+  cmDir = 'in'; cmMethod = 'cash'; cmUpdateToggles();
+  $('#cmAmt').value = ''; $('#cmNote').value = '';
+  renderCashList();
+  openModal('cashModal');
+}
+$('#cashBox') && $('#cashBox').addEventListener('click', openCash);
+$('#cmIn') && $('#cmIn').addEventListener('click', () => { cmDir = 'in'; cmUpdateToggles(); });
+$('#cmOut') && $('#cmOut').addEventListener('click', () => { cmDir = 'out'; cmUpdateToggles(); });
+$('#cmCashB') && $('#cmCashB').addEventListener('click', () => { cmMethod = 'cash'; cmUpdateToggles(); });
+$('#cmEpB') && $('#cmEpB').addEventListener('click', () => { cmMethod = 'easypaisa'; cmUpdateToggles(); });
+$('#cmAdd') && $('#cmAdd').addEventListener('click', () => {
+  const amt = parseFloat($('#cmAmt').value);
+  if (!isFinite(amt) || amt <= 0) { toast('Raqam daalein'); return; }
+  const btn = $('#cmAdd'); btn.disabled = true;
+  Cloud.addCash({ method: cmMethod, dir: cmDir, amount: amt, note: $('#cmNote').value, by: 'Aamir' })
+    .then(() => { $('#cmAmt').value = ''; $('#cmNote').value = ''; toast('✅ Add ho gaya'); })
+    .catch(() => toast('Nahi hua — internet check karein'))
+    .finally(() => { btn.disabled = false; });
+});
 
 /* Backup status bar render (sync on hone par hi dikhta hai) */
 let bkHideT = null;

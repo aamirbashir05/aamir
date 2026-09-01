@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=84">
+  <link rel="stylesheet" href="css/styles.css?v=85">
 </head>
 <body>
 
@@ -36,6 +36,14 @@
         <div class="mini"><div class="m-val" id="ovNet">Rs 0</div><div class="m-lbl">Net Baqaya</div></div>
       </div>
       <div class="ov-panel hidden" id="ovPanel"></div>
+      <div class="cashbox tap" id="cashBox">
+        <div class="cb-head">💰 Cash Book <span class="cb-open">kholein ›</span></div>
+        <div class="cb-cols">
+          <div class="cb-col"><div class="cb-lbl">Cash</div><div class="cb-val" id="cbCash">Rs 0</div></div>
+          <div class="cb-col"><div class="cb-lbl">Easypaisa</div><div class="cb-val ep" id="cbEp">Rs 0</div></div>
+          <div class="cb-col"><div class="cb-lbl">Total</div><div class="cb-val tot" id="cbTotal">Rs 0</div></div>
+        </div>
+      </div>
       <button class="reminder-btn" id="btnReminders">🔔 Udhaar Reminders bhejein</button>
       <div class="app-ver" id="appVer"></div>
     </div>
@@ -324,6 +332,25 @@
     </div>
   </div>
 
+  <!-- ============ CASH BOOK (rozana jama) ============ -->
+  <div class="modal-bg" id="cashModal">
+    <div class="modal">
+      <h2>💰 Cash Book — Rozana Jama</h2>
+      <div class="cb-cols" style="margin-bottom:12px">
+        <div class="cb-col"><div class="cb-lbl">Cash</div><div class="cb-val" id="cmCash">Rs 0</div></div>
+        <div class="cb-col"><div class="cb-lbl">Easypaisa</div><div class="cb-val ep" id="cmEp">Rs 0</div></div>
+        <div class="cb-col"><div class="cb-lbl">Total</div><div class="cb-val tot" id="cmTotal">Rs 0</div></div>
+      </div>
+      <div class="type-toggle"><button id="cmIn">+ Jama (aaya)</button><button id="cmOut">− Nikala (diya)</button></div>
+      <div class="type-toggle"><button id="cmCashB">💵 Cash</button><button id="cmEpB">📲 Easypaisa</button></div>
+      <div class="field"><label>Raqam (Rs)</label><input id="cmAmt" type="number" inputmode="decimal" placeholder="0" autocomplete="off"></div>
+      <div class="field"><label>Tafseel (optional)</label><input id="cmNote" placeholder="Misaal: Bank jama / saman" autocomplete="off"></div>
+      <div class="modal-actions"><button class="save" id="cmAdd" style="width:100%">Add karein</button></div>
+      <div class="cb-list" id="cmList"></div>
+      <div class="modal-actions" style="margin-top:10px"><button class="cancel" data-close>Band karein</button></div>
+    </div>
+  </div>
+
   <!-- ============ BULK ENTRIES (paste) ============ -->
   <div class="modal-bg" id="bulkModal">
     <div class="modal">
@@ -395,10 +422,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=84"></script>
-  <script src="js/logo.js?v=84"></script>
-  <script src="js/store.js?v=84"></script>
-  <script src="js/cloud.js?v=84"></script>
-  <script src="js/app.js?v=84"></script>
+  <script src="js/firebase-config.js?v=85"></script>
+  <script src="js/logo.js?v=85"></script>
+  <script src="js/store.js?v=85"></script>
+  <script src="js/cloud.js?v=85"></script>
+  <script src="js/app.js?v=85"></script>
 </body>
 </html>

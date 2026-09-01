@@ -93,6 +93,29 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 /* Muzammil ki nayi entries — numaya (green) banner */
 .banner.inbox { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.5); color: #0f7a52; font-weight: 700; }
 .banner.inbox button { background: linear-gradient(180deg,#34d399,#10b981); color: #06301f; }
+/* Cash Book box (overview) + modal */
+.cashbox { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow); cursor: pointer; }
+.cb-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; color: var(--text); font-size: 14px; margin-bottom: 10px; }
+.cb-open { color: var(--gold2); font-size: 12px; font-weight: 700; }
+.cb-cols { display: flex; gap: 8px; }
+.cb-col { flex: 1; background: rgba(231,162,76,.06); border: 1px solid var(--border); border-radius: 10px; padding: 8px 6px; text-align: center; }
+.cb-lbl { font-size: 11px; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+.cb-val { font-size: 15px; font-weight: 900; color: var(--green); }
+.cb-val.ep { color: #2563c9; }
+.cb-val.tot { color: var(--text); }
+.cb-list { margin-top: 12px; max-height: 300px; overflow-y: auto; }
+.cb-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 16px 0; }
+.cb-item { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.cb-i-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cb-i-m { font-weight: 800; font-size: 13px; color: var(--text); }
+.cb-i-n { font-size: 12px; color: var(--text); }
+.cb-i-t { font-size: 11px; color: var(--muted); }
+.cb-i-amt { font-weight: 900; font-size: 14px; white-space: nowrap; }
+.cb-i-amt.pos { color: var(--green); }
+.cb-i-amt.neg { color: var(--red); }
+.cb-del { flex: 0 0 auto; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--red); font-weight: 800; }
+#cashModal .type-toggle { margin-bottom: 10px; gap: 8px; }
+#cashModal .type-toggle button { padding: 11px; font-size: 14px; }
 
 .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
 

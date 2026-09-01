@@ -12,6 +12,7 @@ const Cloud = (() => {
   // (slow net par bhi foran), poora bara snapshot background me kabhi kabhi jata hai.
   let deltaRef = null, deltaUnsub = null, deltaT = null, fullT = null;
   let inboxRef = null, inboxUnsub = null, inboxCb = null; // n8n/automation ki nayi entries ka box
+  let cashUnsub = null, cashCb = null, cashData = []; // Cash Book (rozana jama: cash/easypaisa)
   let fullPushedIds = new Set(); // aakhri POORE push me jo ids gayi thi
   let lastDelStr = '';           // aakhri delete-list jo delta me bheji
   const CHUNK = 700000; // base64 chars per chunk doc (Firestore 1 MiB limit ke neeche)
@@ -314,6 +315,12 @@ const Cloud = (() => {
         if (inboxCb) { try { inboxCb(ch.doc.id, d); } catch (e) { console.warn('inbox', e); } }
       });
     }, e => console.warn('inboxsub', e));
+    // CASH BOOK: rozana payment jama (cash / easypaisa) — Muzammil + Aamir dono live.
+    // subcollection: khatas/{syncId}/cashbook. Har doc: {method,dir,amount,note,ts,by}
+    cashUnsub = docRef.collection('cashbook').onSnapshot(snap => {
+      cashData = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      if (cashCb) { try { cashCb(cashData); } catch (e) { console.warn('cash', e); } }
+    }, e => console.warn('cashsub', e));
     syncOn = true;
     Store.onSave(schedulePush);
     pushIfNeeded(); // app khulte hi: koi local entry jo pichli dafa push na hui thi, ab bhej do
@@ -362,6 +369,23 @@ const Cloud = (() => {
     catch (e) { console.warn('fetchShare', e); return null; }
   }
 
+  /* ---- Cash Book (rozana jama: cash / easypaisa) ---- */
+  function onCash(cb) { cashCb = cb; if (cashData.length) { try { cb(cashData); } catch (e) {} } }
+  function getCash() { return cashData.slice(); }
+  function addCash(e) {
+    const c = shareDb || db; if (!c || !curSyncId) return Promise.reject(new Error('sync off'));
+    return c.collection('khatas').doc(curSyncId).collection('cashbook').add({
+      method: (e.method === 'easypaisa') ? 'easypaisa' : 'cash',
+      dir: (e.dir === 'out') ? 'out' : 'in',
+      amount: Math.round(Number(e.amount) * 100) / 100,
+      note: (e.note || '').toString(), ts: new Date().toISOString(), by: (e.by || '').toString()
+    });
+  }
+  function deleteCash(id) {
+    const c = shareDb || db; if (!c || !curSyncId || !id) return Promise.reject(new Error('bad'));
+    return c.collection('khatas').doc(curSyncId).collection('cashbook').doc(id).delete();
+  }
+
   /* ---- one-time clean import (final Udhaar data) ----
      Sirf naye code (v19+) me chalta hai, isliye purana app is race me nahi aata.
      Incoming snapshots ko rok kar clean data local par likho, marker set karo,
@@ -408,5 +432,5 @@ const Cloud = (() => {
 
   return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz, forceResetAll,
     getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry, refresh,
-    onInbox, inboxDone, inboxPending };
+    onInbox, inboxDone, inboxPending, onCash, getCash, addCash, deleteCash };
 })();
