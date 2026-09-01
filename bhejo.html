@@ -69,7 +69,12 @@
 
     <div id="app" style="display:none">
       <div class="status" id="status">Connect ho raha hai…</div>
-      <div class="card">
+      <div class="type-toggle" id="modeToggle">
+        <button id="mSingle" class="deb">➊ Aik aik</button>
+        <button id="mBulk">📋 Paste (kai entries)</button>
+      </div>
+
+      <div class="card" id="singlePanel">
         <label class="lbl">Customer ka Naam</label>
         <input id="cust" list="custNames" placeholder="Customer ka naam likhein" autocomplete="off">
         <datalist id="custNames"></datalist>
@@ -99,6 +104,26 @@
         <div class="note-hint">Bhejne ke baad Aamir bhai ke app me aa jayegi — wo check kar ke customer ko bhej denge.</div>
       </div>
 
+      <div class="card" id="bulkPanel" style="display:none">
+        <label class="lbl">Kya hai? (jo line khud pehchani na jaye uske liye)</label>
+        <div class="type-toggle">
+          <button id="bDeb" class="deb">− Maal / Card</button>
+          <button id="bCre">+ Payment</button>
+        </div>
+        <label class="lbl">Type (optional) — har line ke shuru me lagega</label>
+        <div class="tag-row" id="bTags">
+          <button type="button" class="tag-btn" data-tag="VC">VC</button>
+          <button type="button" class="tag-btn" data-tag="VC LP">VC LP</button>
+          <button type="button" class="tag-btn" data-tag="STICKER">STICKER</button>
+          <button type="button" class="tag-btn" data-tag="UV">UV</button>
+        </div>
+        <label class="lbl">Yahan paste karein (har line aik entry)</label>
+        <textarea id="bText" rows="8" placeholder="(Saad Charpai) - (Aslam 1000)&#10;(Hotel Royal) - (Kohistan Press 1000)&#10;6000 Amjad Press" autocomplete="off" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px;background:#fff;color:var(--text)"></textarea>
+        <div class="note-hint" style="margin:8px 0">Bracket wali line = Maal · number se shuru = Payment. Aik customer ke kai cards alag alag lines me — Aamir bhai ke app me khud <b>aik entry</b> ban jayenge.</div>
+        <div class="total" id="bTotal">Total: Rs 0 · 0 entries</div>
+        <button class="send" id="bSend">📤 Sab Bhejo</button>
+      </div>
+
       <div id="sentWrap" style="display:none">
         <h3 style="margin:6px 2px">✅ Aaj bheji hui entries</h3>
         <div class="sent-list" id="sentList"></div>
@@ -114,9 +139,11 @@
   <script src="js/firebase-config.js"></script>
   <script>
   const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
   const SKEY = 'altariq_muz_sync';
-  let db = null, syncId = '', type = 'debit', tag = '';
-  const TAGS = ['VC LP','STICKER','VC','UV'];
+  const DEFAULT_SYNC = 'altariq-q7f3k9m2xp'; // Al Tariq ka permanent Sync ID (link ke bina bhi chale)
+  let db = null, syncId = '', type = 'debit', tag = '', bTag = '', bType = 'debit';
+  const TAGS = ['VC LP','STICKER','VC','UV']; // lambe pehle (VC LP ko VC na samjhe)
 
   function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
 
@@ -132,8 +159,10 @@
   function getSync(){
     const u=new URLSearchParams(location.search).get('sync');
     if(u){ try{ localStorage.setItem(SKEY, u.trim()); }catch(e){} return u.trim(); }
-    try{ return (localStorage.getItem(SKEY)||'').trim(); }catch(e){ return ''; }
+    let s=''; try{ s=(localStorage.getItem(SKEY)||'').trim(); }catch(e){}
+    return s || DEFAULT_SYNC; // koi na ho to permanent id
   }
+  function tagOfLine(s){ const up=(s||'').toUpperCase(); for(const t of TAGS){ if(up===t||up.startsWith(t+' ')) return t; } return ''; }
 
   // ---- card rows ----
   function addCardRow(note, amt){
@@ -204,6 +233,92 @@
   }
   $('#send').addEventListener('click', submit);
 
+  // ================= BULK PASTE (app jaisa) =================
+  function setMode(m){
+    const single = m==='single';
+    $('#singlePanel').style.display = single ? 'block' : 'none';
+    $('#bulkPanel').style.display = single ? 'none' : 'block';
+    $('#mSingle').classList.toggle('deb', single);
+    $('#mBulk').classList.toggle('cre', !single);
+  }
+  $('#mSingle').addEventListener('click', ()=>setMode('single'));
+  $('#mBulk').addEventListener('click', ()=>setMode('bulk'));
+  function setBType(t){ bType=t; $('#bDeb').classList.toggle('deb', t==='debit'); $('#bCre').classList.toggle('cre', t==='credit'); }
+  $('#bDeb').addEventListener('click', ()=>setBType('debit'));
+  $('#bCre').addEventListener('click', ()=>setBType('credit'));
+  function refreshBTags(){ $$('#bTags .tag-btn').forEach(b=>b.classList.toggle('act', b.dataset.tag===bTag)); }
+  $$('#bTags .tag-btn').forEach(b=>b.addEventListener('click', ()=>{ bTag = (bTag===b.dataset.tag)?'':b.dataset.tag; applyBTagToText(); refreshBTags(); updateBTotal(); }));
+
+  // har line ke shuru me chuna hua tag laga do (purana hata kar — stack na ho)
+  function applyBTagToText(){
+    if(!bTag) return;
+    $('#bText').value = ($('#bText').value||'').split('\n').map(raw=>{
+      if(!raw.trim()) return raw;
+      let s=raw.replace(/^\s+/,''); const cur=tagOfLine(s);
+      if(cur) s=(s.length===cur.length)?'':s.slice(cur.length+1);
+      return (bTag+' '+s).trimEnd();
+    }).join('\n');
+  }
+
+  // ---- app wala parser (hu-ba-hu) ----
+  function parseNameAmount(str){
+    const s=(str||'').replace(/[()]/g,' ').trim();
+    const m=s.match(/^(.*?)[\s:\-–—=]*?([\d][\d,]*(?:\.\d+)?)\s*(?:rs|rupees|rupay|rupaye|pkr|\/-|\/=|\/)?\.?\s*$/i);
+    if(!m||!m[1].trim()) return null;
+    return { name:m[1].trim(), amount:parseFloat(m[2].replace(/,/g,'')) };
+  }
+  function parseBulkLines(text){
+    const out=[];
+    (text||'').split('\n').forEach(raw=>{
+      const line0=raw.trim(); if(!line0) return;
+      const tg=tagOfLine(line0);
+      const line=tg?line0.slice(tg.length).trim():line0;
+      const withTag=d=>tg?(d?(tg+' '+d):tg):d;
+      const hasParen=line.includes('(')&&line.includes(')');
+      if(!hasParen){
+        const pm=line.match(/^([\d][\d,]*(?:\.\d+)?)\s+(.+)$/);
+        if(pm&&pm[2].trim()){ out.push({ detail:withTag('Payment'), name:pm[2].trim(), amount:parseFloat(pm[1].replace(/,/g,'')), type:'credit' }); return; }
+      }
+      let detail='',naStr=line,isOrder=false;
+      const di=line.lastIndexOf(' - ');
+      if(di>=0){ detail=line.slice(0,di); naStr=line.slice(di+3); }
+      else{ const g=[...line.matchAll(/\(([^)]*)\)/g)].map(m=>m[1].trim()); if(g.length>=2){ detail=g.slice(0,-1).join(' '); naStr=g[g.length-1]; isOrder=true; } else if(g.length===1) naStr=g[0]; }
+      detail=detail.replace(/[()]/g,' ').replace(/\s+/g,' ').trim();
+      const na=parseNameAmount(naStr);
+      out.push({ detail:withTag(detail), name:na?na.name:naStr.replace(/[()]/g,' ').trim(), amount:na?na.amount:0, type:(hasParen||isOrder)?'debit':null });
+    });
+    return out;
+  }
+  function updateBTotal(){
+    const rows=parseBulkLines($('#bText').value).filter(r=>r.amount>0);
+    const t=rows.reduce((s,r)=>s+r.amount,0);
+    $('#bTotal').textContent='Total: Rs '+t.toLocaleString('en-PK')+' · '+rows.length+' entries';
+  }
+  $('#bText').addEventListener('input', updateBTotal);
+
+  async function submitBulk(){
+    const rows=parseBulkLines($('#bText').value).filter(r=>r.amount>0);
+    if(!rows.length){ toast('Kuch paste to karein'); return; }
+    const btn=$('#bSend'); btn.disabled=true; btn.textContent='Bhej raha hai…';
+    try{
+      const col=db.collection('khatas').doc(syncId).collection('inbox');
+      const now=new Date().toISOString();
+      let batch=db.batch(), n=0, total=0;
+      for(const r of rows){
+        const ref=col.doc();
+        batch.set(ref, { customerName:r.name, type:(r.type||bType), tag:'', items:[{ note:r.detail||'', amount:r.amount }], date:now, by:'Muzammil', at:now });
+        total+=r.amount; n++;
+        if(n%400===0){ await batch.commit(); batch=db.batch(); } // Firestore batch limit
+      }
+      await batch.commit();
+      sent.unshift({ name:n+' entries', total, type:'debit', detail:'Paste — Aamir bhai ke app me review ke liye' }); renderSent();
+      toast('✅ '+n+' entries bhej diN — Aamir bhai ke app me aa gaN');
+      $('#bText').value=''; bTag=''; refreshBTags(); updateBTotal();
+    }catch(e){ console.warn(e); toast('❌ Nahi gaN — internet check karein'); }
+    finally{ btn.disabled=false; btn.textContent='📤 Sab Bhejo'; }
+  }
+  $('#bSend').addEventListener('click', submitBulk);
+
   async function loadCustomers(){
     try{
       const doc=await db.collection('khatas').doc(syncId).get();
@@ -227,6 +342,7 @@
     db=firebase.firestore();
     $('#app').style.display='block'; $('#setup').style.display='none';
     setType('debit'); clearForm(false);
+    setMode('single'); setBType('debit'); refreshBTags(); updateBTotal();
     loadCustomers();
   }
 
