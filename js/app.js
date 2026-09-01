@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v87'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v88'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -266,18 +266,31 @@ function renderOvPanel() {
       + (rows.length
         ? `<div class="list">` + rows.map(x => {
             const d = x.t.type === 'debit';
+            const canWa = x.kind === 'customer' && intlPhone(x.c.phone);
             return `<div class="cust" data-kind="${x.kind}" data-id="${x.c.id}">
               <div class="t-icon ${x.t.type}">${d ? '↑' : '↓'}</div>
               <div class="info"><div class="name">${esc(x.c.name)}</div><div class="phone">${esc(x.t.note) || (d ? 'Maal diya' : 'Paisay milay')} • ${fmtDateTime(x.t.date)}</div></div>
-              <div class="bal"><div class="amt ${d ? 'neg' : 'pos'}">${d ? '−' : '+'}${fmtMoney(x.t.amount)}</div></div></div>`;
+              <div class="bal"><div class="amt ${d ? 'neg' : 'pos'}">${d ? '−' : '+'}${fmtMoney(x.t.amount)}</div></div>
+              ${canWa ? `<button class="t-wa" data-wa="${x.c.id}|${x.t.id}" title="WhatsApp bhejein">💬</button>` : ''}</div>`;
           }).join('') + `</div>`
         : `<div class="empty" style="padding:20px;">Is din koi entry nahi</div>`);
     const di = $('#ovDate');
     if (di) di.addEventListener('change', e => { ovDateFilter = e.target.value; renderOvPanel(); });
   }
+  // "Aaj ki entries" me har entry ke aage 💬 — foran WhatsApp bhejein
+  $$('#ovPanel .t-wa').forEach(btn => btn.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const parts = (btn.dataset.wa || '').split('|'), cid = parts[0], tid = parts[1];
+    const c = Store.getCustomer(cid); if (!c) return;
+    const t = (c.txns || []).find(x => x.id === tid); if (!t) return;
+    const phone = intlPhone(c.phone); if (!phone) { toast('Is customer ka number nahi'); return; }
+    ensurePublished(c).catch(() => {});
+    waOpen(phone, entryMessage(c, { amount: t.amount, type: t.type, note: t.note || '' }));
+    btn.classList.add('done');
+  }));
   // rows → open detail
   $$('#ovPanel .cust').forEach(el => el.addEventListener('click', ev => {
-    if (ev.target.id === 'ovDate') return;
+    if (ev.target.id === 'ovDate' || (ev.target.classList && ev.target.classList.contains('t-wa'))) return;
     openDetail(el.dataset.kind, el.dataset.id);
   }));
 }
@@ -1587,7 +1600,7 @@ function applyCashToLedger(list) {
     const c = Store.getCustomer(m.custId); if (!c) return;
     const tid = 'cb_' + e.id;
     if ((c.txns || []).some(x => x.id === tid)) return; // pehle se dala hua
-    const label = (e.method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' payment' + (e.note ? ' — ' + e.note : '');
+    const label = (e.method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' payment' + (e.by ? ' (' + e.by + ')' : '') + (e.note ? ' — ' + e.note : '');
     Store.addPartyTxn('customer', c.id, { amount: e.amount, type: 'credit', note: label, date: e.ts || new Date().toISOString(), tid });
     try { republishIfShared(c); } catch (er) {}
     added++; lastC = c;

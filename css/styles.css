@@ -440,6 +440,10 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .ov-panel .t-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
 .ov-panel .t-icon.debit { background: var(--red-soft); color: var(--red); }
 .ov-panel .t-icon.credit { background: var(--green-soft); color: var(--green); }
+/* "Aaj ki entries" me har entry ke aage WhatsApp bhejein */
+.ov-panel .cust .t-wa { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(52,211,153,.5); background: rgba(52,211,153,.12); font-size: 18px; line-height: 1; cursor: pointer; }
+.ov-panel .cust .t-wa:active { transform: translateY(1px); }
+.ov-panel .cust .t-wa.done { background: var(--green-soft); border-color: var(--green); opacity: .7; }
 .ov-date { background: #0e0f14; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 12px; font-family: inherit; }
 
 /* ---------- Smoothness: fast tap + fluid scroll for long lists ---------- */
