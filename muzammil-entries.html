@@ -78,6 +78,9 @@
   .cb-tagx{font-size:10px;font-weight:800;color:var(--gold2);background:rgba(231,162,76,.14);border:1px solid rgba(231,162,76,.4);border-radius:6px;padding:1px 5px;margin-left:4px;white-space:nowrap}
   .chk-row{display:flex;align-items:flex-start;gap:8px;margin-top:8px;font-size:13px;color:var(--text);font-weight:600}
   .chk-row input{width:20px;height:20px;flex:0 0 auto;margin-top:1px}
+  .cb-day{position:sticky;top:0;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:rgba(231,162,76,.12);border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin:10px 0 4px}
+  .cb-day-d{font-size:12px;font-weight:900;color:var(--text)}
+  .cb-day-t{font-size:11px;font-weight:800;color:var(--gold2);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -394,13 +397,22 @@
     const active=($('#jSearch').value||$('#jDate').value);
     const fsum=$('#jFilterSum');
     if(fsum){ if(active){ const ft=cashTotals(filtered); fsum.textContent=filtered.length+' entries · Cash '+fmtRs(ft.cash)+' · EP '+fmtRs(ft.ep)+' · Total '+fmtRs(ft.total); } else fsum.textContent=''; }
-    const list=filtered.slice().sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')).slice(0,300);
+    const list=filtered.slice().sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')).slice(0,500);
     const el=$('#jList');
     if(!list.length){ el.innerHTML='<div class="cb-empty">'+(active?'Is search par koi entry nahi.':'Abhi koi entry nahi.')+'</div>'; return; }
-    el.innerHTML=list.map(e=>{ const out=e.dir==='out'; const m=e.method==='easypaisa'?'📲 Easypaisa':'💵 Cash';
-      const tm=e.ts?new Date(e.ts).toLocaleString('en-PK',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}):'';
+    const itemHtml=e=>{ const out=e.dir==='out'; const m=e.method==='easypaisa'?'📲 Easypaisa':'💵 Cash';
+      const tm=e.ts?new Date(e.ts).toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'}):'';
       const who=e.customerName?'<span class="cb-i-n">👤 '+(e.customerName+'').replace(/</g,'&lt;')+(e.noLedger?' <span class="cb-tagx">🚶 cash</span>':'')+'</span>':'';
       return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+who+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span></div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
+    };
+    // DATE-WISE: har din ka header + us din ka total
+    const days=[], byDay={};
+    list.forEach(e=>{ const d=jLocalDay(e.ts)||''; if(!byDay[d]){ byDay[d]=[]; days.push(d); } byDay[d].push(e); });
+    el.innerHTML=days.map(d=>{
+      const dt=cashTotals(byDay[d]);
+      const lbl=d?new Date(d+'T12:00:00').toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'}):'—';
+      const head='<div class="cb-day"><span class="cb-day-d">'+lbl+'</span><span class="cb-day-t">Cash '+fmtRs(dt.cash)+' · EP '+fmtRs(dt.ep)+'</span></div>';
+      return head+byDay[d].map(itemHtml).join('');
     }).join('');
     el.querySelectorAll('.cb-del').forEach(b=>b.addEventListener('click',()=>{ if(!confirm('Ye entry hata dein?')) return; db.collection('khatas').doc(syncId).collection('cashbook').doc(b.dataset.cid).delete().catch(()=>toast('Nahi hua')); }));
   }

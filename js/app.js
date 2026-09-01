@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v89'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v90'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1648,14 +1648,24 @@ function renderCashList() {
     if (active) { const ft = cashTotals(filtered); fs.textContent = filtered.length + ' entries · Cash ' + fmtMoney(ft.cash) + ' · EP ' + fmtMoney(ft.ep) + ' · Total ' + fmtMoney(ft.total); }
     else fs.textContent = '';
   }
-  const list = filtered.slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 300);
+  const list = filtered.slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 500);
   const el = $('#cmList');
   if (!list.length) { el.innerHTML = '<div class="cb-empty">' + (active ? 'Is search par koi entry nahi.' : 'Abhi koi entry nahi. Upar se add karein.') + '</div>'; return; }
-  el.innerHTML = list.map(e => {
+  const itemHtml = e => {
     const out = e.dir === 'out';
     const m = e.method === 'easypaisa' ? '📲 Easypaisa' : '💵 Cash';
     const who = e.customerName ? `<span class="cb-i-n">👤 ${esc(e.customerName)}${e.noLedger ? ' <span class="cb-tagx">🚶 cash</span>' : ''}</span>` : '';
-    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${who}${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${e.ts ? fmtDateTime(e.ts) : ''}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
+    const tm = e.ts ? new Date(e.ts).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${who}${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${tm}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
+  };
+  // DATE-WISE: har din ka header + us din ka total, phir us din ki entries
+  const days = [], byDay = {};
+  list.forEach(e => { const d = localDay(e.ts) || ''; if (!byDay[d]) { byDay[d] = []; days.push(d); } byDay[d].push(e); });
+  el.innerHTML = days.map(d => {
+    const dt = cashTotals(byDay[d]);
+    const lbl = d ? fmtDate(d + 'T12:00:00') : '—';
+    const head = `<div class="cb-day"><span class="cb-day-d">${lbl}</span><span class="cb-day-t">Cash ${fmtMoney(dt.cash)} · EP ${fmtMoney(dt.ep)}</span></div>`;
+    return head + byDay[d].map(itemHtml).join('');
   }).join('');
   $$('#cmList .cb-del').forEach(b => b.addEventListener('click', () => {
     if (!confirm('Ye entry hata dein?')) return;
