@@ -150,7 +150,9 @@
         </div>
         <div class="type-toggle" style="margin-top:14px"><button id="jIn" class="cre">+ Jama (aaya)</button><button id="jOut">− Nikala (diya)</button></div>
         <div class="type-toggle"><button id="jCashB" class="cre">💵 Cash</button><button id="jEpB">📲 Easypaisa</button></div>
-        <label class="lbl">Raqam (Rs)</label>
+        <label class="lbl">Kis customer ki payment? (optional)</label>
+        <input id="jCust" list="custNames" placeholder="Customer ka naam — us ke hisaab me bhi add hogi" autocomplete="off">
+        <label class="lbl" style="margin-top:10px">Raqam (Rs)</label>
         <input id="jAmt" type="number" inputmode="decimal" placeholder="0" autocomplete="off">
         <label class="lbl" style="margin-top:10px">Tafseel (optional)</label>
         <input id="jNote" placeholder="Misaal: Ahmad ki payment / Bank jama / saman" autocomplete="off">
@@ -368,7 +370,8 @@
     if(!list.length){ el.innerHTML='<div class="cb-empty">Abhi koi entry nahi.</div>'; return; }
     el.innerHTML=list.map(e=>{ const out=e.dir==='out'; const m=e.method==='easypaisa'?'📲 Easypaisa':'💵 Cash';
       const tm=e.ts?new Date(e.ts).toLocaleString('en-PK',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}):'';
-      return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span></div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
+      const who=e.customerName?'<span class="cb-i-n">👤 '+(e.customerName+'').replace(/</g,'&lt;')+'</span>':'';
+      return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+who+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span></div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
     }).join('');
     el.querySelectorAll('.cb-del').forEach(b=>b.addEventListener('click',()=>{ if(!confirm('Ye entry hata dein?')) return; db.collection('khatas').doc(syncId).collection('cashbook').doc(b.dataset.cid).delete().catch(()=>toast('Nahi hua')); }));
   }
@@ -381,8 +384,8 @@
     const amt=parseFloat($('#jAmt').value);
     if(!isFinite(amt)||amt<=0){ toast('Raqam daalein'); return; }
     const btn=$('#jAdd'); btn.disabled=true;
-    db.collection('khatas').doc(syncId).collection('cashbook').add({ method:jMethod, dir:jDir, amount:Math.round(amt*100)/100, note:$('#jNote').value||'', ts:new Date().toISOString(), by:'Muzammil' })
-      .then(()=>{ $('#jAmt').value=''; $('#jNote').value=''; toast('✅ Add ho gaya'); })
+    db.collection('khatas').doc(syncId).collection('cashbook').add({ method:jMethod, dir:jDir, amount:Math.round(amt*100)/100, customerName:($('#jCust').value||'').trim(), note:$('#jNote').value||'', ts:new Date().toISOString(), by:'Muzammil' })
+      .then(()=>{ $('#jAmt').value=''; $('#jNote').value=''; $('#jCust').value=''; toast('✅ Add ho gaya'); })
       .catch(()=>toast('Nahi hua — internet check karein'))
       .finally(()=>{ btn.disabled=false; });
   });

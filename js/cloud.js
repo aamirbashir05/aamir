@@ -378,6 +378,7 @@ const Cloud = (() => {
       method: (e.method === 'easypaisa') ? 'easypaisa' : 'cash',
       dir: (e.dir === 'out') ? 'out' : 'in',
       amount: Math.round(Number(e.amount) * 100) / 100,
+      customerName: (e.customerName || '').toString(), // kis customer ki payment (optional)
       note: (e.note || '').toString(), ts: new Date().toISOString(), by: (e.by || '').toString()
     });
   }

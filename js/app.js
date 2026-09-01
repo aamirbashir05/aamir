@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v85'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v86'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1538,7 +1538,7 @@ function setupAutoUpdate() {
   // n8n/automation inbox — external tool ki bheji entries khud ledger me daalo
   if (Cloud.onInbox) Cloud.onInbox(handleInboxEntry);
   // Cash Book (rozana jama) — live totals box + modal
-  if (Cloud.onCash) Cloud.onCash(list => { cashList = list || []; renderCashBox(); if ($('#cashModal').classList.contains('open')) renderCashList(); });
+  if (Cloud.onCash) Cloud.onCash(list => { cashList = list || []; renderCashBox(); try { applyCashToLedger(cashList); } catch (e) {} if ($('#cashModal').classList.contains('open')) renderCashList(); });
   const bb = document.getElementById('backupBar');
   if (bb) bb.addEventListener('click', () => {
     const st = Cloud.getStatus ? Cloud.getStatus().state : '';
@@ -1573,6 +1573,40 @@ function renderCashBox() {
   $('#cbEp').textContent = fmtMoney(t.ep);
   $('#cbTotal').textContent = fmtMoney(t.total);
 }
+// Cash "Jama (aaya)" jab kisi customer ke sath ho -> us customer ke hisaab me bhi
+// payment (credit) khud add ho jaye. tid ('cb_'+docId) se duplicate-safe (do phone /
+// baar baar snapshot par bhi aik hi dafa). Naam saaf match na ho to skip (sirf cash book me).
+function applyCashToLedger(list) {
+  if (!(list && list.length)) return;
+  let idx = null, added = 0, lastC = null;
+  list.forEach(e => {
+    if (e.dir !== 'in' || !e.customerName || !(Number(e.amount) > 0)) return;
+    if (!idx) idx = buildCustIndex();
+    const m = matchCustomer(e.customerName, idx);
+    if (!m.custId) return;                       // saaf match nahi — cash book me hi rahe
+    const c = Store.getCustomer(m.custId); if (!c) return;
+    const tid = 'cb_' + e.id;
+    if ((c.txns || []).some(x => x.id === tid)) return; // pehle se dala hua
+    const label = (e.method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' payment' + (e.note ? ' — ' + e.note : '');
+    Store.addPartyTxn('customer', c.id, { amount: e.amount, type: 'credit', note: label, date: e.ts || new Date().toISOString(), tid });
+    try { republishIfShared(c); } catch (er) {}
+    added++; lastC = c;
+  });
+  if (added) {
+    if (activeNav === 'overview') renderOverview();
+    else if (activeNav === 'accounts') renderAccounts();
+    if (lastC) toast('✅ ' + added + ' payment customer ke hisaab me add');
+  }
+}
+// cash entry hataane par uski customer-ledger payment (tid) bhi hata do
+function removeCashLedgerTxn(tid) {
+  let done = false;
+  Store.getCustomers().forEach(c => {
+    if ((c.txns || []).some(x => x.id === tid)) { try { Store.deletePartyTxn('customer', c.id, tid); republishIfShared(c); done = true; } catch (e) {} }
+  });
+  if (done && activeNav === 'overview') renderOverview();
+  if (done && activeNav === 'accounts') renderAccounts();
+}
 function cmUpdateToggles() {
   $('#cmIn').classList.toggle('act-credit', cmDir === 'in');
   $('#cmOut').classList.toggle('act-debit', cmDir === 'out');
@@ -1590,17 +1624,23 @@ function renderCashList() {
   el.innerHTML = list.map(e => {
     const out = e.dir === 'out';
     const m = e.method === 'easypaisa' ? '📲 Easypaisa' : '💵 Cash';
-    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${e.ts ? fmtDateTime(e.ts) : ''}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
+    const who = e.customerName ? `<span class="cb-i-n">👤 ${esc(e.customerName)}</span>` : '';
+    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${who}${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${e.ts ? fmtDateTime(e.ts) : ''}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
   }).join('');
   $$('#cmList .cb-del').forEach(b => b.addEventListener('click', () => {
     if (!confirm('Ye entry hata dein?')) return;
-    Cloud.deleteCash(b.dataset.cid).catch(() => toast('Nahi hua — dobara'));
+    const id = b.dataset.cid, e = cashList.find(x => x.id === id);
+    Cloud.deleteCash(id).then(() => {
+      // agar is jama se customer ke hisaab me payment gayi thi, wo bhi hata do
+      if (e && e.dir === 'in' && e.customerName) removeCashLedgerTxn('cb_' + id);
+    }).catch(() => toast('Nahi hua — dobara'));
   }));
 }
 function openCash() {
   if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein (Settings)'); return; }
   cmDir = 'in'; cmMethod = 'cash'; cmUpdateToggles();
-  $('#cmAmt').value = ''; $('#cmNote').value = '';
+  $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = '';
+  const dl = $('#cmCustNames'); if (dl) dl.innerHTML = Store.getCustomers().map(c => `<option value="${esc(c.name)}">`).join('');
   renderCashList();
   openModal('cashModal');
 }
@@ -1613,8 +1653,8 @@ $('#cmAdd') && $('#cmAdd').addEventListener('click', () => {
   const amt = parseFloat($('#cmAmt').value);
   if (!isFinite(amt) || amt <= 0) { toast('Raqam daalein'); return; }
   const btn = $('#cmAdd'); btn.disabled = true;
-  Cloud.addCash({ method: cmMethod, dir: cmDir, amount: amt, note: $('#cmNote').value, by: 'Aamir' })
-    .then(() => { $('#cmAmt').value = ''; $('#cmNote').value = ''; toast('✅ Add ho gaya'); })
+  Cloud.addCash({ method: cmMethod, dir: cmDir, amount: amt, note: $('#cmNote').value, customerName: $('#cmCust').value.trim(), by: 'Aamir' })
+    .then(() => { $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = ''; toast('✅ Add ho gaya'); })
     .catch(() => toast('Nahi hua — internet check karein'))
     .finally(() => { btn.disabled = false; });
 });
