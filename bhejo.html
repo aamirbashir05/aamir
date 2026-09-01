@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entry Bhejein — Al Tariq Printers</title>
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<meta name="theme-color" content="#2b3039">
+<style>
+  :root{
+    --bg:#f6f1e8; --card:#fff; --text:#2b2620; --muted:#7c7264; --border:#e6ddcd;
+    --orange:#e7a24c; --gold2:#c9851f; --green:#10b981; --red:#e0524d;
+    --grad-orange:linear-gradient(180deg,#f0b866,#e7a24c 60%,#c9851f);
+    --shadow:0 2px 8px rgba(120,90,30,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  .top{background:linear-gradient(180deg,#2b3039,#20242b);color:#fff;padding:16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+  .top img{height:40px;width:auto;filter:drop-shadow(0 0 8px rgba(231,162,76,.6))}
+  .top b{font-size:17px;font-weight:900}
+  .top span{display:block;font-size:11px;color:#c9bfae;letter-spacing:.05em}
+  .wrap{max-width:520px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+  label.lbl{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:2px 0 6px}
+  input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:#fff;color:var(--text)}
+  input:focus,select:focus{outline:none;border-color:var(--orange)}
+  .type-toggle{display:flex;gap:8px;margin-bottom:12px}
+  .type-toggle button{flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:#fff;font-weight:800;font-size:14px;color:var(--muted)}
+  .type-toggle button.deb{border-color:rgba(224,82,77,.5);background:rgba(224,82,77,.10);color:var(--red)}
+  .type-toggle button.cre{border-color:rgba(16,185,129,.5);background:rgba(16,185,129,.12);color:#0f7a52}
+  .tag-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .tag-btn{flex:1 1 auto;min-width:58px;padding:9px 8px;border:1px solid rgba(231,162,76,.5);border-radius:10px;background:rgba(231,162,76,.08);font-weight:800;font-size:13px;color:var(--gold2)}
+  .tag-btn.act{background:var(--orange);border-color:var(--orange);color:#fff;box-shadow:0 2px 10px rgba(231,162,76,.5)}
+  .crow{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+  .crow input.note{flex:2}
+  .crow input.amt{flex:1;min-width:90px}
+  .crow .del{flex:0 0 auto;width:38px;height:44px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--red);font-size:16px;font-weight:800}
+  .addcard{width:100%;padding:10px;border:1.5px dashed rgba(231,162,76,.5);background:rgba(231,162,76,.05);border-radius:10px;color:var(--gold2);font-weight:800;margin-top:2px}
+  .send{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(180deg,#34d399,#10b981);color:#06301f;font-weight:900;font-size:16px;margin-top:6px;box-shadow:0 6px 16px rgba(16,185,129,.3)}
+  .send:active{transform:translateY(2px)}
+  .send:disabled{opacity:.5}
+  .total{text-align:right;font-weight:900;font-size:16px;color:var(--gold2);margin:6px 2px}
+  .note-hint{font-size:12px;color:var(--muted);margin-top:6px}
+  .sent-list{margin-top:4px}
+  .sent-item{display:flex;justify-content:space-between;gap:10px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--green);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:14px}
+  .sent-item b{font-weight:800}
+  .sent-item .amt{font-weight:900;color:#0f7a52}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1b22;color:#fff;padding:12px 20px;border-radius:30px;font-size:14px;z-index:50;opacity:0;transition:all .25s;pointer-events:none;max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .setup{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px}
+  h3{font-size:14px;margin-bottom:10px}
+  .muted{color:var(--muted);font-size:12px}
+  .status{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .status.ok{color:#0f7a52}
+</style>
+</head>
+<body>
+  <div class="top">
+    <img src="assets/mark.png" alt="logo" onerror="this.style.display='none'">
+    <div><b>Al Tariq Printers</b><span>Entry Bhejein</span></div>
+  </div>
+  <div class="wrap">
+    <div id="setup" class="setup" style="display:none">
+      <h3>Pehli baar — Sync ID daalein</h3>
+      <p class="muted" style="margin-bottom:10px">Ye ID Aamir bhai se lein (App → Settings → Sync ID). Aik dafa daal dein, phir yaad rahegi.</p>
+      <input id="syncInput" placeholder="misaal: altariq-9x7k2" autocomplete="off">
+      <button class="send" id="syncSave" style="margin-top:10px">Save karein</button>
+    </div>
+
+    <div id="app" style="display:none">
+      <div class="status" id="status">Connect ho raha hai…</div>
+      <div class="card">
+        <label class="lbl">Customer ka Naam</label>
+        <input id="cust" list="custNames" placeholder="Customer ka naam likhein" autocomplete="off">
+        <datalist id="custNames"></datalist>
+
+        <div style="height:12px"></div>
+        <label class="lbl">Kya hai?</label>
+        <div class="type-toggle">
+          <button id="tDeb" class="deb">− Maal / Card Diya</button>
+          <button id="tCre">+ Payment Aayi</button>
+        </div>
+
+        <div id="tagWrap">
+          <label class="lbl">Type (optional)</label>
+          <div class="tag-row" id="tags">
+            <button type="button" class="tag-btn" data-tag="VC">VC</button>
+            <button type="button" class="tag-btn" data-tag="VC LP">VC LP</button>
+            <button type="button" class="tag-btn" data-tag="STICKER">STICKER</button>
+            <button type="button" class="tag-btn" data-tag="UV">UV</button>
+          </div>
+        </div>
+
+        <label class="lbl" id="cardsLbl">Card / kaam aur raqam (aik customer ke jitne cards hon, sab yahan)</label>
+        <div id="cards"></div>
+        <button type="button" class="addcard" id="addCard">＋ Aur card</button>
+        <div class="total" id="total">Total: Rs 0</div>
+        <button class="send" id="send">📤 Bhejo</button>
+        <div class="note-hint">Bhejne ke baad Aamir bhai ke app me aa jayegi — wo check kar ke customer ko bhej denge.</div>
+      </div>
+
+      <div id="sentWrap" style="display:none">
+        <h3 style="margin:6px 2px">✅ Aaj bheji hui entries</h3>
+        <div class="sent-list" id="sentList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+  const $ = s => document.querySelector(s);
+  const SKEY = 'altariq_muz_sync';
+  let db = null, syncId = '', type = 'debit', tag = '';
+  const TAGS = ['VC LP','STICKER','VC','UV'];
+
+  function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+
+  // ---- gzip helper (customer list padhne ke liye) ----
+  async function gunzipB64(b64){
+    const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    const ds=new DecompressionStream('gzip');
+    const buf=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+    return new TextDecoder().decode(buf);
+  }
+
+  function getSync(){
+    const u=new URLSearchParams(location.search).get('sync');
+    if(u){ try{ localStorage.setItem(SKEY, u.trim()); }catch(e){} return u.trim(); }
+    try{ return (localStorage.getItem(SKEY)||'').trim(); }catch(e){ return ''; }
+  }
+
+  // ---- card rows ----
+  function addCardRow(note, amt){
+    const div=document.createElement('div'); div.className='crow';
+    div.innerHTML='<input class="note" placeholder="Card / kaam (misaal: Saad Charpai)" autocomplete="off">'+
+      '<input class="amt" type="number" inputmode="decimal" placeholder="Rs" autocomplete="off">'+
+      '<button type="button" class="del" title="Hatayein">✕</button>';
+    div.querySelector('.note').value=note||''; div.querySelector('.amt').value=amt||'';
+    div.querySelector('.amt').addEventListener('input', updateTotal);
+    div.querySelector('.del').addEventListener('click', ()=>{ div.remove(); if(!$('#cards').children.length) addCardRow(); updateTotal(); });
+    $('#cards').appendChild(div);
+  }
+  function updateTotal(){
+    let t=0; document.querySelectorAll('#cards .amt').forEach(i=>{ const v=parseFloat(i.value); if(isFinite(v)) t+=v; });
+    $('#total').textContent='Total: Rs '+t.toLocaleString('en-PK');
+  }
+  function clearForm(keepCust){
+    if(!keepCust) $('#cust').value='';
+    $('#cards').innerHTML=''; addCardRow(); tag=''; refreshTags(); updateTotal();
+  }
+
+  function setType(t){
+    type=t;
+    $('#tDeb').classList.toggle('deb', t==='debit');
+    $('#tCre').classList.toggle('cre', t==='credit');
+    // payment par card-label thora badlo
+    $('#cardsLbl').textContent = t==='credit' ? 'Payment (raqam) — tafseel optional' : 'Card / kaam aur raqam (aik customer ke jitne cards hon, sab yahan)';
+    $('#tagWrap').style.display = t==='credit' ? 'none' : 'block';
+  }
+  function refreshTags(){ document.querySelectorAll('#tags .tag-btn').forEach(b=>b.classList.toggle('act', b.dataset.tag===tag)); }
+
+  document.querySelectorAll('#tags .tag-btn').forEach(b=>b.addEventListener('click', ()=>{ tag = (tag===b.dataset.tag)?'':b.dataset.tag; refreshTags(); }));
+  $('#tDeb').addEventListener('click', ()=>setType('debit'));
+  $('#tCre').addEventListener('click', ()=>setType('credit'));
+  $('#addCard').addEventListener('click', ()=>{ addCardRow(); });
+
+  // ---- session sent list ----
+  const sent=[];
+  function renderSent(){
+    if(!sent.length){ $('#sentWrap').style.display='none'; return; }
+    $('#sentWrap').style.display='block';
+    $('#sentList').innerHTML = sent.map(s=>`<div class="sent-item"><div><b>${s.name}</b><div class="muted">${s.detail||''}</div></div><span class="amt">${s.type==='credit'?'+':''}Rs ${s.total.toLocaleString('en-PK')}</span></div>`).join('');
+  }
+
+  async function submit(){
+    const name=$('#cust').value.trim();
+    if(!name){ toast('Customer ka naam likhein'); $('#cust').focus(); return; }
+    const items=[]; document.querySelectorAll('#cards .crow').forEach(r=>{
+      const note=r.querySelector('.note').value.trim();
+      const amt=parseFloat(r.querySelector('.amt').value);
+      if(isFinite(amt) && amt>0) items.push({ note, amount: Math.round(amt*100)/100 });
+    });
+    if(!items.length){ toast('Raqam daalein'); return; }
+    const total=items.reduce((s,x)=>s+x.amount,0);
+    const btn=$('#send'); btn.disabled=true; btn.textContent='Bhej raha hai…';
+    try{
+      await db.collection('khatas').doc(syncId).collection('inbox').add({
+        customerName:name, type, tag: (type==='credit'?'':tag), items,
+        date:new Date().toISOString(), by:'Muzammil', at:new Date().toISOString()
+      });
+      const cnt=items.length; const notes=items.map(i=>i.note).filter(Boolean);
+      const detail = cnt>1 ? ((tag&&type!=='credit'?cnt+' '+tag:cnt+' items') + (notes.length?' — '+notes.join(', '):'')) : ((type!=='credit'&&tag?tag+' ':'')+(notes[0]||''));
+      sent.unshift({ name, total, type, detail }); renderSent();
+      toast('✅ Bhej diya — Aamir bhai ke app me aa gaya');
+      clearForm(false); $('#cust').focus();
+    }catch(e){ console.warn(e); toast('❌ Nahi gaya — internet check karein'); }
+    finally{ btn.disabled=false; btn.textContent='📤 Bhejo'; }
+  }
+  $('#send').addEventListener('click', submit);
+
+  async function loadCustomers(){
+    try{
+      const doc=await db.collection('khatas').doc(syncId).get();
+      if(!doc.exists) return;
+      const sd=doc.data(); let json=null;
+      if(sd.chunks && sd.chunks>0){ let b64=''; for(let i=0;i<sd.chunks;i++){ const cs=await db.collection('khatas').doc(syncId+'_c'+i).get(); if(!cs.exists){ b64=''; break; } b64+=(cs.data().part||''); } if(b64) json=await gunzipB64(b64); }
+      else if(sd.gz) json=await gunzipB64(sd.gz);
+      else if(sd.payload) json=sd.payload;
+      if(!json) return;
+      const rd=JSON.parse(json);
+      const names=[...new Set((rd.customers||[]).map(c=>c && c.name).filter(Boolean))].sort();
+      $('#custNames').innerHTML = names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+      $('#status').textContent='✓ Tayyar — '+names.length+' customers'; $('#status').classList.add('ok');
+    }catch(e){ console.warn('cust',e); $('#status').textContent='✓ Connect ho gaya'; $('#status').classList.add('ok'); }
+  }
+
+  async function start(){
+    if(!window.FIREBASE_CONFIG){ $('#status').textContent='Config nahi mila'; return; }
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    await firebase.auth().signInAnonymously();
+    db=firebase.firestore();
+    $('#app').style.display='block'; $('#setup').style.display='none';
+    setType('debit'); clearForm(false);
+    loadCustomers();
+  }
+
+  // ---- boot ----
+  syncId=getSync();
+  if(!syncId){
+    $('#setup').style.display='block';
+    $('#syncSave').addEventListener('click', ()=>{ const v=$('#syncInput').value.trim(); if(!v){ toast('Sync ID daalein'); return; } try{ localStorage.setItem(SKEY,v); }catch(e){} syncId=v; start(); });
+  } else {
+    start();
+  }
+  </script>
+</body>
+</html>

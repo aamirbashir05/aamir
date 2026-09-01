@@ -90,6 +90,9 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 /* Banner */
 .banner { background: rgba(231,162,76,.10); border: 1px solid var(--border); color: var(--gold1); border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .banner button { background: var(--grad-orange); color: #241a08; border: none; border-radius: 8px; padding: 7px 12px; font-weight: 800; font-size: 12px; }
+/* Muzammil ki nayi entries — numaya (green) banner */
+.banner.inbox { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.5); color: #0f7a52; font-weight: 700; }
+.banner.inbox button { background: linear-gradient(180deg,#34d399,#10b981); color: #06301f; }
 
 .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
 

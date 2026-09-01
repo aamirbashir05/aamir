@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v83'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v84'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -147,6 +147,7 @@ $$('.bottomnav button').forEach(b => b.addEventListener('click', () => nav(b.dat
 /* ---------- Overview ---------- */
 function renderOverview() {
   applyBranding();
+  try { refreshInboxBanner(); } catch (e) {}
   const { lena, dena, customers } = Store.totals();
   $('#ovLena').textContent = fmtMoney(lena);
   $('#ovDena').textContent = fmtMoney(dena);
@@ -881,12 +882,17 @@ function setBulkType(t) {
   $('#bulkDebit').classList.toggle('act-debit', t === 'debit');
   $('#bulkCredit').classList.toggle('act-credit', t === 'credit');
 }
+let bulkFromInbox = false; // review-mode: rows Muzammil ke inbox se aayi hain
 $('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
+  bulkFromInbox = false;
+  const pa = $('#bulkPaste'); if (pa) pa.classList.remove('hidden');
+  const tt = $('#bulkTitle'); if (tt) tt.textContent = '📋 Ek saath kai entries';
   $('#bulkText').value = ''; $('#bulkResult').innerHTML = ''; $('#bulkNotify').checked = true;
   const mg = $('#bulkMerge'); if (mg) mg.checked = true;
   setBulkType('debit'); refreshBulkTags();
   openModal('bulkModal');
 });
+$('#inboxReview') && $('#inboxReview').addEventListener('click', openInboxReview);
 $('#bulkDebit') && $('#bulkDebit').addEventListener('click', () => setBulkType('debit'));
 $('#bulkCredit') && $('#bulkCredit').addEventListener('click', () => setBulkType('credit'));
 // Bulk quick-tags: har paste ki hui line ke start me VC / VC LP / STICKER / UV lagayein.
@@ -1035,7 +1041,8 @@ function mergeBulkRows(rows) {
     });
     const tagLabel = tagOrder.map(t => tagCount[t] + ' ' + t).join(', ');
     const detail = [tagLabel, descs.join(', ')].filter(Boolean).join(' — ');
-    merged.push({ raw: g.map(r => r.raw).join(' | '), detail, name: g[0].name, amount, type: g[0].type || bulkType, custId: g[0].custId, candidates: [] });
+    const inboxIds = [].concat(...g.map(r => r.inboxIds || []));
+    merged.push({ raw: g.map(r => r.raw).join(' | '), detail, name: g[0].name, amount, type: g[0].type || bulkType, custId: g[0].custId, candidates: [], inboxIds });
   });
   return merged.concat(single);
 }
@@ -1081,7 +1088,12 @@ function renderBulkPreview() {
   $$('#bulkResult [data-type]').forEach(b => b.addEventListener('click', () => { const r = bulkRows[+b.dataset.type]; if (r) { r.type = (r.type || bulkType) === 'debit' ? 'credit' : 'debit'; renderBulkPreview(); } }));
   $$('#bulkResult [data-amt]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.amt]; if (r) { r.amount = parseFloat(inp.value) || 0; updateBulkSummary(); } }));
   $$('#bulkResult [data-det]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.det]; if (r) r.detail = inp.value; }));
-  $$('#bulkResult [data-del]').forEach(b => b.addEventListener('click', () => { bulkRows.splice(+b.dataset.del, 1); renderBulkPreview(); }));
+  $$('#bulkResult [data-del]').forEach(b => b.addEventListener('click', () => {
+    const di = +b.dataset.del, rr = bulkRows[di];
+    // review-mode: dismiss par inbox doc ko skip-flag karo (dobara na aaye)
+    if (rr && rr.inboxIds && rr.inboxIds.length) rr.inboxIds.forEach(id => { try { Cloud.inboxPending && Cloud.inboxPending(id, 'skip'); } catch (e) {} pendingInbox = pendingInbox.filter(p => p.id !== id); });
+    bulkRows.splice(di, 1); refreshInboxBanner(); renderBulkPreview();
+  }));
   updateBulkSummary();
   const sv = $('#bulkSave');
   if (sv) sv.addEventListener('click', () => {
@@ -1134,10 +1146,15 @@ async function bulkSave(rows) {
   for (const r of rows) {
     const c = Store.getCustomer(r.custId); if (!c) continue;
     const rt = r.type || bulkType;
-    Store.addPartyTxn('customer', c.id, { amount: r.amount, type: rt, note: r.detail || '', date: iso });
+    const tx = { amount: r.amount, type: rt, note: r.detail || '', date: iso };
+    if (r.inboxIds && r.inboxIds.length) tx.tid = 'nb_' + r.inboxIds.slice().sort().join('_'); // dedup (do phone)
+    Store.addPartyTxn('customer', c.id, tx);
     republishIfShared(c);
+    // Muzammil ke inbox doc consume: server se delete + review list se hatao
+    if (r.inboxIds && r.inboxIds.length) r.inboxIds.forEach(id => { try { Cloud.inboxDone && Cloud.inboxDone(id); } catch (e) {} pendingInbox = pendingInbox.filter(p => p.id !== id); });
     done.push({ cust: c, amount: r.amount, detail: r.detail || '', type: rt });
   }
+  bulkFromInbox = false; refreshInboxBanner();
   toast('✅ ' + done.length + ' entries save ho gayin');
   if (activeNav === 'accounts') renderAccounts();
   // WhatsApp
@@ -1545,31 +1562,66 @@ function renderBackupBar(st) {
   else { bar.className = 'backup-bar hidden'; }
 }
 
-/* INBOX: n8n (ya koi automation) Firestore ke khatas/{syncId}/inbox me plain-JSON entry
-   daalta hai: { customerName, amount, type:'debit'|'credit', note, date }. App usay padh kar
-   sahi customer me daal deti hai. Naam na mile to entry ko chhoro aur user ko batao.
-   tid (tay-shuda id) inbox doc-id se banate hain — do phone duplicate na banayein. */
+/* INBOX: Muzammil ki entry-page (ya n8n) Firestore ke khatas/{syncId}/inbox me entry
+   daalti hai: { customerName, type:'debit'|'credit', tag, items:[{note,amount}], date }
+   (purana format { amount, note } bhi chalta hai). Ab AUTO-add nahi hoti — pehle Aamir
+   ke saamne "Review" me aati hai, wo customer check kar ke Save + WhatsApp bhejta hai.
+   tid (tay-shuda id) inbox doc-id se banti hai — do phone duplicate na banayein. */
+let pendingInbox = []; // review ke intezaar me aayi entries
 function handleInboxEntry(id, d) {
   try {
+    if (pendingInbox.some(p => p.id === id)) return;   // pehle se list me
     const name = (d.customerName || d.name || '').toString().trim();
-    const amt = Math.round(Number(d.amount) * 100) / 100;
     const type = (d.type === 'credit') ? 'credit' : 'debit';
-    const note = (d.note || d.detail || '').toString();
+    const tag = (d.tag || '').toString().trim();
+    let items = [];
+    if (Array.isArray(d.items) && d.items.length) {
+      items = d.items.map(x => ({ note: (x.note || '').toString(), amount: Math.round(Number(x.amount) * 100) / 100 }));
+    } else {
+      items = [{ note: (d.note || d.detail || '').toString(), amount: Math.round(Number(d.amount) * 100) / 100 }];
+    }
+    items = items.filter(x => isFinite(x.amount) && x.amount > 0);
+    const total = items.reduce((s, x) => s + x.amount, 0);
+    if (!name || !(total > 0)) { Cloud.inboxPending(id, 'bad-data'); return; }
     let date = new Date().toISOString();
     if (d.date) { const dt = new Date(d.date); if (!isNaN(dt.getTime())) date = dt.toISOString(); }
-    if (!name || !isFinite(amt) || amt <= 0) { Cloud.inboxPending(id, 'bad-data'); toast('⚠️ n8n entry adhoori (naam/raqam) — check karein'); return; }
-    const m = matchCustomer(name, buildCustIndex());
-    if (!m.custId) {                                   // saaf match nahi mila — chhoro + batao
-      Cloud.inboxPending(id, 'no-match');
-      toast('⚠️ n8n: "' + name + '" match nahi hua — khud daalein');
-      return;
-    }
-    Store.addTxn(m.custId, { amount: amt, type, note, date, tid: 'nb_' + id });
-    Cloud.inboxDone(id);
-    const c = Store.getCustomer(m.custId);
-    toast('✅ n8n: ' + (c ? c.name : name) + ' — ' + fmtMoney(amt) + (type === 'debit' ? ' (Maal Diya)' : ' (Paisay Milay)'));
-    if (activeNav === 'overview') renderOverview();
+    pendingInbox.push({ id, name, type, tag, items, total, date, by: (d.by || '').toString() });
+    refreshInboxBanner();
+    if (activeNav === 'overview') try { toast('🆕 Nayi entry aayi: ' + name); } catch (e) {}
   } catch (e) { Cloud.inboxPending(id, 'err'); }
+}
+function refreshInboxBanner() {
+  const b = $('#inboxBanner'); if (!b) return;
+  if (!pendingInbox.length) { b.classList.add('hidden'); return; }
+  const n = pendingInbox.length;
+  const t = $('#inboxBannerText'); if (t) t.textContent = '🆕 ' + n + ' nayi ' + (n === 1 ? 'entry' : 'entries') + ' aayi ' + (n === 1 ? 'hai' : 'hain') + ' (Muzammil)';
+  b.classList.remove('hidden');
+}
+// Muzammil ki aayi entry ka tafseel banao (kai items -> "3 VC — Card1, Card2")
+function inboxDetail(p) {
+  const notes = p.items.map(it => (it.note || '').trim()).filter(Boolean);
+  if (p.items.length > 1) {
+    const label = p.tag ? (p.items.length + ' ' + p.tag) : (p.items.length + ' items');
+    return [label, notes.join(', ')].filter(Boolean).join(' — ');
+  }
+  return ((p.tag ? p.tag + ' ' : '') + (notes[0] || '')).trim();
+}
+// Review kholo: pending entries ko bulk-preview me daal do (customer match/pick, edit,
+// Save + WhatsApp sab wahi flow). Save ke baad inbox doc delete ho jata hai.
+function openInboxReview() {
+  if (!pendingInbox.length) { toast('Koi nayi entry nahi'); return; }
+  const idx = buildCustIndex();
+  let rows = pendingInbox.map(p => {
+    const m = matchCustomer(p.name, idx);
+    return { raw: p.name, detail: inboxDetail(p), name: p.name, amount: p.total, type: p.type, custId: m.custId, candidates: m.candidates, inboxIds: [p.id] };
+  });
+  rows = mergeBulkRows(rows); // aik customer ke kai items/entries -> aik
+  bulkRows = rows; bulkFromInbox = true;
+  const pa = $('#bulkPaste'); if (pa) pa.classList.add('hidden');
+  const tt = $('#bulkTitle'); if (tt) tt.textContent = '🆕 Muzammil ki nayi entries';
+  const nb = $('#bulkNotify'); if (nb) nb.checked = true;
+  renderBulkPreview();
+  openModal('bulkModal');
 }
 
 /* Ek-baar final Udhaar data import: app.html?import=altariq-final

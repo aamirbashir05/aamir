@@ -45,14 +45,19 @@ par khud sync. **Bilkul free** (Firebase Spark plan).
          allow read: if true;
          allow write: if request.auth != null;
        }
-       // Aap ka apna data (multi-device sync)
-       match /khatas/{docId} {
+       // Aap ka apna data (multi-device sync) + inbox subcollection (Muzammil ki entry-page)
+       // NOTE: {docId=**} (recursive) zaroori hai — warna khatas/{syncId}/inbox par
+       // Muzammil ki bheji entry PERMISSION_DENIED hoti hai.
+       match /khatas/{docId=**} {
          allow read, write: if request.auth != null;
        }
      }
    }
    ```
    (`share` link ka token secret + mushkil hota hai, isliye sirf link wala hi hisaab dekhta hai. Baaki sab sirf aap likh/parh sakte hain.)
+
+   **Zaroori:** agar aap ne pehle purani rule (`match /khatas/{docId}` — bina `=**`) publish ki thi, to
+   Muzammil ki `bhejo.html` page kaam nahi karegi. Upar wali `{docId=**}` rule dobara **Publish** karein.
 
 ### 5) Config app me daalein (Live customer links ke liye — zaroori)
 Permanent live links customer ke phone par khulte hain, isliye config **`js/firebase-config.js`** file me hona chahiye (sirf Settings kaafi nahi).
