@@ -57,7 +57,7 @@ par khud sync. **Bilkul free** (Firebase Spark plan).
    (`share` link ka token secret + mushkil hota hai, isliye sirf link wala hi hisaab dekhta hai. Baaki sab sirf aap likh/parh sakte hain.)
 
    **Zaroori:** agar aap ne pehle purani rule (`match /khatas/{docId}` — bina `=**`) publish ki thi, to
-   Muzammil ki `bhejo.html` page kaam nahi karegi. Upar wali `{docId=**}` rule dobara **Publish** karein.
+   Muzammil ki `muzammil-entries.html` page kaam nahi karegi. Upar wali `{docId=**}` rule dobara **Publish** karein.
 
 ### 5) Config app me daalein (Live customer links ke liye — zaroori)
 Permanent live links customer ke phone par khulte hain, isliye config **`js/firebase-config.js`** file me hona chahiye (sirf Settings kaafi nahi).
