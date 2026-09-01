@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v88'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v89'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1594,6 +1594,7 @@ function applyCashToLedger(list) {
   let idx = null, added = 0, lastC = null;
   list.forEach(e => {
     if (e.dir !== 'in' || !e.customerName || !(Number(e.amount) > 0)) return;
+    if (e.noLedger) return;                          // cash customer — sirf Cash Book, hisab me nahi
     if (!idx) idx = buildCustIndex();
     const m = matchCustomer(e.customerName, idx);
     if (!m.custId) return;                       // saaf match nahi — cash book me hi rahe
@@ -1653,7 +1654,7 @@ function renderCashList() {
   el.innerHTML = list.map(e => {
     const out = e.dir === 'out';
     const m = e.method === 'easypaisa' ? '📲 Easypaisa' : '💵 Cash';
-    const who = e.customerName ? `<span class="cb-i-n">👤 ${esc(e.customerName)}</span>` : '';
+    const who = e.customerName ? `<span class="cb-i-n">👤 ${esc(e.customerName)}${e.noLedger ? ' <span class="cb-tagx">🚶 cash</span>' : ''}</span>` : '';
     return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${who}${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${e.ts ? fmtDateTime(e.ts) : ''}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
   }).join('');
   $$('#cmList .cb-del').forEach(b => b.addEventListener('click', () => {
@@ -1668,9 +1669,13 @@ function renderCashList() {
 function openCash() {
   if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein (Settings)'); return; }
   cmDir = 'in'; cmMethod = 'cash'; cmUpdateToggles();
-  $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = '';
+  $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = ''; if ($('#cmNoLedger')) $('#cmNoLedger').checked = false;
   if ($('#cmSearch')) $('#cmSearch').value = ''; if ($('#cmDate')) $('#cmDate').value = '';
-  const dl = $('#cmCustNames'); if (dl) dl.innerHTML = Store.getCustomers().map(c => `<option value="${esc(c.name)}">`).join('');
+  const dl = $('#cmCustNames'); if (dl) {
+    const names = new Set(Store.getCustomers().map(c => c.name));
+    (cashList || []).forEach(e => { if (e.customerName) names.add(e.customerName); }); // purane cash customers bhi
+    dl.innerHTML = [...names].map(n => `<option value="${esc(n)}">`).join('');
+  }
   renderCashList();
   openModal('cashModal');
 }
@@ -1686,8 +1691,8 @@ $('#cmAdd') && $('#cmAdd').addEventListener('click', () => {
   const amt = parseFloat($('#cmAmt').value);
   if (!isFinite(amt) || amt <= 0) { toast('Raqam daalein'); return; }
   const btn = $('#cmAdd'); btn.disabled = true;
-  Cloud.addCash({ method: cmMethod, dir: cmDir, amount: amt, note: $('#cmNote').value, customerName: $('#cmCust').value.trim(), by: 'Aamir' })
-    .then(() => { $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = ''; toast('✅ Add ho gaya'); })
+  Cloud.addCash({ method: cmMethod, dir: cmDir, amount: amt, note: $('#cmNote').value, customerName: $('#cmCust').value.trim(), noLedger: $('#cmNoLedger') && $('#cmNoLedger').checked, by: 'Aamir' })
+    .then(() => { $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = ''; if ($('#cmNoLedger')) $('#cmNoLedger').checked = false; toast('✅ Add ho gaya'); })
     .catch(() => toast('Nahi hua — internet check karein'))
     .finally(() => { btn.disabled = false; });
 });

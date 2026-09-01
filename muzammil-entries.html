@@ -75,6 +75,9 @@
   .cb-search input[type="date"]{flex:1;min-width:0}
   .cb-clear{flex:0 0 auto;width:38px;height:40px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--muted);font-weight:800}
   .cb-filter-sum{font-size:13px;font-weight:800;color:var(--gold2);margin:8px 2px 0;min-height:4px}
+  .cb-tagx{font-size:10px;font-weight:800;color:var(--gold2);background:rgba(231,162,76,.14);border:1px solid rgba(231,162,76,.4);border-radius:6px;padding:1px 5px;margin-left:4px;white-space:nowrap}
+  .chk-row{display:flex;align-items:flex-start;gap:8px;margin-top:8px;font-size:13px;color:var(--text);font-weight:600}
+  .chk-row input{width:20px;height:20px;flex:0 0 auto;margin-top:1px}
 </style>
 </head>
 <body>
@@ -157,7 +160,8 @@
         <div class="type-toggle" style="margin-top:14px"><button id="jIn" class="cre">+ Jama (aaya)</button><button id="jOut">− Nikala (diya)</button></div>
         <div class="type-toggle"><button id="jCashB" class="cre">💵 Cash</button><button id="jEpB">📲 Easypaisa</button></div>
         <label class="lbl">Kis customer ki payment? (optional)</label>
-        <input id="jCust" list="custNames" placeholder="Customer ka naam — us ke hisaab me bhi add hogi" autocomplete="off">
+        <input id="jCust" list="custNames" placeholder="Customer ka naam" autocomplete="off">
+        <label class="chk-row"><input type="checkbox" id="jNoLedger"><span>🚶 Cash customer — hisaab kitaab me NA daalein (sirf yahan Cash Book me)</span></label>
         <label class="lbl" style="margin-top:10px">Raqam (Rs)</label>
         <input id="jAmt" type="number" inputmode="decimal" placeholder="0" autocomplete="off">
         <label class="lbl" style="margin-top:10px">Tafseel (optional)</label>
@@ -395,7 +399,7 @@
     if(!list.length){ el.innerHTML='<div class="cb-empty">'+(active?'Is search par koi entry nahi.':'Abhi koi entry nahi.')+'</div>'; return; }
     el.innerHTML=list.map(e=>{ const out=e.dir==='out'; const m=e.method==='easypaisa'?'📲 Easypaisa':'💵 Cash';
       const tm=e.ts?new Date(e.ts).toLocaleString('en-PK',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'}):'';
-      const who=e.customerName?'<span class="cb-i-n">👤 '+(e.customerName+'').replace(/</g,'&lt;')+'</span>':'';
+      const who=e.customerName?'<span class="cb-i-n">👤 '+(e.customerName+'').replace(/</g,'&lt;')+(e.noLedger?' <span class="cb-tagx">🚶 cash</span>':'')+'</span>':'';
       return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+who+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span></div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
     }).join('');
     el.querySelectorAll('.cb-del').forEach(b=>b.addEventListener('click',()=>{ if(!confirm('Ye entry hata dein?')) return; db.collection('khatas').doc(syncId).collection('cashbook').doc(b.dataset.cid).delete().catch(()=>toast('Nahi hua')); }));
@@ -409,8 +413,8 @@
     const amt=parseFloat($('#jAmt').value);
     if(!isFinite(amt)||amt<=0){ toast('Raqam daalein'); return; }
     const btn=$('#jAdd'); btn.disabled=true;
-    db.collection('khatas').doc(syncId).collection('cashbook').add({ method:jMethod, dir:jDir, amount:Math.round(amt*100)/100, customerName:($('#jCust').value||'').trim(), note:$('#jNote').value||'', ts:new Date().toISOString(), by:'Muzammil' })
-      .then(()=>{ $('#jAmt').value=''; $('#jNote').value=''; $('#jCust').value=''; toast('✅ Add ho gaya'); })
+    db.collection('khatas').doc(syncId).collection('cashbook').add({ method:jMethod, dir:jDir, amount:Math.round(amt*100)/100, customerName:($('#jCust').value||'').trim(), noLedger:$('#jNoLedger').checked, note:$('#jNote').value||'', ts:new Date().toISOString(), by:'Muzammil' })
+      .then(()=>{ $('#jAmt').value=''; $('#jNote').value=''; $('#jCust').value=''; $('#jNoLedger').checked=false; toast('✅ Add ho gaya'); })
       .catch(()=>toast('Nahi hua — internet check karein'))
       .finally(()=>{ btn.disabled=false; });
   });
@@ -420,6 +424,13 @@
   function startCashListener(){
     db.collection('khatas').doc(syncId).collection('cashbook').onSnapshot(snap=>{
       cashArr=snap.docs.map(d=>Object.assign({id:d.id},d.data())); renderJama();
+      // purane cash customers ke naam bhi autocomplete me daal do
+      try{
+        const dl=$('#custNames'); if(dl){
+          const have=new Set(Array.from(dl.options).map(o=>o.value));
+          cashArr.forEach(e=>{ if(e.customerName && !have.has(e.customerName)){ have.add(e.customerName); const o=document.createElement('option'); o.value=e.customerName; dl.appendChild(o); } });
+        }
+      }catch(er){}
     }, e=>console.warn('cash',e));
   }
 
