@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v86'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v87'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1613,14 +1613,30 @@ function cmUpdateToggles() {
   $('#cmCashB').classList.toggle('act-credit', cmMethod === 'cash');
   $('#cmEpB').classList.toggle('act-credit', cmMethod === 'easypaisa');
 }
+function cashFiltered() {
+  const q = ($('#cmSearch') && $('#cmSearch').value || '').trim().toLowerCase();
+  const d = ($('#cmDate') && $('#cmDate').value || '').trim();
+  return (cashList || []).filter(e => {
+    if (d && localDay(e.ts) !== d) return false;
+    if (q) { const hay = ((e.customerName || '') + ' ' + (e.note || '') + ' ' + (e.method || '')).toLowerCase(); if (!hay.includes(q)) return false; }
+    return true;
+  });
+}
 function renderCashList() {
-  const t = cashTotals(cashList);
+  const t = cashTotals(cashList); // upar wale totals hamesha poore (overall balance)
   $('#cmCash').textContent = fmtMoney(t.cash);
   $('#cmEp').textContent = fmtMoney(t.ep);
   $('#cmTotal').textContent = fmtMoney(t.total);
-  const list = (cashList || []).slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 60);
+  const filtered = cashFiltered();
+  const active = (($('#cmSearch') && $('#cmSearch').value) || ($('#cmDate') && $('#cmDate').value));
+  const fs = $('#cmFilterSum');
+  if (fs) {
+    if (active) { const ft = cashTotals(filtered); fs.textContent = filtered.length + ' entries · Cash ' + fmtMoney(ft.cash) + ' · EP ' + fmtMoney(ft.ep) + ' · Total ' + fmtMoney(ft.total); }
+    else fs.textContent = '';
+  }
+  const list = filtered.slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 300);
   const el = $('#cmList');
-  if (!list.length) { el.innerHTML = '<div class="cb-empty">Abhi koi entry nahi. Upar se add karein.</div>'; return; }
+  if (!list.length) { el.innerHTML = '<div class="cb-empty">' + (active ? 'Is search par koi entry nahi.' : 'Abhi koi entry nahi. Upar se add karein.') + '</div>'; return; }
   el.innerHTML = list.map(e => {
     const out = e.dir === 'out';
     const m = e.method === 'easypaisa' ? '📲 Easypaisa' : '💵 Cash';
@@ -1640,11 +1656,15 @@ function openCash() {
   if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein (Settings)'); return; }
   cmDir = 'in'; cmMethod = 'cash'; cmUpdateToggles();
   $('#cmAmt').value = ''; $('#cmNote').value = ''; $('#cmCust').value = '';
+  if ($('#cmSearch')) $('#cmSearch').value = ''; if ($('#cmDate')) $('#cmDate').value = '';
   const dl = $('#cmCustNames'); if (dl) dl.innerHTML = Store.getCustomers().map(c => `<option value="${esc(c.name)}">`).join('');
   renderCashList();
   openModal('cashModal');
 }
 $('#cashBox') && $('#cashBox').addEventListener('click', openCash);
+$('#cmSearch') && $('#cmSearch').addEventListener('input', renderCashList);
+$('#cmDate') && $('#cmDate').addEventListener('change', renderCashList);
+$('#cmClear') && $('#cmClear').addEventListener('click', () => { if ($('#cmSearch')) $('#cmSearch').value = ''; if ($('#cmDate')) $('#cmDate').value = ''; renderCashList(); });
 $('#cmIn') && $('#cmIn').addEventListener('click', () => { cmDir = 'in'; cmUpdateToggles(); });
 $('#cmOut') && $('#cmOut').addEventListener('click', () => { cmDir = 'out'; cmUpdateToggles(); });
 $('#cmCashB') && $('#cmCashB').addEventListener('click', () => { cmMethod = 'cash'; cmUpdateToggles(); });

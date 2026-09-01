@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=86">
+  <link rel="stylesheet" href="css/styles.css?v=87">
 </head>
 <body>
 
@@ -347,6 +347,12 @@
       <div class="field"><label>Raqam (Rs)</label><input id="cmAmt" type="number" inputmode="decimal" placeholder="0" autocomplete="off"></div>
       <div class="field"><label>Tafseel (optional)</label><input id="cmNote" placeholder="Misaal: Bank jama / saman" autocomplete="off"></div>
       <div class="modal-actions"><button class="save" id="cmAdd" style="width:100%">Add karein</button></div>
+      <div class="cb-search">
+        <input id="cmSearch" placeholder="🔍 Customer ya tafseel" autocomplete="off">
+        <input id="cmDate" type="date">
+        <button id="cmClear" class="cb-clear" title="Saaf karein">✕</button>
+      </div>
+      <div class="cb-filter-sum" id="cmFilterSum"></div>
       <div class="cb-list" id="cmList"></div>
       <div class="modal-actions" style="margin-top:10px"><button class="cancel" data-close>Band karein</button></div>
     </div>
@@ -423,10 +429,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=86"></script>
-  <script src="js/logo.js?v=86"></script>
-  <script src="js/store.js?v=86"></script>
-  <script src="js/cloud.js?v=86"></script>
-  <script src="js/app.js?v=86"></script>
+  <script src="js/firebase-config.js?v=87"></script>
+  <script src="js/logo.js?v=87"></script>
+  <script src="js/store.js?v=87"></script>
+  <script src="js/cloud.js?v=87"></script>
+  <script src="js/app.js?v=87"></script>
 </body>
 </html>

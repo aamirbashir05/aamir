@@ -103,7 +103,13 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .cb-val { font-size: 15px; font-weight: 900; color: var(--green); }
 .cb-val.ep { color: #2563c9; }
 .cb-val.tot { color: var(--text); }
-.cb-list { margin-top: 12px; max-height: 300px; overflow-y: auto; }
+.cb-search { display: flex; gap: 6px; margin-top: 14px; align-items: center; }
+.cb-search input[type="text"], .cb-search #cmSearch { flex: 2; min-width: 0; }
+.cb-search input { padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); font-size: 14px; }
+.cb-search input[type="date"] { flex: 1; min-width: 0; }
+.cb-clear { flex: 0 0 auto; width: 38px; height: 40px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--muted); font-weight: 800; }
+.cb-filter-sum { font-size: 13px; font-weight: 800; color: var(--gold2); margin: 8px 2px 0; min-height: 4px; }
+.cb-list { margin-top: 10px; max-height: 300px; overflow-y: auto; }
 .cb-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 16px 0; }
 .cb-item { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }
 .cb-i-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
