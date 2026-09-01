@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v82'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v83'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -883,6 +883,7 @@ function setBulkType(t) {
 }
 $('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
   $('#bulkText').value = ''; $('#bulkResult').innerHTML = ''; $('#bulkNotify').checked = true;
+  const mg = $('#bulkMerge'); if (mg) mg.checked = true;
   setBulkType('debit'); refreshBulkTags();
   openModal('bulkModal');
 });
@@ -995,12 +996,49 @@ $('#bulkPreview').addEventListener('click', () => {
   const parsed = parseBulkLines($('#bulkText').value);
   if (!parsed.length) { toast('Kuch paste to karein'); return; }
   const idx = buildCustIndex();
-  bulkRows = parsed.map(r => {
+  let rows = parsed.map(r => {
     const m = r.amount > 0 ? matchCustomer(r.name, idx) : { custId: null, candidates: [] };
     return { raw: r.raw, detail: r.detail, name: r.name, amount: r.amount, type: r.type || bulkType, custId: m.custId, candidates: m.candidates };
   });
+  const mg = $('#bulkMerge');
+  if (!mg || mg.checked) rows = mergeBulkRows(rows);
+  bulkRows = rows;
   renderBulkPreview();
 });
+// Tafseel me se leading tag (VC/VC LP/…) alag karo: { tag, desc }
+function splitTag(detail) {
+  const t = tagOfLine(detail || '');
+  const desc = t ? (detail.length === t.length ? '' : detail.slice(t.length).trim()) : (detail || '').trim();
+  return { tag: t, desc };
+}
+// Aik customer ke kai cards (same type) ko AIK entry me jama karo: raqam add ho jaye,
+// tafseel me sab cards + tag ka count (jaise "3 VC — Card1, Card2, Card3"). Aik hi
+// entry = aik hi WhatsApp message. Sirf matched (custId) rows merge hote hain.
+function mergeBulkRows(rows) {
+  const groups = new Map(); const order = []; const single = [];
+  rows.forEach(r => {
+    if (!r.custId) { single.push(r); return; }            // unmatched: alag rehne do
+    const key = r.custId + '|' + (r.type || bulkType);
+    if (!groups.has(key)) { groups.set(key, []); order.push(key); }
+    groups.get(key).push(r);
+  });
+  const merged = [];
+  order.forEach(key => {
+    const g = groups.get(key);
+    if (g.length === 1) { merged.push(g[0]); return; }
+    const amount = g.reduce((s, r) => s + (r.amount || 0), 0);
+    const tagCount = {}, tagOrder = [], descs = [];
+    g.forEach(r => {
+      const { tag, desc } = splitTag(r.detail);
+      if (tag) { if (!(tag in tagCount)) tagOrder.push(tag); tagCount[tag] = (tagCount[tag] || 0) + 1; }
+      if (desc) descs.push(desc);
+    });
+    const tagLabel = tagOrder.map(t => tagCount[t] + ' ' + t).join(', ');
+    const detail = [tagLabel, descs.join(', ')].filter(Boolean).join(' — ');
+    merged.push({ raw: g.map(r => r.raw).join(' | '), detail, name: g[0].name, amount, type: g[0].type || bulkType, custId: g[0].custId, candidates: [] });
+  });
+  return merged.concat(single);
+}
 function bulkSummaryHtml() {
   const ok = bulkRows.filter(r => r.custId && r.amount > 0);
   const need = bulkRows.length - ok.length;
