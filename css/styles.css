@@ -113,6 +113,13 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .cb-day { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; background: #faf2e2; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin: 10px 0 4px; box-shadow: 0 2px 6px rgba(120,90,30,.10); }
 .cb-day-d { font-size: 12px; font-weight: 900; color: var(--text); }
 .cb-day-t { font-size: 11px; font-weight: 800; color: var(--gold2); white-space: nowrap; }
+.cb-grand { font-size: 12px; color: var(--muted); text-align: center; margin: 8px 0 6px; }
+.cb-grand b { color: var(--gold2); }
+.cb-deposit { display: flex; flex-direction: column; gap: 8px; }
+.cb-deposit:empty { display: none; }
+.cb-dep { width: 100%; padding: 12px; border: 1px solid rgba(37,99,201,.5); border-radius: 12px; background: linear-gradient(180deg,#eaf1fc,#dbe8fb); color: #1b4a91; font-weight: 800; font-size: 14px; }
+.cb-dep.ep { border-color: rgba(37,99,201,.5); }
+.cb-dep:active { transform: translateY(2px); }
 .cb-list { margin-top: 10px; max-height: 300px; overflow-y: auto; }
 .cb-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 16px 0; }
 .cb-item { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }

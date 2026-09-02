@@ -81,6 +81,12 @@
   .cb-day{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#faf2e2;border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin:10px 0 4px;box-shadow:0 2px 6px rgba(120,90,30,.10)}
   .cb-day-d{font-size:12px;font-weight:900;color:var(--text)}
   .cb-day-t{font-size:11px;font-weight:800;color:var(--gold2);white-space:nowrap}
+  .cb-grand{font-size:12px;color:var(--muted);text-align:center;margin:8px 0 6px}
+  .cb-grand b{color:var(--gold2)}
+  .cb-deposit{display:flex;flex-direction:column;gap:8px}
+  .cb-deposit:empty{display:none}
+  .cb-dep{width:100%;padding:13px;border:1px solid rgba(37,99,201,.5);border-radius:12px;background:linear-gradient(180deg,#eaf1fc,#dbe8fb);color:#1b4a91;font-weight:800;font-size:14px}
+  .cb-dep:active{transform:translateY(2px)}
 </style>
 </head>
 <body>
@@ -160,6 +166,8 @@
           <div class="cb-col"><div class="cb-lbl">Easypaisa 📲</div><div class="cb-val ep" id="jEp">Rs 0</div></div>
           <div class="cb-col"><div class="cb-lbl">Total</div><div class="cb-val tot" id="jTotal">Rs 0</div></div>
         </div>
+        <div class="cb-grand">☝️ Ye <b>Grand Total</b> hai — bank deposit tak jama rehta hai</div>
+        <div class="cb-deposit" id="jDeposit"></div>
         <div class="type-toggle" style="margin-top:14px"><button id="jIn" class="cre">+ Jama (aaya)</button><button id="jOut">− Nikala (diya)</button></div>
         <div class="type-toggle"><button id="jCashB" class="cre">💵 Cash</button><button id="jEpB">📲 Easypaisa</button></div>
         <label class="lbl">Kis customer ki payment? (optional)</label>
@@ -390,9 +398,20 @@
       return true;
     });
   }
+  function jDeposit(method){
+    const t=cashTotals(cashArr); const amt=method==='easypaisa'?t.ep:t.cash;
+    if(!(amt>0)){ toast('Kuch jama nahi'); return; }
+    const label=method==='easypaisa'?'Easypaisa transfer':'Cash bank jama';
+    if(!confirm(label+': '+fmtRs(amt)+'\n\nYe amount "Nikala" (deposit) ho jayega aur '+(method==='easypaisa'?'Easypaisa':'Cash')+' total zero ho jayega.\n\nJari rakhein?')) return;
+    db.collection('khatas').doc(syncId).collection('cashbook').add({ method, dir:'out', amount:Math.round(amt*100)/100, customerName:'', noLedger:false, note:(method==='easypaisa'?'Bank transfer (Easypaisa)':'Bank deposit (Cash)'), ts:new Date().toISOString(), by:'Muzammil' })
+      .then(()=>toast('✅ Deposit ho gaya — total zero'))
+      .catch(()=>toast('Nahi hua — internet check karein'));
+  }
   function renderJama(){
     const t=cashTotals(cashArr); // upar wale totals hamesha poore
     $('#jCash').textContent=fmtRs(t.cash); $('#jEp').textContent=fmtRs(t.ep); $('#jTotal').textContent=fmtRs(t.total);
+    const dep=$('#jDeposit');
+    if(dep){ let h=''; if(t.cash>0) h+='<button class="cb-dep" data-dep="cash">🏦 Cash bank jama — '+fmtRs(t.cash)+'</button>'; if(t.ep>0) h+='<button class="cb-dep ep" data-dep="easypaisa">📲 Easypaisa transfer — '+fmtRs(t.ep)+'</button>'; dep.innerHTML=h; dep.querySelectorAll('.cb-dep').forEach(b=>b.addEventListener('click',()=>jDeposit(b.dataset.dep))); }
     const filtered=jFiltered();
     const active=($('#jSearch').value||$('#jDate').value);
     const fsum=$('#jFilterSum');

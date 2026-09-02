@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v91'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v92'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1636,11 +1636,30 @@ function cashFiltered() {
     return true;
   });
 }
+// Bank Deposit: mojooda grand total (cash ya easypaisa) ko "Nikala" kar do -> total zero
+function depositCash(method) {
+  const t = cashTotals(cashList);
+  const amt = method === 'easypaisa' ? t.ep : t.cash;
+  if (!(amt > 0)) { toast('Kuch jama nahi'); return; }
+  const label = method === 'easypaisa' ? 'Easypaisa transfer' : 'Cash bank jama';
+  if (!confirm(label + ': ' + fmtMoney(amt) + '\n\nYe amount "Nikala" (deposit) ho jayega aur ' + (method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' total zero ho jayega.\n\nJari rakhein?')) return;
+  Cloud.addCash({ method, dir: 'out', amount: amt, note: (method === 'easypaisa' ? 'Bank transfer (Easypaisa)' : 'Bank deposit (Cash)'), by: 'Aamir' })
+    .then(() => toast('✅ Deposit ho gaya — total zero'))
+    .catch(() => toast('Nahi hua — internet check karein'));
+}
 function renderCashList() {
   const t = cashTotals(cashList); // upar wale totals hamesha poore (overall balance)
   $('#cmCash').textContent = fmtMoney(t.cash);
   $('#cmEp').textContent = fmtMoney(t.ep);
   $('#cmTotal').textContent = fmtMoney(t.total);
+  const dep = $('#cmDeposit');
+  if (dep) {
+    let h = '';
+    if (t.cash > 0) h += `<button class="cb-dep" data-dep="cash">🏦 Cash bank jama — ${fmtMoney(t.cash)}</button>`;
+    if (t.ep > 0) h += `<button class="cb-dep ep" data-dep="easypaisa">📲 Easypaisa transfer — ${fmtMoney(t.ep)}</button>`;
+    dep.innerHTML = h;
+    $$('#cmDeposit .cb-dep').forEach(b => b.addEventListener('click', () => depositCash(b.dataset.dep)));
+  }
   const filtered = cashFiltered();
   const active = (($('#cmSearch') && $('#cmSearch').value) || ($('#cmDate') && $('#cmDate').value));
   const fs = $('#cmFilterSum');
