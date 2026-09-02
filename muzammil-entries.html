@@ -81,6 +81,10 @@
   .cb-day{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#faf2e2;border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin:10px 0 4px;box-shadow:0 2px 6px rgba(120,90,30,.10)}
   .cb-day-d{font-size:12px;font-weight:900;color:var(--text)}
   .cb-day-t{font-size:11px;font-weight:800;color:var(--gold2);white-space:nowrap}
+  .cb-day-t .cb-amt.pos{color:var(--green)}
+  .cb-day-t .cb-amt.neg{color:var(--red)}
+  .cb-day-t .cb-amt.zero{color:var(--muted)}
+  .cb-val.cb-neg{color:var(--red)!important}
   .cb-grand{font-size:12px;color:var(--muted);text-align:center;margin:8px 0 6px}
   .cb-grand b{color:var(--gold2)}
   .cb-deposit{display:flex;flex-direction:column;gap:8px}
@@ -389,6 +393,9 @@
   let cashArr = [], jDir='in', jMethod='cash';
   function cashTotals(list){ let cash=0,ep=0; (list||[]).forEach(e=>{ const a=(Number(e.amount)||0)*(e.dir==='out'?-1:1); if(e.method==='easypaisa') ep+=a; else cash+=a; }); return {cash,ep,total:cash+ep}; }
   function fmtRs(n){ return 'Rs '+Math.round(n).toLocaleString('en-PK'); }
+  // net negative (nikala > jama) ko clearly minus + red; positive green
+  function cashSignHtml(n){ n=Math.round(n||0); const c=n<0?'neg':(n>0?'pos':'zero'); return '<b class="cb-amt '+c+'">'+(n<0?'−':(n>0?'+':''))+fmtRs(Math.abs(n))+'</b>'; }
+  function setJVal(id,n){ const el=$(id); if(!el)return; n=Math.round(n||0); el.textContent=(n<0?'−':'')+fmtRs(Math.abs(n)); el.classList.toggle('cb-neg', n<0); }
   function jLocalDay(iso){ const d=new Date(iso); if(isNaN(d))return ''; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function jFiltered(){
     const q=($('#jSearch').value||'').trim().toLowerCase(), d=($('#jDate').value||'').trim();
@@ -409,7 +416,7 @@
   }
   function renderJama(){
     const t=cashTotals(cashArr); // upar wale totals hamesha poore
-    $('#jCash').textContent=fmtRs(t.cash); $('#jEp').textContent=fmtRs(t.ep); $('#jTotal').textContent=fmtRs(t.total);
+    setJVal('#jCash',t.cash); setJVal('#jEp',t.ep); setJVal('#jTotal',t.total);
     const dep=$('#jDeposit');
     if(dep){ let h=''; if(t.cash>0) h+='<button class="cb-dep" data-dep="cash">🏦 Cash bank jama — '+fmtRs(t.cash)+'</button>'; if(t.ep>0) h+='<button class="cb-dep ep" data-dep="easypaisa">📲 Easypaisa transfer — '+fmtRs(t.ep)+'</button>'; dep.innerHTML=h; dep.querySelectorAll('.cb-dep').forEach(b=>b.addEventListener('click',()=>jDeposit(b.dataset.dep))); }
     const filtered=jFiltered();
@@ -430,7 +437,7 @@
     el.innerHTML=days.map(d=>{
       const dt=cashTotals(byDay[d]);
       const lbl=d?new Date(d+'T12:00:00').toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'}):'—';
-      const head='<div class="cb-day"><span class="cb-day-d">'+lbl+'</span><span class="cb-day-t">Cash '+fmtRs(dt.cash)+' · EP '+fmtRs(dt.ep)+'</span></div>';
+      const head='<div class="cb-day"><span class="cb-day-d">'+lbl+'</span><span class="cb-day-t">Cash '+cashSignHtml(dt.cash)+' · EP '+cashSignHtml(dt.ep)+'</span></div>';
       return head+byDay[d].map(itemHtml).join('');
     }).join('');
     el.querySelectorAll('.cb-del').forEach(b=>b.addEventListener('click',()=>{ if(!confirm('Ye entry hata dein?')) return; db.collection('khatas').doc(syncId).collection('cashbook').doc(b.dataset.cid).delete().catch(()=>toast('Nahi hua')); }));
