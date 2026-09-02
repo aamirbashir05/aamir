@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v92'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v93'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1576,15 +1576,28 @@ function cashTotals(list) {
   });
   return { cash, ep, total: cash + ep };
 }
+// Signed money: net negative (nikala > jama) ko clearly minus + red dikhao. fmtMoney
+// khud Math.abs karta hai is liye sign yahan lagta hai warna -31,100 bhi +31,100 lagta.
+function cashSignHtml(n) {
+  n = Math.round((n || 0) * 100) / 100;
+  const c = n < 0 ? 'neg' : (n > 0 ? 'pos' : 'zero');
+  return `<b class="cb-amt ${c}">${n < 0 ? '−' : (n > 0 ? '+' : '')}${fmtMoney(n)}</b>`;
+}
+function setCashVal(el, n) {
+  if (!el) return;
+  n = Math.round((n || 0) * 100) / 100;
+  el.textContent = (n < 0 ? '−' : '') + fmtMoney(n);
+  el.classList.toggle('cb-neg', n < 0);
+}
 function renderCashBox() {
   const box = $('#cashBox'); if (!box) return;
   const on = Cloud.isSyncOn && Cloud.isSyncOn();
   box.style.display = on ? 'block' : 'none';
   if (!on) return;
   const t = cashTotals(cashList);
-  $('#cbCash').textContent = fmtMoney(t.cash);
-  $('#cbEp').textContent = fmtMoney(t.ep);
-  $('#cbTotal').textContent = fmtMoney(t.total);
+  setCashVal($('#cbCash'), t.cash);
+  setCashVal($('#cbEp'), t.ep);
+  setCashVal($('#cbTotal'), t.total);
 }
 // Cash "Jama (aaya)" jab kisi customer ke sath ho -> us customer ke hisaab me bhi
 // payment (credit) khud add ho jaye. tid ('cb_'+docId) se duplicate-safe (do phone /
@@ -1649,9 +1662,9 @@ function depositCash(method) {
 }
 function renderCashList() {
   const t = cashTotals(cashList); // upar wale totals hamesha poore (overall balance)
-  $('#cmCash').textContent = fmtMoney(t.cash);
-  $('#cmEp').textContent = fmtMoney(t.ep);
-  $('#cmTotal').textContent = fmtMoney(t.total);
+  setCashVal($('#cmCash'), t.cash);
+  setCashVal($('#cmEp'), t.ep);
+  setCashVal($('#cmTotal'), t.total);
   const dep = $('#cmDeposit');
   if (dep) {
     let h = '';
@@ -1664,7 +1677,7 @@ function renderCashList() {
   const active = (($('#cmSearch') && $('#cmSearch').value) || ($('#cmDate') && $('#cmDate').value));
   const fs = $('#cmFilterSum');
   if (fs) {
-    if (active) { const ft = cashTotals(filtered); fs.textContent = filtered.length + ' entries · Cash ' + fmtMoney(ft.cash) + ' · EP ' + fmtMoney(ft.ep) + ' · Total ' + fmtMoney(ft.total); }
+    if (active) { const ft = cashTotals(filtered); const sg = n => (n < 0 ? '−' : '') + fmtMoney(n); fs.textContent = filtered.length + ' entries · Cash ' + sg(ft.cash) + ' · EP ' + sg(ft.ep) + ' · Total ' + sg(ft.total); }
     else fs.textContent = '';
   }
   const list = filtered.slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 500);
@@ -1683,7 +1696,7 @@ function renderCashList() {
   el.innerHTML = days.map(d => {
     const dt = cashTotals(byDay[d]);
     const lbl = d ? fmtDate(d + 'T12:00:00') : '—';
-    const head = `<div class="cb-day"><span class="cb-day-d">${lbl}</span><span class="cb-day-t">Cash ${fmtMoney(dt.cash)} · EP ${fmtMoney(dt.ep)}</span></div>`;
+    const head = `<div class="cb-day"><span class="cb-day-d">${lbl}</span><span class="cb-day-t">Cash ${cashSignHtml(dt.cash)} · EP ${cashSignHtml(dt.ep)}</span></div>`;
     return head + byDay[d].map(itemHtml).join('');
   }).join('');
   $$('#cmList .cb-del').forEach(b => b.addEventListener('click', () => {
