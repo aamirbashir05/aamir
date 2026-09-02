@@ -81,10 +81,12 @@
   .cb-day{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#faf2e2;border:1px solid var(--border);border-radius:8px;padding:6px 10px;margin:10px 0 4px;box-shadow:0 2px 6px rgba(120,90,30,.10)}
   .cb-day-d{font-size:12px;font-weight:900;color:var(--text)}
   .cb-day-t{font-size:11px;font-weight:800;color:var(--gold2);white-space:nowrap}
-  .cb-day-t .cb-amt.pos{color:var(--green)}
-  .cb-day-t .cb-amt.neg{color:var(--red)}
-  .cb-day-t .cb-amt.zero{color:var(--muted)}
+  .cb-amt.pos{color:var(--green)}
+  .cb-amt.neg{color:var(--red)}
+  .cb-amt.zero{color:var(--muted)}
   .cb-val.cb-neg{color:var(--red)!important}
+  .cb-i-run{font-size:11px;font-weight:800;color:var(--muted);margin-top:2px}
+  .cb-i-run .cb-amt{font-weight:900}
   .cb-grand{font-size:12px;color:var(--muted);text-align:center;margin:8px 0 6px}
   .cb-grand b{color:var(--gold2)}
   .cb-deposit{display:flex;flex-direction:column;gap:8px}
@@ -426,10 +428,15 @@
     const list=filtered.slice().sort((a,b)=>(b.ts||'').localeCompare(a.ts||'')).slice(0,500);
     const el=$('#jList');
     if(!list.length){ el.innerHTML='<div class="cb-empty">'+(active?'Is search par koi entry nahi.':'Abhi koi entry nahi.')+'</div>'; return; }
+    // Running total (cash + easypaisa net) — har entry ke baad ka chalta total (passbook)
+    const chrono=(cashArr||[]).slice().sort((a,b)=>(a.ts||'').localeCompare(b.ts||''));
+    let run=0; const runMap={};
+    chrono.forEach(e=>{ run+=(Number(e.amount)||0)*(e.dir==='out'?-1:1); runMap[e.id]=run; });
     const itemHtml=e=>{ const out=e.dir==='out'; const m=e.method==='easypaisa'?'📲 Easypaisa':'💵 Cash';
       const tm=e.ts?new Date(e.ts).toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'}):'';
       const who=e.customerName?'<span class="cb-i-n">👤 '+(e.customerName+'').replace(/</g,'&lt;')+(e.noLedger?' <span class="cb-tagx">🚶 cash</span>':'')+'</span>':'';
-      return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+who+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span></div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
+      const runTot='<span class="cb-i-run">Total: '+cashSignHtml(runMap[e.id])+'</span>';
+      return '<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">'+m+'</span>'+who+(e.note?'<span class="cb-i-n">'+(e.note+'').replace(/</g,'&lt;')+'</span>':'')+'<span class="cb-i-t">'+(e.by?e.by+' · ':'')+tm+'</span>'+runTot+'</div><span class="cb-i-amt '+(out?'neg':'pos')+'">'+(out?'−':'+')+fmtRs(e.amount)+'</span><button class="cb-del" data-cid="'+e.id+'">✕</button></div>';
     };
     // DATE-WISE: har din ka header + us din ka total
     const days=[], byDay={};
