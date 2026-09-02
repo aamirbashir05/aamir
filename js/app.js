@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v93'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v94'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1683,12 +1683,18 @@ function renderCashList() {
   const list = filtered.slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 500);
   const el = $('#cmList');
   if (!list.length) { el.innerHTML = '<div class="cb-empty">' + (active ? 'Is search par koi entry nahi.' : 'Abhi koi entry nahi. Upar se add karein.') + '</div>'; return; }
+  // Running total (cash + easypaisa net) — har entry ke baad ka chalta total, jaise
+  // passbook. Poori cashList par waqt ke hisab se jama karke har id ka total nikalo.
+  const chrono = (cashList || []).slice().sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
+  let run = 0; const runMap = {};
+  chrono.forEach(e => { run += (Number(e.amount) || 0) * (e.dir === 'out' ? -1 : 1); runMap[e.id] = run; });
   const itemHtml = e => {
     const out = e.dir === 'out';
     const m = e.method === 'easypaisa' ? '📲 Easypaisa' : '💵 Cash';
     const who = e.customerName ? `<span class="cb-i-n">👤 ${esc(e.customerName)}${e.noLedger ? ' <span class="cb-tagx">🚶 cash</span>' : ''}</span>` : '';
     const tm = e.ts ? new Date(e.ts).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '';
-    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${who}${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${tm}</span></div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
+    const runTot = `<span class="cb-i-run">Total: ${cashSignHtml(runMap[e.id])}</span>`;
+    return `<div class="cb-item"><div class="cb-i-main"><span class="cb-i-m">${m}</span>${who}${e.note ? `<span class="cb-i-n">${esc(e.note)}</span>` : ''}<span class="cb-i-t">${e.by ? esc(e.by) + ' · ' : ''}${tm}</span>${runTot}</div><span class="cb-i-amt ${out ? 'neg' : 'pos'}">${out ? '−' : '+'}${fmtMoney(e.amount)}</span><button class="cb-del" data-cid="${e.id}" title="Hatayein">✕</button></div>`;
   };
   // DATE-WISE: har din ka header + us din ka total, phir us din ki entries
   const days = [], byDay = {};
