@@ -138,17 +138,24 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .og-mini.del { color: var(--red); }
 .og-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px; }
 .og-sub { font-size: 12px; color: var(--muted); margin: 0 2px 10px; }
-.og-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.og-card { position: relative; background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 14px; padding: 12px 12px 14px; box-shadow: 0 2px 8px rgba(120,90,30,.08); min-height: 62px; cursor: pointer; }
+.og-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.og-card { position: relative; background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 12px; padding: 9px 10px 10px; box-shadow: 0 2px 8px rgba(120,90,30,.08); cursor: pointer; }
 .og-card:active { transform: scale(.98); }
-.og-card.paid { background: linear-gradient(180deg,#f2fbf6,#eaf7ef); border-left-color: var(--green); box-shadow: 0 5px 15px rgba(16,150,90,.16); }
-.og-cn { font-weight: 800; font-size: 15px; color: #2b2620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 40px; }
-.og-st { display: inline-block; margin-top: 7px; font-weight: 900; font-size: 14px; }
+.og-card.paid { background: linear-gradient(180deg,#f2fbf6,#eaf7ef); border-left-color: var(--green); box-shadow: 0 4px 12px rgba(16,150,90,.15); }
+.og-cn { font-weight: 800; font-size: 13.5px; color: #2b2620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 58px; }
+.og-st { display: inline-block; margin-top: 4px; font-weight: 900; font-size: 12.5px; }
 .og-st.paid { color: #0c8a52; }
 .og-st.pend { color: var(--gold2); }
-.og-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
-.og-x { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px; background: rgba(255,255,255,.75); color: var(--muted); font-size: 11px; font-weight: 800; }
+.og-tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; }
+.og-x { width: 23px; height: 23px; border: 1px solid var(--border); border-radius: 6px; background: rgba(255,255,255,.75); color: var(--muted); font-size: 10px; font-weight: 800; padding: 0; }
 .og-x.del { color: var(--red); }
+.og-pendbox { margin-top: 12px; padding: 12px; border: 1.5px dashed rgba(216,75,69,.4); background: rgba(216,75,69,.05); border-radius: 12px; }
+.og-pendt { font-size: 12px; font-weight: 800; color: #c1362f; margin-bottom: 8px; }
+.og-pendrow { display: flex; gap: 8px; align-items: center; }
+.og-pendrow input { flex: 1; min-width: 0; }
+.og-pendrow span { font-size: 12px; color: var(--muted); font-weight: 700; }
+.og-pendbtn { width: 100%; margin-top: 8px; padding: 11px; border: none; border-radius: 11px; background: linear-gradient(180deg,#e8756e,#d84b45); color: #fff; font-weight: 900; font-size: 14px; box-shadow: 0 4px 12px rgba(216,75,69,.28); }
+.og-pendbtn:active { transform: translateY(2px); }
 .og-share { width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(180deg,#34d399,#10b981); color: #06301f; font-weight: 900; font-size: 15px; box-shadow: 0 5px 14px rgba(16,185,129,.3); }
 .og-share:active { transform: translateY(2px); }
 .cb-grand { font-size: 12px; color: var(--muted); text-align: center; margin: 8px 0 6px; }

@@ -38,16 +38,16 @@
   .col .v{font-size:16px;font-weight:900}
   .v.j{color:var(--green)} .v.p{color:var(--red)} .v.d{color:#2563c9} .v.b{color:var(--text)}
   /* customer cards (members-style grid) */
-  #list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .pcard{position:relative;background:#fff;border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:14px;padding:12px 12px 14px;box-shadow:var(--shadow);min-height:64px;cursor:pointer;transition:transform .08s}
+  #list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .pcard{position:relative;background:#fff;border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:12px;padding:9px 10px 10px;box-shadow:var(--shadow);cursor:pointer;transition:transform .08s}
   .pcard:active{transform:scale(.98)}
-  .pcard.paid{background:linear-gradient(180deg,#f2fbf6,#eaf7ef);border-left-color:var(--green);box-shadow:0 5px 15px rgba(16,150,90,.16)}
-  .pc-nm{font-weight:800;font-size:15px;color:#2b2620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:40px}
-  .pc-st{display:inline-block;margin-top:7px;font-weight:900;font-size:14px}
+  .pcard.paid{background:linear-gradient(180deg,#f2fbf6,#eaf7ef);border-left-color:var(--green);box-shadow:0 4px 12px rgba(16,150,90,.15)}
+  .pc-nm{font-weight:800;font-size:13.5px;color:#2b2620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:58px}
+  .pc-st{display:inline-block;margin-top:4px;font-weight:900;font-size:12.5px}
   .pc-st.paid{color:#0c8a52}
   .pc-st.pend{color:var(--gold2)}
-  .pc-tools{position:absolute;top:8px;right:8px;display:flex;gap:4px}
-  .pc-x{width:26px;height:26px;border:1px solid var(--border);border-radius:7px;background:rgba(255,255,255,.75);color:var(--muted);font-size:11px;font-weight:800}
+  .pc-tools{position:absolute;top:6px;right:6px;display:flex;gap:3px}
+  .pc-x{width:23px;height:23px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.75);color:var(--muted);font-size:10px;font-weight:800;padding:0}
   .pc-x.del{color:var(--red)}
   .send{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(180deg,#f0b866,#e7a24c 60%,#c9851f);color:#3a2606;font-weight:900;font-size:16px;box-shadow:0 6px 16px rgba(231,162,76,.35)}
   .send:active{transform:translateY(2px)}
@@ -60,6 +60,11 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1b22;color:#fff;padding:12px 20px;border-radius:30px;font-size:14px;z-index:50;opacity:0;transition:all .25s;pointer-events:none;max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .setup{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px}
+  .pend-box{margin-top:12px;padding:12px;border:1.5px dashed rgba(216,75,69,.4);background:rgba(216,75,69,.05);border-radius:12px}
+  .pend-t{font-size:12px;font-weight:800;color:#c1362f;margin-bottom:8px}
+  .pend-row{display:flex;gap:8px;align-items:center}
+  .pend-row input{flex:1;min-width:0;padding:9px;font-size:14px}
+  .pend-se{font-size:12px;color:var(--muted);font-weight:700}
 </style>
 </head>
 <body>
@@ -94,7 +99,14 @@
           <div class="col"><div class="l">Driver ko diya</div><div class="v d" id="sDriver">Rs 0</div></div>
           <div class="col"><div class="l">Bacha / kam</div><div class="v b" id="sBal">Rs 0</div></div>
         </div>
-        <button class="send" id="shareBtn" style="margin-top:12px;background:linear-gradient(180deg,#34d399,#10b981);color:#06301f">📤 Share — WhatsApp JPG banayein</button>
+        <button class="send" id="shareBtn" style="margin-top:12px;background:linear-gradient(180deg,#34d399,#10b981);color:#06301f">📤 Share — is month ka JPG</button>
+        <div class="pend-box">
+          <div class="pend-t">📋 Pending Report — kai mahine ka total (har customer + grand total)</div>
+          <div class="pend-row">
+            <input id="pFrom" type="month"><span class="pend-se">se</span><input id="pTo" type="month">
+          </div>
+          <button class="ghost" id="pendBtn" style="margin-top:8px">📤 Pending ka JPG banayein</button>
+        </div>
         <div style="margin-top:12px">
           <label class="lbl">🚗 Driver ko is month kitna diya (Rs)</label>
           <div class="addrow">
@@ -250,21 +262,73 @@
     x.textAlign='right'; x.fillText(new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'}), W-pad, fy); x.textAlign='left';
     return cv;
   }
-  function shareImage(){
-    const rows=custs.slice().sort((a,b)=>{ const pa=payOf(a.id,curMonth)?1:0, pb=payOf(b.id,curMonth)?1:0; if(pa!==pb) return pa-pb; return (a.name||'').localeCompare(b.name||''); })
-      .map(c=>{ const p=payOf(c.id,curMonth); return {name:c.name, monthly:Number(c.amount)||0, paid:!!p, amount:p?(Number(p.amount)||0):0}; });
-    let jama=0,pend=0; custs.forEach(c=>{ const p=payOf(c.id,curMonth); if(p) jama+=(Number(p.amount)||0); else pend+=(Number(c.amount)||0); });
-    const cv=buildCanvas(ymLabel(curMonth), rows, {jama, pend, driver:driverOf(curMonth)});
+  function shareCanvasJPG(cv, fname, text){
     let durl; try{ durl=cv.toDataURL('image/jpeg',0.95); }catch(e){ toast('Image nahi bani'); return; }
-    let file=null; try{ const b=atob(durl.split(',')[1]); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); file=new File([u],'oghi-'+curMonth+'.jpg',{type:'image/jpeg'}); }catch(e){}
+    let file=null; try{ const b=atob(durl.split(',')[1]); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); file=new File([u],fname,{type:'image/jpeg'}); }catch(e){}
     if(file && navigator.canShare && navigator.canShare({files:[file]})){
-      navigator.share({files:[file], text:'Oghi Garri — '+ymLabel(curMonth)}).catch(()=>{});
+      navigator.share({files:[file], text:text}).catch(()=>{});
     } else {
       let ov=$('#imgOv'); if(!ov){ ov=document.createElement('div'); ov.id='imgOv'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px'; ov.innerHTML='<div style="color:#fff;font-size:13px;text-align:center">Image par long-press karke <b>Save/Share</b> karein → WhatsApp group</div><img id="imgOvI" style="max-width:100%;max-height:78vh;border-radius:10px"><button id="imgOvX" style="padding:10px 22px;border:none;border-radius:10px;background:#fff;font-weight:800">Band karein</button>'; document.body.appendChild(ov); ov.querySelector('#imgOvX').addEventListener('click',()=>ov.style.display='none'); }
       ov.querySelector('#imgOvI').src=durl; ov.style.display='flex';
     }
   }
+  function shareImage(){
+    const rows=custs.slice().sort((a,b)=>{ const pa=payOf(a.id,curMonth)?1:0, pb=payOf(b.id,curMonth)?1:0; if(pa!==pb) return pa-pb; return (a.name||'').localeCompare(b.name||''); })
+      .map(c=>{ const p=payOf(c.id,curMonth); return {name:c.name, monthly:Number(c.amount)||0, paid:!!p, amount:p?(Number(p.amount)||0):0}; });
+    let jama=0,pend=0; custs.forEach(c=>{ const p=payOf(c.id,curMonth); if(p) jama+=(Number(p.amount)||0); else pend+=(Number(c.amount)||0); });
+    const cv=buildCanvas(ymLabel(curMonth), rows, {jama, pend, driver:driverOf(curMonth)});
+    shareCanvasJPG(cv, 'oghi-'+curMonth+'.jpg', 'Oghi Garri — '+ymLabel(curMonth));
+  }
   $('#shareBtn').addEventListener('click', shareImage);
+
+  // ---- Pending Report (kai mahine ka total pending per customer + grand total) ----
+  function monthRange(a,b){ if(a>b){ const t=a;a=b;b=t; } const out=[]; let [y,m]=a.split('-').map(Number); const [ey,em]=b.split('-').map(Number); let g=0; while((y<ey||(y===ey&&m<=em)) && g<120){ out.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){m=1;y++;} g++; } return out; }
+  function rangeLbl(a,b){ return a===b?ymLabel(a):(ymLabel(a)+' – '+ymLabel(b)); }
+  function buildPending(rangeLabel, rows, grand){
+    const W=760, pad=30, gap=16, cardW=(W-pad*2-gap)/2, cardH=62, cgap=11;
+    const n=rows.length, gRows=Math.ceil(Math.max(n,1)/2);
+    const headH=128, ty=144, th=86, listHeadY=262, gridTop=280, footH=62;
+    const H=gridTop + gRows*(cardH+cgap) + footH;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+    const bg=x.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#f6f1e8'); bg.addColorStop(1,'#efe7d8'); x.fillStyle=bg; x.fillRect(0,0,W,H);
+    const hg=x.createLinearGradient(0,0,0,headH); hg.addColorStop(0,'#2b3039'); hg.addColorStop(1,'#20242b'); x.fillStyle=hg; x.fillRect(0,0,W,headH);
+    x.fillStyle='rgba(231,162,76,.95)'; x.fillRect(0,headH-5,W,5);
+    x.textBaseline='alphabetic';
+    x.fillStyle='#fff'; x.font='900 32px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 50);
+    x.fillStyle='#e7a24c'; x.font='900 15px system-ui,Arial'; x.fillText('PENDING REPORT', pad, 78);
+    x.fillStyle='#f0c98a'; x.font='800 18px system-ui,Arial'; x.fillText(rangeLabel, pad, 106);
+    x.fillStyle='#c9bfae'; x.font='700 15px system-ui,Arial'; x.textAlign='right'; x.fillText('Al Tariq Printers', W-pad, 50); x.fillText('Driver Payment', W-pad, 72); x.textAlign='left';
+    ogGlass(x, pad, ty, W-pad*2, th, '#fff6ef', 'rgba(216,75,69,.22)', 18);
+    x.save(); ogRoundRect(x,pad,ty,W-pad*2,th,18); x.clip(); x.fillStyle='#d84b45'; x.fillRect(pad,ty,8,th); x.restore();
+    x.fillStyle='#7c7264'; x.font='700 13px system-ui,Arial'; x.fillText('Total Pending (sab customers)', pad+26, ty+34);
+    x.fillStyle='#c1362f'; x.font='900 38px system-ui,Arial'; x.fillText(fmtRs(grand), pad+26, ty+74);
+    x.fillStyle='#7c7264'; x.font='800 14px system-ui,Arial'; x.textAlign='right'; x.fillText(n+' customers', W-pad-22, ty+th/2+6); x.textAlign='left';
+    x.fillStyle='#5a4a2e'; x.font='800 14px system-ui,Arial'; x.fillText('HAR CUSTOMER KA PENDING', pad, listHeadY);
+    rows.forEach((r,i)=>{ const col=i%2,row=(i-col)/2,X=pad+col*(cardW+gap),Y=gridTop+row*(cardH+cgap);
+      const clear=r.pending<=0;
+      ogGlass(x,X,Y,cardW,cardH, clear?'#f0faf4':'#fff6ef', clear?'rgba(16,150,90,.18)':'rgba(216,75,69,.16)',14);
+      x.save(); ogRoundRect(x,X,Y,cardW,cardH,14); x.clip(); x.fillStyle=clear?'#10b981':'#d84b45'; x.fillRect(X,Y,7,cardH); x.restore();
+      x.fillStyle='#2b2620'; x.font='800 16px system-ui,Arial'; x.fillText(ogFit(x,r.name,cardW-30), X+18, Y+27);
+      if(clear){ x.fillStyle='#0c8a52'; x.font='900 15px system-ui,Arial'; x.fillText('✓ Clear', X+18, Y+50); }
+      else { x.fillStyle='#c1362f'; x.font='900 16px system-ui,Arial'; const at=fmtRs(r.pending); x.fillText(at, X+18, Y+50); const aw=x.measureText(at).width; x.fillStyle='#9a7b4a'; x.font='700 12px system-ui,Arial'; x.fillText(' · '+r.months+' mo', X+18+aw+4, Y+50); }
+    });
+    const fy=H-footH+34;
+    x.fillStyle='#7c7264'; x.font='700 13px system-ui,Arial'; x.fillText('Total pending: '+fmtRs(grand), pad, fy);
+    x.textAlign='right'; x.fillText(new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'}), W-pad, fy); x.textAlign='left';
+    return cv;
+  }
+  function sharePending(){
+    const from=($('#pFrom').value||curMonth), to=($('#pTo').value||curMonth);
+    const months=monthRange(from,to);
+    const rows=custs.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(c=>{
+      let pc=0; months.forEach(m=>{ if(!payOf(c.id,m)) pc++; });
+      return {name:c.name, months:pc, pending:pc*(Number(c.amount)||0)};
+    });
+    const grand=rows.reduce((s,r)=>s+r.pending,0);
+    const cv=buildPending(rangeLbl(from,to), rows, grand);
+    shareCanvasJPG(cv, 'oghi-pending-'+from+'_'+to+'.jpg', 'Oghi Garri — Pending Report ('+rangeLbl(from,to)+')');
+  }
+  $('#pendBtn').addEventListener('click', sharePending);
 
   function render(){
     $('#mLabel').textContent = ymLabel(curMonth);
@@ -309,6 +373,7 @@
     try{ await db.enablePersistence(); }catch(e){ console.warn('persist', e && e.code); }
     $('#app').style.display='block'; $('#setup').style.display='none';
     $('#status').textContent='✓ Tayyar'; $('#status').classList.add('ok');
+    if($('#pFrom') && !$('#pFrom').value){ $('#pFrom').value=ymShift(curMonth,-4); $('#pTo').value=curMonth; }
     render(); startListeners();
   }
 
