@@ -293,8 +293,9 @@
         customerName:name, type, tag: (type==='credit'?'':tag), items,
         date:new Date().toISOString(), by:'Muzammil', at:new Date().toISOString()
       });
-      const cnt=items.length; const notes=items.map(i=>i.note).filter(Boolean);
-      const detail = cnt>1 ? ((tag&&type!=='credit'?cnt+' '+tag:cnt+' items') + (notes.length?' — '+notes.join(', '):'')) : ((type!=='credit'&&tag?tag+' ':'')+(notes[0]||''));
+      const cnt=items.length;
+      const iPart=it=>{ const n=(it.note||'').trim(); const c=/^payment( received)?$/i.test(n)?'':n; const m=fmtRs(it.amount||0); return c?(c+' ('+m+')'):m; };
+      const detail = cnt>1 ? ((tag&&type!=='credit'?cnt+' '+tag:cnt+' items') + ' — ' + items.map(iPart).join(' + ')) : ((type!=='credit'&&tag?tag+' ':'')+((items[0]&&items[0].note||'').trim()));
       sent.unshift({ name, total, type, detail }); renderSent();
       toast('✅ Bhej diya — Aamir bhai ke app me aa gaya');
       clearForm(false); $('#cust').focus();

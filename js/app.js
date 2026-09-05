@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v94'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v95'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1025,6 +1025,14 @@ $('#bulkPreview').addEventListener('click', () => {
   bulkRows = rows;
   renderBulkPreview();
 });
+// Aik item ki tafseel + uski raqam: "Card naam (Rs 800)". Note khali/"Payment"
+// ho to sirf raqam. (Merge me har item ke sath uski payment dikhane ke liye.)
+function itemPart(note, amount) {
+  const n = (note || '').trim();
+  const clean = /^payment( received)?$/i.test(n) ? '' : n;
+  const m = fmtMoney(amount || 0);
+  return clean ? (clean + ' (' + m + ')') : m;
+}
 // Tafseel me se leading tag (VC/VC LP/…) alag karo: { tag, desc }
 function splitTag(detail) {
   const t = tagOfLine(detail || '');
@@ -1047,14 +1055,14 @@ function mergeBulkRows(rows) {
     const g = groups.get(key);
     if (g.length === 1) { merged.push(g[0]); return; }
     const amount = g.reduce((s, r) => s + (r.amount || 0), 0);
-    const tagCount = {}, tagOrder = [], descs = [];
+    const tagCount = {}, tagOrder = [], parts = [];
     g.forEach(r => {
       const { tag, desc } = splitTag(r.detail);
       if (tag) { if (!(tag in tagCount)) tagOrder.push(tag); tagCount[tag] = (tagCount[tag] || 0) + 1; }
-      if (desc) descs.push(desc);
+      parts.push(itemPart(desc, r.amount));   // har item ke sath uski raqam
     });
     const tagLabel = tagOrder.map(t => tagCount[t] + ' ' + t).join(', ');
-    const detail = [tagLabel, descs.join(', ')].filter(Boolean).join(' — ');
+    const detail = [tagLabel, parts.join(' + ')].filter(Boolean).join(' — ');
     const inboxIds = [].concat(...g.map(r => r.inboxIds || []));
     merged.push({ raw: g.map(r => r.raw).join(' | '), detail, name: g[0].name, amount, type: g[0].type || bulkType, custId: g[0].custId, candidates: [], inboxIds });
   });
@@ -1795,12 +1803,13 @@ function refreshInboxBanner() {
 }
 // Muzammil ki aayi entry ka tafseel banao (kai items -> "3 VC — Card1, Card2")
 function inboxDetail(p) {
-  const notes = p.items.map(it => (it.note || '').trim()).filter(Boolean);
   if (p.items.length > 1) {
     const label = p.tag ? (p.items.length + ' ' + p.tag) : (p.items.length + ' items');
-    return [label, notes.join(', ')].filter(Boolean).join(' — ');
+    const parts = p.items.map(it => itemPart(it.note, it.amount));  // har item + uski raqam
+    return [label, parts.join(' + ')].filter(Boolean).join(' — ');
   }
-  return ((p.tag ? p.tag + ' ' : '') + (notes[0] || '')).trim();
+  const n0 = (p.items[0] && p.items[0].note || '').trim();
+  return ((p.tag ? p.tag + ' ' : '') + n0).trim();
 }
 // Review kholo: pending entries ko bulk-preview me daal do (customer match/pick, edit,
 // Save + WhatsApp sab wahi flow). Save ke baad inbox doc delete ho jata hai.
