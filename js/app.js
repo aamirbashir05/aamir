@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v96'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v97'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1820,8 +1820,61 @@ function openOghi() {
   renderOghi();
   openModal('oghiModal');
 }
+// ---- Share: is month ki report ki JPG banao aur WhatsApp par bhejo ----
+function ogFmt(n) { return 'Rs ' + Math.round(Number(n) || 0).toLocaleString('en-PK'); }
+function ogRoundRect(x, X, Y, W, H, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
+function ogFit(x, s, maxW) { s = s + ''; if (x.measureText(s).width <= maxW) return s; while (s.length > 1 && x.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
+function ogBuildCanvas(monthLabel, rows, totals) {
+  const W = 720, pad = 28, rowH = 56, top = 210, foot = 64;
+  const H = top + Math.max(rows.length, 1) * rowH + foot;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  x.fillStyle = '#f6f1e8'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#2b3039'; x.fillRect(0, 0, W, 96); x.fillStyle = '#e7a24c'; x.fillRect(0, 96, W, 5);
+  x.textBaseline = 'alphabetic';
+  x.fillStyle = '#fff'; x.font = '900 30px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 44);
+  x.fillStyle = '#f0c98a'; x.font = '800 19px system-ui,Arial'; x.fillText(monthLabel, pad, 74);
+  x.fillStyle = '#c9bfae'; x.font = '700 14px system-ui,Arial'; x.textAlign = 'right'; x.fillText('Al Tariq Printers', W - pad, 38); x.fillText('Driver Payment', W - pad, 58); x.textAlign = 'left';
+  const bal = totals.jama - totals.driver;
+  const boxes = [['Jama (aayi)', ogFmt(totals.jama), '#10b981'], ['Pending', ogFmt(totals.pend), '#e0524d'], ['Driver diya', ogFmt(totals.driver), '#2563c9'], ['Bacha', (bal < 0 ? '−' : '') + ogFmt(Math.abs(bal)), '#2b2620']];
+  const bw = (W - pad * 2 - 3 * 10) / 4, by = 114;
+  boxes.forEach((b, i) => { const bxx = pad + i * (bw + 10);
+    x.fillStyle = '#fff'; ogRoundRect(x, bxx, by, bw, 74, 10); x.fill(); x.strokeStyle = '#e6ddcd'; x.lineWidth = 1; x.stroke();
+    x.fillStyle = '#7c7264'; x.font = '700 12px system-ui,Arial'; x.textAlign = 'center'; x.fillText(ogFit(x, b[0], bw - 8), bxx + bw / 2, by + 26);
+    x.fillStyle = b[2]; x.font = '900 18px system-ui,Arial'; x.fillText(ogFit(x, b[1], bw - 8), bxx + bw / 2, by + 52); x.textAlign = 'left';
+  });
+  if (!rows.length) { x.fillStyle = '#7c7264'; x.font = '700 16px system-ui,Arial'; x.textAlign = 'center'; x.fillText('Koi customer nahi', W / 2, top + 34); x.textAlign = 'left'; }
+  rows.forEach((r, i) => { const y = top + i * rowH;
+    if (i % 2 === 0) { x.fillStyle = '#fff'; x.fillRect(pad, y, W - pad * 2, rowH - 4); }
+    x.fillStyle = '#2b2620'; x.font = '800 17px system-ui,Arial'; x.fillText(ogFit(x, r.name, W - 320), pad + 14, y + 25);
+    x.fillStyle = '#7c7264'; x.font = '700 12px system-ui,Arial'; x.fillText('Monthly: ' + ogFmt(r.monthly), pad + 14, y + 44);
+    x.textAlign = 'right';
+    if (r.paid) { x.fillStyle = '#0f7a52'; x.font = '900 18px system-ui,Arial'; x.fillText('✓ ' + ogFmt(r.amount), W - pad - 14, y + 33); }
+    else { x.fillStyle = '#e0524d'; x.font = '900 16px system-ui,Arial'; x.fillText('Pending', W - pad - 14, y + 33); }
+    x.textAlign = 'left';
+    x.strokeStyle = '#eadfce'; x.lineWidth = 1; x.beginPath(); x.moveTo(pad, y + rowH - 2); x.lineTo(W - pad, y + rowH - 2); x.stroke();
+  });
+  const fy = H - foot + 30, paidN = rows.filter(r => r.paid).length;
+  x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText(rows.length + ' customers · ' + paidN + ' aayi · ' + (rows.length - paidN) + ' pending', pad, fy);
+  x.textAlign = 'right'; x.fillText(new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }), W - pad, fy); x.textAlign = 'left';
+  return cv;
+}
+function ogShareImage() {
+  const custs = (oghiData.custs || []).slice().sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
+  const rows = custs.map(c => { const p = ogPayOf(c.id, ogMonth); return { name: c.name, monthly: Number(c.amount) || 0, paid: !!p, amount: p ? (Number(p.amount) || 0) : 0 }; });
+  const cv = ogBuildCanvas(ymLabel(ogMonth), rows, ogTotals(ogMonth));
+  let durl; try { durl = cv.toDataURL('image/jpeg', 0.95); } catch (e) { toast('Image nahi bani'); return; }
+  let file = null;
+  try { const b = atob(durl.split(',')[1]); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); file = new File([u], 'oghi-' + ogMonth + '.jpg', { type: 'image/jpeg' }); } catch (e) {}
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], text: 'Oghi Garri — ' + ymLabel(ogMonth) }).catch(() => {});
+  } else if ($('#imgFull')) {
+    $('#imgFull').src = durl; openModal('imgModal'); toast('Image tayyar — us par long-press karke WhatsApp par bhejein');
+  } else { const a = document.createElement('a'); a.href = durl; a.download = 'oghi-' + ogMonth + '.jpg'; a.click(); }
+}
 function wireOghi() {
   const box = $('#oghiBox'); if (box) box.addEventListener('click', openOghi);
+  const sh = $('#ogShare'); if (sh) sh.addEventListener('click', ogShareImage);
   const p = $('#ogPrev'); if (p) p.addEventListener('click', () => { ogMonth = ymShift(ogMonth, -1); renderOghi(); });
   const n = $('#ogNext'); if (n) n.addEventListener('click', () => { ogMonth = ymShift(ogMonth, 1); renderOghi(); });
   const ds = $('#ogDrvSave'); if (ds) ds.addEventListener('click', () => {
