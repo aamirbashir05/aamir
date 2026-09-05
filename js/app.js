@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v95'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v96'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1560,6 +1560,9 @@ function setupAutoUpdate() {
   if (Cloud.onInbox) Cloud.onInbox(handleInboxEntry);
   // Cash Book (rozana jama) — live totals box + modal
   if (Cloud.onCash) Cloud.onCash(list => { cashList = list || []; renderCashBox(); try { applyCashToLedger(cashList); } catch (e) {} if ($('#cashModal').classList.contains('open')) renderCashList(); });
+  // Oghi Garri (Atif) — driver payment hisab (alag box + modal)
+  if (Cloud.onOghi) Cloud.onOghi(d => { oghiData = d || { custs: [], pays: [], drivers: [] }; renderOghiBox(); if ($('#oghiModal').classList.contains('open')) renderOghi(); });
+  wireOghi();
   const bb = document.getElementById('backupBar');
   if (bb) bb.addEventListener('click', () => {
     const st = Cloud.getStatus ? Cloud.getStatus().state : '';
@@ -1736,6 +1739,104 @@ function openCash() {
   openModal('cashModal');
 }
 $('#cashBox') && $('#cashBox').addEventListener('click', openCash);
+
+/* ===== Oghi Garri (Atif) — driver payment hisab (App side) ===== */
+let oghiData = { custs: [], pays: [], drivers: [] };
+function ymNow() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+let ogMonth = ymNow();
+function ymShift(ym, delta) { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + delta, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function ymLabel(ym) { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, 1).toLocaleDateString('en-PK', { month: 'long', year: 'numeric' }); }
+function ogPayOf(custId, ym) { return (oghiData.pays || []).find(p => p.custId === custId && p.month === ym) || null; }
+function ogDriverOf(ym) { const d = (oghiData.drivers || []).find(x => x.month === ym); return d ? (Number(d.amount) || 0) : 0; }
+function ogTotals(ym) {
+  let jama = 0, pend = 0;
+  (oghiData.custs || []).forEach(c => { const p = ogPayOf(c.id, ym); if (p) jama += (Number(p.amount) || 0); else pend += (Number(c.amount) || 0); });
+  return { jama, pend, driver: ogDriverOf(ym) };
+}
+function renderOghiBox() {
+  const box = $('#oghiBox'); if (!box) return;
+  const on = Cloud.isSyncOn && Cloud.isSyncOn();
+  box.style.display = on ? 'block' : 'none';
+  if (!on) return;
+  const t = ogTotals(ymNow()); // box hamesha mojooda month dikhaye
+  const lbl = $('#obMonthLbl'); if (lbl) lbl.textContent = ymLabel(ymNow()).split(' ')[0]; // month naam
+  if ($('#obJama')) $('#obJama').textContent = fmtMoney(t.jama);
+  if ($('#obPend')) $('#obPend').textContent = fmtMoney(t.pend);
+  if ($('#obDriver')) $('#obDriver').textContent = fmtMoney(t.driver);
+}
+function renderOghi() {
+  $('#ogMonth').textContent = ymLabel(ogMonth);
+  const t = ogTotals(ogMonth);
+  $('#ogJama').textContent = fmtMoney(t.jama);
+  $('#ogPend').textContent = fmtMoney(t.pend);
+  $('#ogDrv').textContent = fmtMoney(t.driver);
+  const bal = t.jama - t.driver;
+  const be = $('#ogBal'); be.textContent = (bal < 0 ? '−' : '') + fmtMoney(bal); be.style.color = bal < 0 ? 'var(--red)' : 'var(--text)';
+  const de = $('#ogDrvAmt'); if (document.activeElement !== de) de.value = t.driver ? Math.round(t.driver) : '';
+  const el = $('#ogList');
+  const custs = (oghiData.custs || []).slice();
+  if (!custs.length) { el.innerHTML = '<div class="og-empty">Abhi koi customer nahi. Neeche se add karein.</div>'; return; }
+  custs.sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
+  el.innerHTML = custs.map(c => {
+    const p = ogPayOf(c.id, ogMonth);
+    const btn = p ? `<button class="og-pill paid" data-pay="${c.id}">✓ ${fmtMoney(p.amount)}</button>` : `<button class="og-pill pend" data-pay="${c.id}">Pending</button>`;
+    return `<div class="og-row"><div class="og-nm"><b>${esc(c.name)}</b><span>Monthly: ${fmtMoney(c.amount)}</span></div>${btn}<button class="og-mini" data-oedit="${c.id}" title="Badlein">✎</button><button class="og-mini del" data-odel="${c.id}" title="Hatayein">🗑</button></div>`;
+  }).join('');
+  el.querySelectorAll('[data-pay]').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.pay); if (c) ogMarkPay(c); }));
+  el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
+  el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c); }));
+}
+function ogMarkPay(c) {
+  const cur = ogPayOf(c.id, ogMonth);
+  if (cur) {
+    const v = prompt('Payment (Rs) — 0 ya khali = pending kar dein', Math.round(cur.amount));
+    if (v === null) return;
+    const a = parseFloat(v);
+    if (v.trim() === '' || a === 0) { Cloud.oghiDeletePay(c.id, ogMonth).then(() => toast('Pending kar diya')).catch(() => toast('Nahi hua')); return; }
+    if (!isFinite(a) || a < 0) { toast('Ghalat raqam'); return; }
+    Cloud.oghiSetPay(c.id, ogMonth, a, 'Aamir').then(() => toast('✅ Update')).catch(() => toast('Nahi hua'));
+  } else {
+    const v = prompt('Kitni payment aayi? (Rs)', Math.round(c.amount));
+    if (v === null) return;
+    const a = parseFloat(v);
+    if (!isFinite(a) || a <= 0) { toast('Raqam daalein'); return; }
+    Cloud.oghiSetPay(c.id, ogMonth, a, 'Aamir').then(() => toast('✅ Aayi mark ho gayi')).catch(() => toast('Nahi hua'));
+  }
+}
+function ogEditCust(c) {
+  const nm = prompt('Customer ka naam', c.name); if (nm === null) return;
+  const am = prompt('Monthly payment (Rs)', Math.round(c.amount)); if (am === null) return;
+  const a = parseFloat(am);
+  if (!nm.trim() || !isFinite(a) || a < 0) { toast('Ghalat'); return; }
+  Cloud.oghiUpdateCust(c.id, nm.trim(), a, 'Aamir').then(() => toast('✅ Update')).catch(() => toast('Nahi hua'));
+}
+function ogDelCust(c) {
+  if (!confirm('"' + c.name + '" ko hata dein? (Iski payments bhi ginti se nikal jayengi)')) return;
+  Cloud.oghiDeleteCust(c.id).then(() => toast('Hata diya')).catch(() => toast('Nahi hua'));
+}
+function openOghi() {
+  if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein (Settings)'); return; }
+  ogMonth = ymNow();
+  renderOghi();
+  openModal('oghiModal');
+}
+function wireOghi() {
+  const box = $('#oghiBox'); if (box) box.addEventListener('click', openOghi);
+  const p = $('#ogPrev'); if (p) p.addEventListener('click', () => { ogMonth = ymShift(ogMonth, -1); renderOghi(); });
+  const n = $('#ogNext'); if (n) n.addEventListener('click', () => { ogMonth = ymShift(ogMonth, 1); renderOghi(); });
+  const ds = $('#ogDrvSave'); if (ds) ds.addEventListener('click', () => {
+    const a = parseFloat($('#ogDrvAmt').value);
+    if (!isFinite(a) || a < 0) { toast('Raqam daalein'); return; }
+    Cloud.oghiSetDriver(ogMonth, a, 'Aamir').then(() => toast('✅ Driver payment save')).catch(() => toast('Nahi hua'));
+  });
+  const na = $('#ogNcAdd'); if (na) na.addEventListener('click', () => {
+    const name = ($('#ogNcName').value || '').trim();
+    const amt = parseFloat($('#ogNcAmt').value);
+    if (!name) { toast('Naam likhein'); $('#ogNcName').focus(); return; }
+    if (!isFinite(amt) || amt < 0) { toast('Monthly raqam daalein'); $('#ogNcAmt').focus(); return; }
+    Cloud.oghiAddCust(name, amt, 'Aamir').then(() => { $('#ogNcName').value = ''; $('#ogNcAmt').value = ''; toast('✅ Customer add'); $('#ogNcName').focus(); }).catch(() => toast('Nahi hua'));
+  });
+}
 $('#cmSearch') && $('#cmSearch').addEventListener('input', renderCashList);
 $('#cmDate') && $('#cmDate').addEventListener('change', renderCashList);
 $('#cmClear') && $('#cmClear').addEventListener('click', () => { if ($('#cmSearch')) $('#cmSearch').value = ''; if ($('#cmDate')) $('#cmDate').value = ''; renderCashList(); });

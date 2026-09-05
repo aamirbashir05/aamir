@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Oghi Garri — Atif | Al Tariq Printers</title>
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<meta name="theme-color" content="#2b3039">
+<style>
+  :root{
+    --bg:#f6f1e8; --card:#fff; --text:#2b2620; --muted:#7c7264; --border:#e6ddcd;
+    --orange:#e7a24c; --gold2:#c9851f; --green:#10b981; --red:#e0524d;
+    --shadow:0 2px 8px rgba(120,90,30,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  .top{background:linear-gradient(180deg,#2b3039,#20242b);color:#fff;padding:16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+  .top img{height:40px;width:auto;filter:drop-shadow(0 0 8px rgba(231,162,76,.6))}
+  .top b{font-size:17px;font-weight:900}
+  .top span{display:block;font-size:11px;color:#c9bfae;letter-spacing:.05em}
+  .wrap{max-width:560px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+  label.lbl{display:block;font-size:12px;font-weight:800;color:var(--muted);margin:2px 0 6px}
+  input{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:#fff;color:var(--text)}
+  input:focus{outline:none;border-color:var(--orange)}
+  .status{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .status.ok{color:#0f7a52}
+  h3{font-size:14px;margin-bottom:10px}
+  .muted{color:var(--muted);font-size:12px}
+  /* month nav */
+  .mnav{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .mnav button{width:44px;height:40px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--gold2);font-size:20px;font-weight:900}
+  .mnav b{font-size:16px;font-weight:900}
+  /* summary */
+  .cols{display:flex;gap:8px;flex-wrap:wrap}
+  .col{flex:1 1 46%;background:rgba(231,162,76,.06);border:1px solid var(--border);border-radius:10px;padding:8px 6px;text-align:center}
+  .col .l{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .col .v{font-size:16px;font-weight:900}
+  .v.j{color:var(--green)} .v.p{color:var(--red)} .v.d{color:#2563c9} .v.b{color:var(--text)}
+  /* customer rows */
+  .crow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+  .crow .nm{flex:1;min-width:0}
+  .crow .nm b{font-weight:800;font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .crow .nm .fx{font-size:11px;color:var(--muted);font-weight:700}
+  .pill{flex:0 0 auto;border:none;border-radius:10px;padding:9px 12px;font-weight:900;font-size:13px;white-space:nowrap}
+  .pill.paid{background:linear-gradient(180deg,#34d399,#10b981);color:#06301f;box-shadow:0 3px 10px rgba(16,185,129,.3)}
+  .pill.pend{background:#fff;border:1.5px solid rgba(224,82,77,.5);color:var(--red)}
+  .mini{flex:0 0 auto;width:36px;height:36px;border:1px solid var(--border);border-radius:9px;background:#fff;color:var(--muted);font-size:14px;font-weight:800}
+  .mini.del{color:var(--red)}
+  .send{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(180deg,#f0b866,#e7a24c 60%,#c9851f);color:#3a2606;font-weight:900;font-size:16px;box-shadow:0 6px 16px rgba(231,162,76,.35)}
+  .send:active{transform:translateY(2px)}
+  .send:disabled{opacity:.5}
+  .ghost{width:100%;padding:11px;border:1.5px dashed rgba(231,162,76,.5);background:rgba(231,162,76,.05);border-radius:11px;color:var(--gold2);font-weight:800;margin-top:4px}
+  .addrow{display:flex;gap:8px}
+  .addrow input.nm{flex:2} .addrow input.am{flex:1;min-width:96px}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:14px}
+  .foot{font-size:12px;color:var(--muted);text-align:center;margin:10px 2px 4px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1b22;color:#fff;padding:12px 20px;border-radius:30px;font-size:14px;z-index:50;opacity:0;transition:all .25s;pointer-events:none;max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .setup{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px}
+</style>
+</head>
+<body>
+  <div class="top">
+    <img src="assets/mark.png" alt="T" onerror="this.style.display='none'">
+    <div><b>Oghi Garri</b><span>ATIF — DRIVER PAYMENT</span></div>
+  </div>
+
+  <div class="wrap">
+    <div id="setup" class="setup" style="display:none">
+      <h3>Sync ID daalein</h3>
+      <p class="muted" style="margin-bottom:10px">Aamir bhai se milne wala Sync ID.</p>
+      <input id="syncInput" placeholder="Sync ID">
+      <button class="send" id="syncSave" style="margin-top:10px">Save</button>
+    </div>
+
+    <div id="app" style="display:none">
+      <div class="status" id="status">Connect ho raha hai…</div>
+
+      <!-- Month selector -->
+      <div class="mnav">
+        <button id="mPrev" title="Pichla month">‹</button>
+        <b id="mLabel">—</b>
+        <button id="mNext" title="Agla month">›</button>
+      </div>
+
+      <!-- Summary + driver payout -->
+      <div class="card">
+        <div class="cols">
+          <div class="col"><div class="l">Jama (aayi)</div><div class="v j" id="sJama">Rs 0</div></div>
+          <div class="col"><div class="l">Pending</div><div class="v p" id="sPend">Rs 0</div></div>
+          <div class="col"><div class="l">Driver ko diya</div><div class="v d" id="sDriver">Rs 0</div></div>
+          <div class="col"><div class="l">Bacha / kam</div><div class="v b" id="sBal">Rs 0</div></div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="lbl">🚗 Driver ko is month kitna diya (Rs)</label>
+          <div class="addrow">
+            <input id="drvAmt" class="nm" type="number" inputmode="decimal" placeholder="0" autocomplete="off">
+            <button class="send" id="drvSave" style="flex:1;min-width:110px;font-size:14px;padding:12px">Save</button>
+          </div>
+          <div class="muted" style="margin-top:6px" id="drvHint">Jitni baar bharenge, is month ke liye update ho jayega.</div>
+        </div>
+      </div>
+
+      <!-- Customers for the month -->
+      <div class="card">
+        <h3 id="listTitle">Is month ki payments</h3>
+        <div class="muted" style="margin:-4px 0 8px" id="listSub">Pending par tap karke "aayi" mark karein.</div>
+        <div id="list"></div>
+      </div>
+
+      <!-- Add / manage -->
+      <div class="card">
+        <h3>➕ Naya customer</h3>
+        <div class="addrow">
+          <input id="ncName" class="nm" placeholder="Customer ka naam" autocomplete="off">
+          <input id="ncAmt" class="am" type="number" inputmode="decimal" placeholder="Monthly Rs" autocomplete="off">
+        </div>
+        <button class="ghost" id="ncAdd" style="margin-top:8px">Add karein</button>
+        <div class="muted" style="margin-top:8px">Har customer ki fix monthly payment uske naam ke aage. Baad me ✎ se badal ya 🗑 se hata sakte hain.</div>
+      </div>
+
+      <div class="foot">Ye hisab Aamir bhai ke App me bhi (alag "Oghi Garri" option me) nazar aata hai.</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+  const $ = s => document.querySelector(s);
+  const SKEY = 'altariq_oghi_sync';
+  const DEFAULT_SYNC = 'altariq-q7f3k9m2xp';
+  let db=null, syncId='', custs=[], pays=[], drivers=[];
+  let curMonth = ymNow();
+
+  function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+  function ymNow(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  function ymShift(ym,delta){ const [y,m]=ym.split('-').map(Number); const d=new Date(y,m-1+delta,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  function ymLabel(ym){ const [y,m]=ym.split('-').map(Number); return new Date(y,m-1,1).toLocaleDateString('en-PK',{month:'long',year:'numeric'}); }
+  function fmtRs(n){ return 'Rs '+Math.round(n||0).toLocaleString('en-PK'); }
+  function esc(s){ return (s+'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+  function getSync(){ const u=new URLSearchParams(location.search).get('sync'); if(u){ try{localStorage.setItem(SKEY,u.trim());}catch(e){} return u.trim(); } let s=''; try{ s=(localStorage.getItem(SKEY)||'').trim(); }catch(e){} return s||DEFAULT_SYNC; }
+
+  function col(name){ return db.collection('khatas').doc(syncId).collection(name); }
+  function payId(custId,ym){ return custId+'__'+ym; }
+
+  // ---- month nav ----
+  $('#mPrev').addEventListener('click',()=>{ curMonth=ymShift(curMonth,-1); render(); });
+  $('#mNext').addEventListener('click',()=>{ curMonth=ymShift(curMonth,1); render(); });
+
+  // ---- add customer ----
+  $('#ncAdd').addEventListener('click',()=>{
+    const name=($('#ncName').value||'').trim();
+    const amt=parseFloat($('#ncAmt').value);
+    if(!name){ toast('Naam likhein'); $('#ncName').focus(); return; }
+    if(!isFinite(amt)||amt<0){ toast('Monthly raqam daalein'); $('#ncAmt').focus(); return; }
+    col('oghi_custs').add({ name, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Atif' })
+      .then(()=>{ $('#ncName').value=''; $('#ncAmt').value=''; toast('✅ Customer add ho gaya'); $('#ncName').focus(); })
+      .catch(()=>toast('Nahi hua — internet check karein'));
+  });
+
+  // ---- driver payout ----
+  $('#drvSave').addEventListener('click',()=>{
+    const amt=parseFloat($('#drvAmt').value);
+    if(!isFinite(amt)||amt<0){ toast('Raqam daalein'); return; }
+    col('oghi_driver').doc(curMonth).set({ month:curMonth, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Atif' })
+      .then(()=>toast('✅ Driver payment save'))
+      .catch(()=>toast('Nahi hua'));
+  });
+
+  // ---- mark / edit / remove a customer's payment for curMonth ----
+  function markPay(c){
+    const cur = payOf(c.id, curMonth);
+    if(cur){
+      const v = prompt('Payment (Rs) — 0 ya khali = pending kar dein', Math.round(cur.amount));
+      if(v===null) return;
+      const a = parseFloat(v);
+      if(v.trim()==='' || a===0){ col('oghi_pays').doc(payId(c.id,curMonth)).delete().then(()=>toast('Pending kar diya')).catch(()=>toast('Nahi hua')); return; }
+      if(!isFinite(a)||a<0){ toast('Ghalat raqam'); return; }
+      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Atif' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
+    } else {
+      const v = prompt('Kitni payment aayi? (Rs)', Math.round(c.amount));
+      if(v===null) return;
+      const a = parseFloat(v);
+      if(!isFinite(a)||a<=0){ toast('Raqam daalein'); return; }
+      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Atif' }).then(()=>toast('✅ Aayi mark ho gayi')).catch(()=>toast('Nahi hua'));
+    }
+  }
+  function editCust(c){
+    const nm = prompt('Customer ka naam', c.name); if(nm===null) return;
+    const am = prompt('Monthly payment (Rs)', Math.round(c.amount)); if(am===null) return;
+    const a = parseFloat(am);
+    if(!(nm.trim()) || !isFinite(a) || a<0){ toast('Ghalat'); return; }
+    col('oghi_custs').doc(c.id).set({ name:nm.trim(), amount:Math.round(a*100)/100, ts:c.ts||new Date().toISOString(), by:'Atif' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
+  }
+  function delCust(c){
+    if(!confirm('"'+c.name+'" ko hata dein? (Iski saari payments bhi ginti se nikal jayengi)')) return;
+    col('oghi_custs').doc(c.id).delete().then(()=>toast('Hata diya')).catch(()=>toast('Nahi hua'));
+  }
+
+  function payOf(custId,ym){ return pays.find(p=>p.custId===custId && p.month===ym) || null; }
+  function driverOf(ym){ const d=drivers.find(x=>x.month===ym); return d?(d.amount||0):0; }
+
+  function render(){
+    $('#mLabel').textContent = ymLabel(curMonth);
+    // summary
+    let jama=0, pend=0;
+    custs.forEach(c=>{ const p=payOf(c.id,curMonth); if(p) jama+=(p.amount||0); else pend+=(c.amount||0); });
+    const drv=driverOf(curMonth);
+    $('#sJama').textContent=fmtRs(jama);
+    $('#sPend').textContent=fmtRs(pend);
+    $('#sDriver').textContent=fmtRs(drv);
+    const bal=jama-drv;
+    const bEl=$('#sBal'); bEl.textContent=(bal<0?'−':'')+fmtRs(Math.abs(bal)); bEl.style.color = bal<0?'var(--red)':'var(--text)';
+    const de=$('#drvAmt'); if(document.activeElement!==de) de.value = drv?Math.round(drv):'';
+    // list
+    const el=$('#list');
+    if(!custs.length){ el.innerHTML='<div class="empty">Abhi koi customer nahi. Neeche se add karein.</div>'; return; }
+    const sorted=custs.slice().sort((a,b)=>{ const pa=payOf(a.id,curMonth)?1:0, pb=payOf(b.id,curMonth)?1:0; if(pa!==pb) return pa-pb; return (a.name||'').localeCompare(b.name||''); });
+    el.innerHTML = sorted.map(c=>{
+      const p=payOf(c.id,curMonth);
+      const btn = p
+        ? `<button class="pill paid" data-pay="${c.id}">✓ ${fmtRs(p.amount)}</button>`
+        : `<button class="pill pend" data-pay="${c.id}">Pending</button>`;
+      return `<div class="crow"><div class="nm"><b>${esc(c.name)}</b><span class="fx">Monthly: ${fmtRs(c.amount)}</span></div>${btn}<button class="mini" data-edit="${c.id}" title="Badlein">✎</button><button class="mini del" data-del="${c.id}" title="Hatayein">🗑</button></div>`;
+    }).join('');
+    el.querySelectorAll('[data-pay]').forEach(b=>b.addEventListener('click',()=>{ const c=custs.find(x=>x.id===b.dataset.pay); if(c) markPay(c); }));
+    el.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{ const c=custs.find(x=>x.id===b.dataset.edit); if(c) editCust(c); }));
+    el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{ const c=custs.find(x=>x.id===b.dataset.del); if(c) delCust(c); }));
+  }
+
+  function startListeners(){
+    col('oghi_custs').onSnapshot(s=>{ custs=s.docs.map(d=>Object.assign({id:d.id},d.data())); render(); }, e=>console.warn('custs',e));
+    col('oghi_pays').onSnapshot(s=>{ pays=s.docs.map(d=>Object.assign({id:d.id},d.data())); render(); }, e=>console.warn('pays',e));
+    col('oghi_driver').onSnapshot(s=>{ drivers=s.docs.map(d=>Object.assign({id:d.id},d.data())); render(); }, e=>console.warn('drv',e));
+  }
+
+  async function start(){
+    if(!window.FIREBASE_CONFIG){ $('#status').textContent='Config nahi mila'; return; }
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    await firebase.auth().signInAnonymously();
+    db=firebase.firestore();
+    // Offline persistence: mark/add foran LOCAL par durable + background me server par turant
+    try{ await db.enablePersistence(); }catch(e){ console.warn('persist', e && e.code); }
+    $('#app').style.display='block'; $('#setup').style.display='none';
+    $('#status').textContent='✓ Tayyar'; $('#status').classList.add('ok');
+    render(); startListeners();
+  }
+
+  syncId=getSync();
+  if(!syncId){ $('#setup').style.display='block'; $('#syncSave').addEventListener('click',()=>{ const v=$('#syncInput').value.trim(); if(!v){ toast('Sync ID daalein'); return; } try{localStorage.setItem(SKEY,v);}catch(e){} syncId=v; start(); }); }
+  else start();
+  </script>
+</body>
+</html>
