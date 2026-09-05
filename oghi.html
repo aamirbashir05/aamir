@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Oghi Garri — Atif | Al Tariq Printers</title>
+<title>Oghi Garri — Al Tariq Printers</title>
 <link rel="icon" href="assets/favicon.png" type="image/png">
 <meta name="theme-color" content="#2b3039">
 <style>
@@ -63,7 +63,7 @@
 <body>
   <div class="top">
     <img src="assets/mark.png" alt="T" onerror="this.style.display='none'">
-    <div><b>Oghi Garri</b><span>ATIF — DRIVER PAYMENT</span></div>
+    <div><b>Oghi Garri</b><span>DRIVER PAYMENT</span></div>
   </div>
 
   <div class="wrap">
@@ -92,6 +92,7 @@
           <div class="col"><div class="l">Driver ko diya</div><div class="v d" id="sDriver">Rs 0</div></div>
           <div class="col"><div class="l">Bacha / kam</div><div class="v b" id="sBal">Rs 0</div></div>
         </div>
+        <button class="send" id="shareBtn" style="margin-top:12px;background:linear-gradient(180deg,#34d399,#10b981);color:#06301f">📤 Share — WhatsApp JPG banayein</button>
         <div style="margin-top:12px">
           <label class="lbl">🚗 Driver ko is month kitna diya (Rs)</label>
           <div class="addrow">
@@ -158,7 +159,7 @@
     const amt=parseFloat($('#ncAmt').value);
     if(!name){ toast('Naam likhein'); $('#ncName').focus(); return; }
     if(!isFinite(amt)||amt<0){ toast('Monthly raqam daalein'); $('#ncAmt').focus(); return; }
-    col('oghi_custs').add({ name, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Atif' })
+    col('oghi_custs').add({ name, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Oghi' })
       .then(()=>{ $('#ncName').value=''; $('#ncAmt').value=''; toast('✅ Customer add ho gaya'); $('#ncName').focus(); })
       .catch(()=>toast('Nahi hua — internet check karein'));
   });
@@ -167,7 +168,7 @@
   $('#drvSave').addEventListener('click',()=>{
     const amt=parseFloat($('#drvAmt').value);
     if(!isFinite(amt)||amt<0){ toast('Raqam daalein'); return; }
-    col('oghi_driver').doc(curMonth).set({ month:curMonth, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Atif' })
+    col('oghi_driver').doc(curMonth).set({ month:curMonth, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Oghi' })
       .then(()=>toast('✅ Driver payment save'))
       .catch(()=>toast('Nahi hua'));
   });
@@ -181,13 +182,13 @@
       const a = parseFloat(v);
       if(v.trim()==='' || a===0){ col('oghi_pays').doc(payId(c.id,curMonth)).delete().then(()=>toast('Pending kar diya')).catch(()=>toast('Nahi hua')); return; }
       if(!isFinite(a)||a<0){ toast('Ghalat raqam'); return; }
-      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Atif' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
+      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Oghi' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
     } else {
       const v = prompt('Kitni payment aayi? (Rs)', Math.round(c.amount));
       if(v===null) return;
       const a = parseFloat(v);
       if(!isFinite(a)||a<=0){ toast('Raqam daalein'); return; }
-      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Atif' }).then(()=>toast('✅ Aayi mark ho gayi')).catch(()=>toast('Nahi hua'));
+      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Oghi' }).then(()=>toast('✅ Aayi mark ho gayi')).catch(()=>toast('Nahi hua'));
     }
   }
   function editCust(c){
@@ -195,7 +196,7 @@
     const am = prompt('Monthly payment (Rs)', Math.round(c.amount)); if(am===null) return;
     const a = parseFloat(am);
     if(!(nm.trim()) || !isFinite(a) || a<0){ toast('Ghalat'); return; }
-    col('oghi_custs').doc(c.id).set({ name:nm.trim(), amount:Math.round(a*100)/100, ts:c.ts||new Date().toISOString(), by:'Atif' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
+    col('oghi_custs').doc(c.id).set({ name:nm.trim(), amount:Math.round(a*100)/100, ts:c.ts||new Date().toISOString(), by:'Oghi' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
   }
   function delCust(c){
     if(!confirm('"'+c.name+'" ko hata dein? (Iski saari payments bhi ginti se nikal jayengi)')) return;
@@ -204,6 +205,59 @@
 
   function payOf(custId,ym){ return pays.find(p=>p.custId===custId && p.month===ym) || null; }
   function driverOf(ym){ const d=drivers.find(x=>x.month===ym); return d?(d.amount||0):0; }
+
+  // ---- Share: is month ki report ki JPG banao aur WhatsApp par bhejo ----
+  function ogRoundRect(x,X,Y,W,H,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+W,Y,X+W,Y+H,r); x.arcTo(X+W,Y+H,X,Y+H,r); x.arcTo(X,Y+H,X,Y,r); x.arcTo(X,Y,X+W,Y,r); x.closePath(); }
+  function ogFit(x,s,maxW){ s=s+''; if(x.measureText(s).width<=maxW) return s; while(s.length>1 && x.measureText(s+'…').width>maxW) s=s.slice(0,-1); return s+'…'; }
+  function buildCanvas(monthLabel, rows, totals){
+    const W=720, pad=28, rowH=56, top=210, foot=64;
+    const H=top + Math.max(rows.length,1)*rowH + foot;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const x=cv.getContext('2d');
+    x.fillStyle='#f6f1e8'; x.fillRect(0,0,W,H);
+    x.fillStyle='#2b3039'; x.fillRect(0,0,W,96); x.fillStyle='#e7a24c'; x.fillRect(0,96,W,5);
+    x.textBaseline='alphabetic';
+    x.fillStyle='#fff'; x.font='900 30px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 44);
+    x.fillStyle='#f0c98a'; x.font='800 19px system-ui,Arial'; x.fillText(monthLabel, pad, 74);
+    x.fillStyle='#c9bfae'; x.font='700 14px system-ui,Arial'; x.textAlign='right'; x.fillText('Al Tariq Printers', W-pad, 38); x.fillText('Driver Payment', W-pad, 58); x.textAlign='left';
+    const bal=totals.jama-totals.driver;
+    const boxes=[['Jama (aayi)',fmtRs(totals.jama),'#10b981'],['Pending',fmtRs(totals.pend),'#e0524d'],['Driver diya',fmtRs(totals.driver),'#2563c9'],['Bacha',(bal<0?'−':'')+fmtRs(Math.abs(bal)),'#2b2620']];
+    const bw=(W-pad*2-3*10)/4, by=114;
+    boxes.forEach((b,i)=>{ const bxx=pad+i*(bw+10);
+      x.fillStyle='#fff'; ogRoundRect(x,bxx,by,bw,74,10); x.fill(); x.strokeStyle='#e6ddcd'; x.lineWidth=1; x.stroke();
+      x.fillStyle='#7c7264'; x.font='700 12px system-ui,Arial'; x.textAlign='center'; x.fillText(ogFit(x,b[0],bw-8), bxx+bw/2, by+26);
+      x.fillStyle=b[2]; x.font='900 18px system-ui,Arial'; x.fillText(ogFit(x,b[1],bw-8), bxx+bw/2, by+52); x.textAlign='left';
+    });
+    if(!rows.length){ x.fillStyle='#7c7264'; x.font='700 16px system-ui,Arial'; x.textAlign='center'; x.fillText('Koi customer nahi', W/2, top+34); x.textAlign='left'; }
+    rows.forEach((r,i)=>{ const y=top+i*rowH;
+      if(i%2===0){ x.fillStyle='#fff'; x.fillRect(pad,y,W-pad*2,rowH-4); }
+      x.fillStyle='#2b2620'; x.font='800 17px system-ui,Arial'; x.fillText(ogFit(x,r.name,W-320), pad+14, y+25);
+      x.fillStyle='#7c7264'; x.font='700 12px system-ui,Arial'; x.fillText('Monthly: '+fmtRs(r.monthly), pad+14, y+44);
+      x.textAlign='right';
+      if(r.paid){ x.fillStyle='#0f7a52'; x.font='900 18px system-ui,Arial'; x.fillText('✓ '+fmtRs(r.amount), W-pad-14, y+33); }
+      else { x.fillStyle='#e0524d'; x.font='900 16px system-ui,Arial'; x.fillText('Pending', W-pad-14, y+33); }
+      x.textAlign='left';
+      x.strokeStyle='#eadfce'; x.lineWidth=1; x.beginPath(); x.moveTo(pad,y+rowH-2); x.lineTo(W-pad,y+rowH-2); x.stroke();
+    });
+    const fy=H-foot+30, paidN=rows.filter(r=>r.paid).length;
+    x.fillStyle='#7c7264'; x.font='700 13px system-ui,Arial'; x.fillText(rows.length+' customers · '+paidN+' aayi · '+(rows.length-paidN)+' pending', pad, fy);
+    x.textAlign='right'; x.fillText(new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'}), W-pad, fy); x.textAlign='left';
+    return cv;
+  }
+  function shareImage(){
+    const rows=custs.slice().sort((a,b)=>{ const pa=payOf(a.id,curMonth)?1:0, pb=payOf(b.id,curMonth)?1:0; if(pa!==pb) return pa-pb; return (a.name||'').localeCompare(b.name||''); })
+      .map(c=>{ const p=payOf(c.id,curMonth); return {name:c.name, monthly:Number(c.amount)||0, paid:!!p, amount:p?(Number(p.amount)||0):0}; });
+    let jama=0,pend=0; custs.forEach(c=>{ const p=payOf(c.id,curMonth); if(p) jama+=(Number(p.amount)||0); else pend+=(Number(c.amount)||0); });
+    const cv=buildCanvas(ymLabel(curMonth), rows, {jama, pend, driver:driverOf(curMonth)});
+    let durl; try{ durl=cv.toDataURL('image/jpeg',0.95); }catch(e){ toast('Image nahi bani'); return; }
+    let file=null; try{ const b=atob(durl.split(',')[1]); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i); file=new File([u],'oghi-'+curMonth+'.jpg',{type:'image/jpeg'}); }catch(e){}
+    if(file && navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file], text:'Oghi Garri — '+ymLabel(curMonth)}).catch(()=>{});
+    } else {
+      let ov=$('#imgOv'); if(!ov){ ov=document.createElement('div'); ov.id='imgOv'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px'; ov.innerHTML='<div style="color:#fff;font-size:13px;text-align:center">Image par long-press karke <b>Save/Share</b> karein → WhatsApp group</div><img id="imgOvI" style="max-width:100%;max-height:78vh;border-radius:10px"><button id="imgOvX" style="padding:10px 22px;border:none;border-radius:10px;background:#fff;font-weight:800">Band karein</button>'; document.body.appendChild(ov); ov.querySelector('#imgOvX').addEventListener('click',()=>ov.style.display='none'); }
+      ov.querySelector('#imgOvI').src=durl; ov.style.display='flex';
+    }
+  }
+  $('#shareBtn').addEventListener('click', shareImage);
 
   function render(){
     $('#mLabel').textContent = ymLabel(curMonth);
