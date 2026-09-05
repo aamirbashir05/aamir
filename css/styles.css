@@ -119,6 +119,24 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .cb-val.cb-neg { color: var(--red) !important; }
 .cb-i-run { font-size: 11px; font-weight: 800; color: var(--muted); margin-top: 2px; }
 .cb-i-run .cb-amt { font-weight: 900; }
+/* Oghi Garri (Atif) */
+.og-mnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(231,162,76,.06); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; margin: 4px 0 12px; }
+.og-mnav button { width: 40px; height: 36px; border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--gold2); font-size: 18px; font-weight: 900; }
+.og-mnav b { font-size: 15px; font-weight: 900; }
+.og-addrow { display: flex; gap: 8px; align-items: center; }
+.og-addrow input { flex: 1; min-width: 0; }
+.og-addrow .save { flex: 0 0 auto; padding: 11px 16px; }
+.og-h3 { font-size: 14px; margin: 14px 2px 6px; }
+.og-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.og-row .og-nm { flex: 1; min-width: 0; }
+.og-row .og-nm b { font-weight: 800; font-size: 14px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.og-row .og-nm span { font-size: 11px; color: var(--muted); font-weight: 700; }
+.og-pill { flex: 0 0 auto; border: none; border-radius: 10px; padding: 8px 12px; font-weight: 900; font-size: 13px; white-space: nowrap; }
+.og-pill.paid { background: linear-gradient(180deg,#34d399,#10b981); color: #06301f; }
+.og-pill.pend { background: #fff; border: 1.5px solid rgba(224,82,77,.5); color: var(--red); }
+.og-mini { flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--muted); font-size: 13px; font-weight: 800; }
+.og-mini.del { color: var(--red); }
+.og-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px; }
 .cb-grand { font-size: 12px; color: var(--muted); text-align: center; margin: 8px 0 6px; }
 .cb-grand b { color: var(--gold2); }
 .cb-deposit { display: flex; flex-direction: column; gap: 8px; }

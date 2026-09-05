@@ -13,6 +13,9 @@ const Cloud = (() => {
   let deltaRef = null, deltaUnsub = null, deltaT = null, fullT = null;
   let inboxRef = null, inboxUnsub = null, inboxCb = null; // n8n/automation ki nayi entries ka box
   let cashUnsub = null, cashCb = null, cashData = []; // Cash Book (rozana jama: cash/easypaisa)
+  // Oghi Garri (Atif): alag hisab — customers + monthly payments + driver payout
+  let oghiCb = null, oghiCustUnsub = null, oghiPayUnsub = null, oghiDrvUnsub = null;
+  let oghiCustData = [], oghiPayData = [], oghiDrvData = [];
   let fullPushedIds = new Set(); // aakhri POORE push me jo ids gayi thi
   let lastDelStr = '';           // aakhri delete-list jo delta me bheji
   const CHUNK = 700000; // base64 chars per chunk doc (Firestore 1 MiB limit ke neeche)
@@ -321,6 +324,13 @@ const Cloud = (() => {
       cashData = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
       if (cashCb) { try { cashCb(cashData); } catch (e) { console.warn('cash', e); } }
     }, e => console.warn('cashsub', e));
+    // OGHI GARRI (Atif): 3 subcollections — oghi_custs (naam+monthly), oghi_pays
+    // (custId+month+amount), oghi_driver (month -> driver ko diya). Atif ke page +
+    // Aamir ke app dono live. Har snapshot par combined callback.
+    const fireOghi = () => { if (oghiCb) { try { oghiCb({ custs: oghiCustData, pays: oghiPayData, drivers: oghiDrvData }); } catch (e) { console.warn('oghi', e); } } };
+    oghiCustUnsub = docRef.collection('oghi_custs').onSnapshot(snap => { oghiCustData = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); fireOghi(); }, e => console.warn('oghicust', e));
+    oghiPayUnsub = docRef.collection('oghi_pays').onSnapshot(snap => { oghiPayData = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); fireOghi(); }, e => console.warn('oghipay', e));
+    oghiDrvUnsub = docRef.collection('oghi_driver').onSnapshot(snap => { oghiDrvData = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); fireOghi(); }, e => console.warn('oghidrv', e));
     syncOn = true;
     Store.onSave(schedulePush);
     pushIfNeeded(); // app khulte hi: koi local entry jo pichli dafa push na hui thi, ab bhej do
@@ -388,6 +398,35 @@ const Cloud = (() => {
     return c.collection('khatas').doc(curSyncId).collection('cashbook').doc(id).delete();
   }
 
+  /* ---- Oghi Garri (Atif): driver payment hisab ---- */
+  function onOghi(cb) { oghiCb = cb; if (oghiCustData.length || oghiPayData.length || oghiDrvData.length) { try { cb({ custs: oghiCustData, pays: oghiPayData, drivers: oghiDrvData }); } catch (e) {} } }
+  function getOghi() { return { custs: oghiCustData.slice(), pays: oghiPayData.slice(), drivers: oghiDrvData.slice() }; }
+  function _oc(name) { const c = shareDb || db; if (!c || !curSyncId) return null; return c.collection('khatas').doc(curSyncId).collection(name); }
+  function oghiAddCust(name, amount, by) {
+    const c = _oc('oghi_custs'); if (!c) return Promise.reject(new Error('sync off'));
+    return c.add({ name: (name || '').toString(), amount: Math.round(Number(amount) * 100) / 100, ts: new Date().toISOString(), by: (by || 'Aamir').toString() });
+  }
+  function oghiUpdateCust(id, name, amount, by) {
+    const c = _oc('oghi_custs'); if (!c || !id) return Promise.reject(new Error('bad'));
+    return c.doc(id).set({ name: (name || '').toString(), amount: Math.round(Number(amount) * 100) / 100, ts: new Date().toISOString(), by: (by || 'Aamir').toString() });
+  }
+  function oghiDeleteCust(id) {
+    const c = _oc('oghi_custs'); if (!c || !id) return Promise.reject(new Error('bad'));
+    return c.doc(id).delete();
+  }
+  function oghiSetPay(custId, month, amount, by) {
+    const c = _oc('oghi_pays'); if (!c || !custId || !month) return Promise.reject(new Error('bad'));
+    return c.doc(custId + '__' + month).set({ custId, month, amount: Math.round(Number(amount) * 100) / 100, ts: new Date().toISOString(), by: (by || 'Aamir').toString() });
+  }
+  function oghiDeletePay(custId, month) {
+    const c = _oc('oghi_pays'); if (!c || !custId || !month) return Promise.reject(new Error('bad'));
+    return c.doc(custId + '__' + month).delete();
+  }
+  function oghiSetDriver(month, amount, by) {
+    const c = _oc('oghi_driver'); if (!c || !month) return Promise.reject(new Error('bad'));
+    return c.doc(month).set({ month, amount: Math.round(Number(amount) * 100) / 100, ts: new Date().toISOString(), by: (by || 'Aamir').toString() });
+  }
+
   /* ---- one-time clean import (final Udhaar data) ----
      Sirf naye code (v19+) me chalta hai, isliye purana app is race me nahi aata.
      Incoming snapshots ko rok kar clean data local par likho, marker set karo,
@@ -434,5 +473,6 @@ const Cloud = (() => {
 
   return { init, isReady: () => ready, isSyncOn: () => syncOn, publishShare, fetchShare, testConnect, importFromGz, forceResetAll,
     getStatus: () => ({ state: status, dirty }), onStatus: cb => { onStatusCb = cb; }, retry, refresh,
-    onInbox, inboxDone, inboxPending, onCash, getCash, addCash, deleteCash };
+    onInbox, inboxDone, inboxPending, onCash, getCash, addCash, deleteCash,
+    onOghi, getOghi, oghiAddCust, oghiUpdateCust, oghiDeleteCust, oghiSetPay, oghiDeletePay, oghiSetDriver };
 })();
