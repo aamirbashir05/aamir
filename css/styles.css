@@ -137,6 +137,18 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .og-mini { flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--muted); font-size: 13px; font-weight: 800; }
 .og-mini.del { color: var(--red); }
 .og-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 14px; }
+.og-sub { font-size: 12px; color: var(--muted); margin: 0 2px 10px; }
+.og-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.og-card { position: relative; background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px 12px 14px; box-shadow: 0 2px 8px rgba(120,90,30,.08); min-height: 62px; cursor: pointer; }
+.og-card:active { transform: scale(.98); }
+.og-card.paid { background: linear-gradient(180deg,#eafaf0,#dbf3e5); border-color: rgba(26,168,99,.45); box-shadow: 0 5px 16px rgba(26,168,99,.20); }
+.og-cn { font-weight: 800; font-size: 15px; color: #22302a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 40px; }
+.og-st { display: inline-block; margin-top: 7px; font-weight: 900; font-size: 14px; }
+.og-st.paid { color: #0c8a52; }
+.og-st.pend { color: #c98a12; }
+.og-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+.og-x { width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 7px; background: rgba(255,255,255,.75); color: var(--muted); font-size: 11px; font-weight: 800; }
+.og-x.del { color: var(--red); }
 .og-share { width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(180deg,#34d399,#10b981); color: #06301f; font-weight: 900; font-size: 15px; box-shadow: 0 5px 14px rgba(16,185,129,.3); }
 .og-share:active { transform: translateY(2px); }
 .cb-grand { font-size: 12px; color: var(--muted); text-align: center; margin: 8px 0 6px; }
