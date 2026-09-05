@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=99">
+  <link rel="stylesheet" href="css/styles.css?v=100">
 </head>
 <body>
 
@@ -384,7 +384,12 @@
         <div class="cb-col"><div class="cb-lbl">Driver diya</div><div class="cb-val ep" id="ogDrv">Rs 0</div></div>
         <div class="cb-col"><div class="cb-lbl">Bacha</div><div class="cb-val tot" id="ogBal">Rs 0</div></div>
       </div>
-      <button class="og-share" id="ogShare">📤 Share — WhatsApp JPG banayein</button>
+      <button class="og-share" id="ogShare">📤 Share — is month ka JPG</button>
+      <div class="og-pendbox">
+        <div class="og-pendt">📋 Pending Report — kai mahine ka total (har customer + grand total)</div>
+        <div class="og-pendrow"><input id="ogPFrom" type="month"><span>se</span><input id="ogPTo" type="month"></div>
+        <button class="og-pendbtn" id="ogPendBtn">📤 Pending ka JPG banayein</button>
+      </div>
       <div class="field" style="margin-top:12px"><label>🚗 Driver ko is month kitna diya (Rs)</label>
         <div class="og-addrow"><input id="ogDrvAmt" type="number" inputmode="decimal" placeholder="0" autocomplete="off"><button class="save" id="ogDrvSave">Save</button></div>
       </div>
@@ -469,10 +474,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=99"></script>
-  <script src="js/logo.js?v=99"></script>
-  <script src="js/store.js?v=99"></script>
-  <script src="js/cloud.js?v=99"></script>
-  <script src="js/app.js?v=99"></script>
+  <script src="js/firebase-config.js?v=100"></script>
+  <script src="js/logo.js?v=100"></script>
+  <script src="js/store.js?v=100"></script>
+  <script src="js/cloud.js?v=100"></script>
+  <script src="js/app.js?v=100"></script>
 </body>
 </html>
