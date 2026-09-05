@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v97'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v98'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1777,14 +1777,16 @@ function renderOghi() {
   const custs = (oghiData.custs || []).slice();
   if (!custs.length) { el.innerHTML = '<div class="og-empty">Abhi koi customer nahi. Neeche se add karein.</div>'; return; }
   custs.sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
+  const paidN = custs.filter(c => ogPayOf(c.id, ogMonth)).length;
+  const sub = $('#ogListSub'); if (sub) sub.innerHTML = 'Wasooli: <b style="color:var(--green)">' + fmtMoney(t.jama) + '</b> · <b>' + paidN + ' / ' + custs.length + ' paid</b>';
   el.innerHTML = custs.map(c => {
     const p = ogPayOf(c.id, ogMonth);
-    const btn = p ? `<button class="og-pill paid" data-pay="${c.id}">✓ ${fmtMoney(p.amount)}</button>` : `<button class="og-pill pend" data-pay="${c.id}">Pending</button>`;
-    return `<div class="og-row"><div class="og-nm"><b>${esc(c.name)}</b><span>Monthly: ${fmtMoney(c.amount)}</span></div>${btn}<button class="og-mini" data-oedit="${c.id}" title="Badlein">✎</button><button class="og-mini del" data-odel="${c.id}" title="Hatayein">🗑</button></div>`;
+    const st = p ? `<span class="og-st paid">✓ ${fmtMoney(p.amount)}</span>` : `<span class="og-st pend">⏳ Pending</span>`;
+    return `<div class="og-card${p ? ' paid' : ''}" data-pay="${c.id}"><div class="og-cn">${esc(c.name)}</div>${st}<div class="og-tools"><button class="og-x" data-oedit="${c.id}" title="Badlein">✎</button><button class="og-x del" data-odel="${c.id}" title="Hatayein">🗑</button></div></div>`;
   }).join('');
-  el.querySelectorAll('[data-pay]').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.pay); if (c) ogMarkPay(c); }));
-  el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
-  el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c); }));
+  el.querySelectorAll('.og-card').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.pay); if (c) ogMarkPay(c); }));
+  el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
+  el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c); }));
 }
 function ogMarkPay(c) {
   const cur = ogPayOf(c.id, ogMonth);
@@ -1824,38 +1826,45 @@ function openOghi() {
 function ogFmt(n) { return 'Rs ' + Math.round(Number(n) || 0).toLocaleString('en-PK'); }
 function ogRoundRect(x, X, Y, W, H, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
 function ogFit(x, s, maxW) { s = s + ''; if (x.measureText(s).width <= maxW) return s; while (s.length > 1 && x.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
+function ogGlass(x, X, Y, W, H, fill, glow, r) { r = r || 15; x.save(); x.shadowColor = glow; x.shadowBlur = 18; x.shadowOffsetY = 5; x.fillStyle = fill; ogRoundRect(x, X, Y, W, H, r); x.fill(); x.restore(); x.save(); ogRoundRect(x, X, Y, W, H, r); x.clip(); const hl = x.createLinearGradient(0, Y, 0, Y + H); hl.addColorStop(0, 'rgba(255,255,255,.55)'); hl.addColorStop(.45, 'rgba(255,255,255,0)'); x.fillStyle = hl; x.fillRect(X, Y, W, H); x.restore(); }
+// Share JPG: reference-app jaisa — green glowing header + wasooli/paid + 2-col
+// glowing cards (paid green ✓ Rs X, pending amber). Har customer ki status saaf.
 function ogBuildCanvas(monthLabel, rows, totals) {
-  const W = 720, pad = 28, rowH = 56, top = 210, foot = 64;
-  const H = top + Math.max(rows.length, 1) * rowH + foot;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const x = cv.getContext('2d');
-  x.fillStyle = '#f6f1e8'; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#2b3039'; x.fillRect(0, 0, W, 96); x.fillStyle = '#e7a24c'; x.fillRect(0, 96, W, 5);
+  const W = 760, pad = 30, gap = 16, cardW = (W - pad * 2 - gap) / 2, cardH = 70, cgap = 13;
+  const n = rows.length, gRows = Math.ceil(Math.max(n, 1) / 2);
+  const headH = 124, wy = 138, wh = 80, statY = 240, listHeadY = 282, gridTop = 300, footH = 66;
+  const H = gridTop + gRows * (cardH + cgap) + footH;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  const bg = x.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#eaf1ec'); bg.addColorStop(1, '#e4ece6'); x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  const hg = x.createLinearGradient(0, 0, W, headH); hg.addColorStop(0, '#1f5a3f'); hg.addColorStop(1, '#123c29'); x.fillStyle = hg; x.fillRect(0, 0, W, headH);
+  x.fillStyle = 'rgba(231,162,76,.92)'; x.fillRect(0, headH - 5, W, 5);
   x.textBaseline = 'alphabetic';
-  x.fillStyle = '#fff'; x.font = '900 30px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 44);
-  x.fillStyle = '#f0c98a'; x.font = '800 19px system-ui,Arial'; x.fillText(monthLabel, pad, 74);
-  x.fillStyle = '#c9bfae'; x.font = '700 14px system-ui,Arial'; x.textAlign = 'right'; x.fillText('Al Tariq Printers', W - pad, 38); x.fillText('Driver Payment', W - pad, 58); x.textAlign = 'left';
-  const bal = totals.jama - totals.driver;
-  const boxes = [['Jama (aayi)', ogFmt(totals.jama), '#10b981'], ['Pending', ogFmt(totals.pend), '#e0524d'], ['Driver diya', ogFmt(totals.driver), '#2563c9'], ['Bacha', (bal < 0 ? '−' : '') + ogFmt(Math.abs(bal)), '#2b2620']];
-  const bw = (W - pad * 2 - 3 * 10) / 4, by = 114;
-  boxes.forEach((b, i) => { const bxx = pad + i * (bw + 10);
-    x.fillStyle = '#fff'; ogRoundRect(x, bxx, by, bw, 74, 10); x.fill(); x.strokeStyle = '#e6ddcd'; x.lineWidth = 1; x.stroke();
-    x.fillStyle = '#7c7264'; x.font = '700 12px system-ui,Arial'; x.textAlign = 'center'; x.fillText(ogFit(x, b[0], bw - 8), bxx + bw / 2, by + 26);
-    x.fillStyle = b[2]; x.font = '900 18px system-ui,Arial'; x.fillText(ogFit(x, b[1], bw - 8), bxx + bw / 2, by + 52); x.textAlign = 'left';
+  x.fillStyle = '#fff'; x.font = '900 34px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 54);
+  x.fillStyle = '#f0c98a'; x.font = '800 20px system-ui,Arial'; x.fillText(monthLabel, pad, 86);
+  x.fillStyle = '#cfe6d8'; x.font = '700 15px system-ui,Arial'; x.textAlign = 'right'; x.fillText('Al Tariq Printers', W - pad, 48); x.fillText('Driver Payment', W - pad, 70); x.textAlign = 'left';
+  // wasooli card + paid badge
+  ogGlass(x, pad, wy, W - pad * 2, wh, '#ffffff', 'rgba(16,120,70,.20)', 18);
+  x.fillStyle = '#5b6b60'; x.font = '700 13px system-ui,Arial'; x.fillText('Is mahinay ki wasooli', pad + 20, wy + 30);
+  x.fillStyle = '#0f7a52'; x.font = '900 32px system-ui,Arial'; x.fillText(ogFmt(totals.jama), pad + 20, wy + 66);
+  const paidN = rows.filter(r => r.paid).length;
+  const bw = 160, bx = W - pad - bw - 6, by = wy + wh / 2 - 24;
+  x.save(); x.shadowColor = 'rgba(16,150,90,.45)'; x.shadowBlur = 18; const pg = x.createLinearGradient(bx, by, bx, by + 48); pg.addColorStop(0, '#3ecf82'); pg.addColorStop(1, '#1aa863'); x.fillStyle = pg; ogRoundRect(x, bx, by, bw, 48, 24); x.fill(); x.restore();
+  x.fillStyle = '#fff'; x.font = '900 20px system-ui,Arial'; x.textAlign = 'center'; x.fillText(paidN + ' / ' + n + ' paid', bx + bw / 2, by + 31); x.textAlign = 'left';
+  // stat chips
+  const chips = [['Pending', ogFmt(totals.pend), '#c23b36'], ['Driver diya', ogFmt(totals.driver), '#1f6fd6'], ['Bacha', (totals.jama - totals.driver < 0 ? '−' : '') + ogFmt(Math.abs(totals.jama - totals.driver)), '#2b2620']];
+  const cw = (W - pad * 2 - 2 * 10) / 3;
+  chips.forEach((c, i) => { const cx = pad + i * (cw + 10); ogGlass(x, cx, statY - 18, cw, 46, 'rgba(255,255,255,.9)', 'rgba(120,120,120,.15)', 12); x.fillStyle = '#7c7264'; x.font = '700 11px system-ui,Arial'; x.textAlign = 'center'; x.fillText(c[0], cx + cw / 2, statY - 1); x.fillStyle = c[2]; x.font = '900 15px system-ui,Arial'; x.fillText(ogFit(x, c[1], cw - 10), cx + cw / 2, statY + 19); x.textAlign = 'left'; });
+  x.fillStyle = '#4a5a50'; x.font = '800 14px system-ui,Arial'; x.fillText('CUSTOMERS — PAYMENT STATUS', pad, listHeadY);
+  if (!n) { x.fillStyle = '#7c7264'; x.font = '700 16px system-ui,Arial'; x.textAlign = 'center'; x.fillText('Koi customer nahi', W / 2, gridTop + 30); x.textAlign = 'left'; }
+  rows.forEach((r, i) => { const col = i % 2, row = (i - col) / 2, X = pad + col * (cardW + gap), Y = gridTop + row * (cardH + cgap);
+    if (r.paid) { ogGlass(x, X, Y, cardW, cardH, '#e4f6ea', 'rgba(26,168,99,.35)', 15); x.strokeStyle = 'rgba(26,168,99,.5)'; x.lineWidth = 1.5; ogRoundRect(x, X, Y, cardW, cardH, 15); x.stroke(); }
+    else { ogGlass(x, X, Y, cardW, cardH, '#ffffff', 'rgba(150,150,150,.18)', 15); }
+    x.fillStyle = '#22302a'; x.font = '800 17px system-ui,Arial'; x.fillText(ogFit(x, r.name, cardW - 28), X + 16, Y + 30);
+    if (r.paid) { x.fillStyle = '#0c8a52'; x.font = '900 17px system-ui,Arial'; x.fillText('✓ ' + ogFmt(r.amount), X + 16, Y + 55); }
+    else { x.fillStyle = '#c98a12'; x.font = '800 16px system-ui,Arial'; x.fillText('Pending', X + 16, Y + 55); }
   });
-  if (!rows.length) { x.fillStyle = '#7c7264'; x.font = '700 16px system-ui,Arial'; x.textAlign = 'center'; x.fillText('Koi customer nahi', W / 2, top + 34); x.textAlign = 'left'; }
-  rows.forEach((r, i) => { const y = top + i * rowH;
-    if (i % 2 === 0) { x.fillStyle = '#fff'; x.fillRect(pad, y, W - pad * 2, rowH - 4); }
-    x.fillStyle = '#2b2620'; x.font = '800 17px system-ui,Arial'; x.fillText(ogFit(x, r.name, W - 320), pad + 14, y + 25);
-    x.fillStyle = '#7c7264'; x.font = '700 12px system-ui,Arial'; x.fillText('Monthly: ' + ogFmt(r.monthly), pad + 14, y + 44);
-    x.textAlign = 'right';
-    if (r.paid) { x.fillStyle = '#0f7a52'; x.font = '900 18px system-ui,Arial'; x.fillText('✓ ' + ogFmt(r.amount), W - pad - 14, y + 33); }
-    else { x.fillStyle = '#e0524d'; x.font = '900 16px system-ui,Arial'; x.fillText('Pending', W - pad - 14, y + 33); }
-    x.textAlign = 'left';
-    x.strokeStyle = '#eadfce'; x.lineWidth = 1; x.beginPath(); x.moveTo(pad, y + rowH - 2); x.lineTo(W - pad, y + rowH - 2); x.stroke();
-  });
-  const fy = H - foot + 30, paidN = rows.filter(r => r.paid).length;
-  x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText(rows.length + ' customers · ' + paidN + ' aayi · ' + (rows.length - paidN) + ' pending', pad, fy);
+  const fy = H - footH + 36;
+  x.fillStyle = '#5b6b60'; x.font = '700 13px system-ui,Arial'; x.fillText(n + ' customers  ·  ' + paidN + ' aayi  ·  ' + (n - paidN) + ' pending', pad, fy);
   x.textAlign = 'right'; x.fillText(new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }), W - pad, fy); x.textAlign = 'left';
   return cv;
 }
