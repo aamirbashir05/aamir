@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v101'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v102'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1750,7 +1750,9 @@ function ogPayOf(custId, ym) { return (oghiData.pays || []).find(p => p.custId =
 function ogDriverOf(ym) { const d = (oghiData.drivers || []).find(x => x.month === ym); return d ? (Number(d.amount) || 0) : 0; }
 function ogTotals(ym) {
   let jama = 0, pend = 0;
-  (oghiData.custs || []).forEach(c => { const p = ogPayOf(c.id, ym); if (p) jama += (Number(p.amount) || 0); else pend += (Number(c.amount) || 0); });
+  // Ledger: har customer is month monthly ka zimmedar. Jitna diya wo jama, baqi
+  // (monthly - diya) pending — partial diya to sirf shortfall pending (poora nahi).
+  (oghiData.custs || []).forEach(c => { const p = ogPayOf(c.id, ym); const paid = p ? (Number(p.amount) || 0) : 0; jama += paid; pend += Math.max(0, (Number(c.amount) || 0) - paid); });
   return { jama, pend, driver: ogDriverOf(ym) };
 }
 function renderOghiBox() {
@@ -1777,33 +1779,35 @@ function renderOghi() {
   const custs = (oghiData.custs || []).slice();
   if (!custs.length) { el.innerHTML = '<div class="og-empty">Abhi koi customer nahi. Neeche se add karein.</div>'; return; }
   custs.sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
-  const paidN = custs.filter(c => ogPayOf(c.id, ogMonth)).length;
+  const paidN = custs.filter(c => { const p = ogPayOf(c.id, ogMonth); return p && (Number(p.amount) || 0) >= (Number(c.amount) || 0); }).length;
   const sub = $('#ogListSub'); if (sub) sub.innerHTML = 'Wasooli: <b style="color:var(--green)">' + fmtMoney(t.jama) + '</b> · <b>' + paidN + ' / ' + custs.length + ' paid</b>';
   el.innerHTML = custs.map(c => {
-    const p = ogPayOf(c.id, ogMonth);
-    const st = p ? `<span class="og-st paid">✓ ${fmtMoney(p.amount)}</span>` : `<span class="og-st pend">⏳ Pending</span>`;
-    return `<div class="og-card${p ? ' paid' : ''}" data-pay="${c.id}"><div class="og-cn">${esc(c.name)}</div>${st}<div class="og-tools"><button class="og-x" data-oedit="${c.id}" title="Badlein">✎</button><button class="og-x del" data-odel="${c.id}" title="Hatayein">🗑</button></div></div>`;
+    const p = ogPayOf(c.id, ogMonth); const mo = Number(c.amount) || 0; const paid = p ? (Number(p.amount) || 0) : 0;
+    let cls = '', st;
+    if (paid > 0 && paid >= mo) { cls = ' paid'; st = `<span class="og-st paid">✓ ${fmtMoney(paid)}</span>`; }
+    else if (paid > 0) { cls = ' partial'; st = `<span class="og-st part">${fmtMoney(paid)} diya · ${fmtMoney(mo - paid)} baqi</span>`; }
+    else { st = `<span class="og-st pend">⏳ Pending</span>`; }
+    return `<div class="og-card${cls}" data-pay="${c.id}"><div class="og-cn">${esc(c.name)}</div>${st}<div class="og-tools"><button class="og-x" data-oedit="${c.id}" title="Badlein">✎</button><button class="og-x del" data-odel="${c.id}" title="Hatayein">🗑</button></div></div>`;
   }).join('');
   el.querySelectorAll('.og-card').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.pay); if (c) ogMarkPay(c); }));
   el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
   el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c); }));
 }
 function ogMarkPay(c) {
-  const cur = ogPayOf(c.id, ogMonth);
-  if (cur) {
-    const v = prompt('Payment (Rs) — 0 ya khali = pending kar dein', Math.round(cur.amount));
-    if (v === null) return;
-    const a = parseFloat(v);
-    if (v.trim() === '' || a === 0) { Cloud.oghiDeletePay(c.id, ogMonth).then(() => toast('Pending kar diya')).catch(() => toast('Nahi hua')); return; }
-    if (!isFinite(a) || a < 0) { toast('Ghalat raqam'); return; }
-    Cloud.oghiSetPay(c.id, ogMonth, a, 'Aamir').then(() => toast('✅ Update')).catch(() => toast('Nahi hua'));
-  } else {
-    const v = prompt('Kitni payment aayi? (Rs)', Math.round(c.amount));
-    if (v === null) return;
-    const a = parseFloat(v);
-    if (!isFinite(a) || a <= 0) { toast('Raqam daalein'); return; }
-    Cloud.oghiSetPay(c.id, ogMonth, a, 'Aamir').then(() => toast('✅ Aayi mark ho gayi')).catch(() => toast('Nahi hua'));
-  }
+  const mo = Number(c.amount) || 0;
+  const cur = ogPayOf(c.id, ogMonth); const paidCur = cur ? (Number(cur.amount) || 0) : 0;
+  const def = (mo - paidCur > 0) ? (mo - paidCur) : mo;
+  const v = prompt(c.name + '\n\nKitne paise aaye? (Rs)\n• Aghatta (kai mahine ek saath) ho to poora likhein — is month se aage ke mahine khud fill ho jayenge\n• Is month clear karna ho to 0 likhein', Math.round(def));
+  if (v === null || v.trim() === '') return;
+  const amt = parseFloat(v);
+  if (amt === 0) { if (cur) Cloud.oghiDeletePay(c.id, ogMonth).then(() => toast('Is month clear')).catch(() => toast('Nahi hua')); return; }
+  if (!isFinite(amt) || amt < 0) { toast('Ghalat raqam'); return; }
+  if (mo <= 0) { toast('Is customer ki monthly 0 hai — pehle ✎ se set karein'); return; }
+  // amt = nayi payment; is month se aage ke mahine ki shortfall (monthly - diya) bharo
+  let left = amt, m = ogMonth, guard = 0, filled = 0; const writes = [];
+  while (left > 0 && guard < 48) { const cc = ogPayOf(c.id, m); const pc = cc ? (Number(cc.amount) || 0) : 0; const need = mo - pc; if (need > 0) { const take = Math.min(left, need); writes.push([m, pc + take]); left -= take; filled++; } m = ymShift(m, 1); guard++; }
+  if (!writes.length) { toast('Sab mahine already poore'); return; }
+  Promise.all(writes.map(w => Cloud.oghiSetPay(c.id, w[0], w[1], 'Aamir'))).then(() => toast(filled > 1 ? ('✅ ' + filled + ' mahine me laga diya') : '✅ Add ho gaya')).catch(() => toast('Nahi hua'));
 }
 function ogEditCust(c) {
   const nm = prompt('Customer ka naam', c.name); if (nm === null) return;
@@ -1914,7 +1918,7 @@ function ogBuildPending(rangeLabel, rows, grand) {
     x.save(); ogRoundRect(x, X, Y, cardW, cardH, 14); x.clip(); x.fillStyle = clear ? '#10b981' : '#d84b45'; x.fillRect(X, Y, 7, cardH); x.restore();
     x.fillStyle = '#2b2620'; x.font = '800 16px system-ui,Arial'; x.fillText(ogFit(x, r.name, cardW - 30), X + 18, Y + 27);
     if (clear) { x.fillStyle = '#0c8a52'; x.font = '900 15px system-ui,Arial'; x.fillText('✓ Clear', X + 18, Y + 50); }
-    else { x.fillStyle = '#c1362f'; x.font = '900 16px system-ui,Arial'; const at = ogFmt(r.pending); x.fillText(at, X + 18, Y + 50); const aw = x.measureText(at).width; x.fillStyle = '#9a7b4a'; x.font = '700 12px system-ui,Arial'; x.fillText(' · ' + r.months + ' mo', X + 18 + aw + 4, Y + 50); }
+    else { x.fillStyle = '#c1362f'; x.font = '900 16px system-ui,Arial'; const at = ogFmt(r.pending); x.fillText(at, X + 18, Y + 50); if (r.paid > 0) { const aw = x.measureText(at).width; x.fillStyle = '#9a7b4a'; x.font = '700 12px system-ui,Arial'; x.fillText(' · diya ' + ogFmt(r.paid), X + 18 + aw + 4, Y + 50); } }
   });
   const fy = H - footH + 34;
   x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText('Total pending: ' + ogFmt(grand), pad, fy);
@@ -1925,8 +1929,9 @@ function ogSharePending() {
   const from = ($('#ogPFrom') && $('#ogPFrom').value) || ogMonth, to = ($('#ogPTo') && $('#ogPTo').value) || ogMonth;
   const months = ogMonthRange(from, to);
   const rows = (oghiData.custs || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => {
-    let pc = 0; months.forEach(m => { if (!ogPayOf(c.id, m)) pc++; });
-    return { name: c.name, months: pc, pending: pc * (Number(c.amount) || 0) };
+    const mo = Number(c.amount) || 0; const due = mo * months.length;
+    let paid = 0; months.forEach(m => { const p = ogPayOf(c.id, m); if (p) paid += (Number(p.amount) || 0); });
+    return { name: c.name, due, paid, pending: Math.max(0, due - paid) };
   });
   const grand = rows.reduce((s, r) => s + r.pending, 0);
   const cv = ogBuildPending(ogRangeLbl(from, to), rows, grand);

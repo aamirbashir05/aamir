@@ -42,6 +42,8 @@
   .pcard{position:relative;min-width:0;background:#fff;border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:12px;padding:9px 10px 10px;box-shadow:var(--shadow);cursor:pointer;transition:transform .08s}
   .pcard:active{transform:scale(.98)}
   .pcard.paid{background:linear-gradient(180deg,#f2fbf6,#eaf7ef);border-left-color:var(--green);box-shadow:0 4px 12px rgba(16,150,90,.15)}
+  .pcard.partial{background:linear-gradient(180deg,#fffaf0,#fdf2e0);border-left-color:var(--gold2)}
+  .pc-st.part{color:var(--gold2)}
   .pc-nm{font-weight:800;font-size:13.5px;color:#2b2620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:58px}
   .pc-st{display:inline-block;margin-top:4px;font-weight:900;font-size:12.5px}
   .pc-st.paid{color:#0c8a52}
@@ -187,23 +189,22 @@
       .catch(()=>toast('Nahi hua'));
   });
 
-  // ---- mark / edit / remove a customer's payment for curMonth ----
+  // ---- payment mark: partial ya aghatta (kai mahine ek saath, aage fill hote hain) ----
+  function setPay(cid,m,amt){ return col('oghi_pays').doc(payId(cid,m)).set({ custId:cid, month:m, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Oghi' }); }
   function markPay(c){
-    const cur = payOf(c.id, curMonth);
-    if(cur){
-      const v = prompt('Payment (Rs) — 0 ya khali = pending kar dein', Math.round(cur.amount));
-      if(v===null) return;
-      const a = parseFloat(v);
-      if(v.trim()==='' || a===0){ col('oghi_pays').doc(payId(c.id,curMonth)).delete().then(()=>toast('Pending kar diya')).catch(()=>toast('Nahi hua')); return; }
-      if(!isFinite(a)||a<0){ toast('Ghalat raqam'); return; }
-      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Oghi' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
-    } else {
-      const v = prompt('Kitni payment aayi? (Rs)', Math.round(c.amount));
-      if(v===null) return;
-      const a = parseFloat(v);
-      if(!isFinite(a)||a<=0){ toast('Raqam daalein'); return; }
-      col('oghi_pays').doc(payId(c.id,curMonth)).set({ custId:c.id, month:curMonth, amount:Math.round(a*100)/100, ts:new Date().toISOString(), by:'Oghi' }).then(()=>toast('✅ Aayi mark ho gayi')).catch(()=>toast('Nahi hua'));
-    }
+    const mo=Number(c.amount)||0;
+    const cur = payOf(c.id, curMonth); const paidCur = cur?(Number(cur.amount)||0):0;
+    const def = (mo-paidCur>0)?(mo-paidCur):mo;
+    const v = prompt(c.name+'\n\nKitne paise aaye? (Rs)\n• Aghatta (kai mahine ek saath) ho to poora likhein — is month se aage ke mahine khud fill ho jayenge\n• Is month clear karna ho to 0 likhein', Math.round(def));
+    if(v===null || v.trim()==='') return;
+    const amt=parseFloat(v);
+    if(amt===0){ if(cur) col('oghi_pays').doc(payId(c.id,curMonth)).delete().then(()=>toast('Is month clear')).catch(()=>toast('Nahi hua')); return; }
+    if(!isFinite(amt)||amt<0){ toast('Ghalat raqam'); return; }
+    if(mo<=0){ toast('Is customer ki monthly 0 hai — pehle ✎ se set karein'); return; }
+    let left=amt, m=curMonth, guard=0, filled=0; const writes=[];
+    while(left>0 && guard<48){ const cc=payOf(c.id,m); const pc=cc?(Number(cc.amount)||0):0; const need=mo-pc; if(need>0){ const take=Math.min(left,need); writes.push([m,pc+take]); left-=take; filled++; } m=ymShift(m,1); guard++; }
+    if(!writes.length){ toast('Sab mahine already poore'); return; }
+    Promise.all(writes.map(w=>setPay(c.id,w[0],w[1]))).then(()=>toast(filled>1?('✅ '+filled+' mahine me laga diya'):'✅ Add ho gaya')).catch(()=>toast('Nahi hua'));
   }
   function editCust(c){
     const nm = prompt('Customer ka naam', c.name); if(nm===null) return;
@@ -275,7 +276,7 @@
   function shareImage(){
     const rows=custs.slice().sort((a,b)=>{ const pa=payOf(a.id,curMonth)?1:0, pb=payOf(b.id,curMonth)?1:0; if(pa!==pb) return pa-pb; return (a.name||'').localeCompare(b.name||''); })
       .map(c=>{ const p=payOf(c.id,curMonth); return {name:c.name, monthly:Number(c.amount)||0, paid:!!p, amount:p?(Number(p.amount)||0):0}; });
-    let jama=0,pend=0; custs.forEach(c=>{ const p=payOf(c.id,curMonth); if(p) jama+=(Number(p.amount)||0); else pend+=(Number(c.amount)||0); });
+    let jama=0,pend=0; custs.forEach(c=>{ const p=payOf(c.id,curMonth); const paid=p?(Number(p.amount)||0):0; jama+=paid; pend+=Math.max(0,(Number(c.amount)||0)-paid); });
     const cv=buildCanvas(ymLabel(curMonth), rows, {jama, pend, driver:driverOf(curMonth)});
     shareCanvasJPG(cv, 'oghi-'+curMonth+'.jpg', 'Oghi Garri — '+ymLabel(curMonth));
   }
@@ -310,7 +311,7 @@
       x.save(); ogRoundRect(x,X,Y,cardW,cardH,14); x.clip(); x.fillStyle=clear?'#10b981':'#d84b45'; x.fillRect(X,Y,7,cardH); x.restore();
       x.fillStyle='#2b2620'; x.font='800 16px system-ui,Arial'; x.fillText(ogFit(x,r.name,cardW-30), X+18, Y+27);
       if(clear){ x.fillStyle='#0c8a52'; x.font='900 15px system-ui,Arial'; x.fillText('✓ Clear', X+18, Y+50); }
-      else { x.fillStyle='#c1362f'; x.font='900 16px system-ui,Arial'; const at=fmtRs(r.pending); x.fillText(at, X+18, Y+50); const aw=x.measureText(at).width; x.fillStyle='#9a7b4a'; x.font='700 12px system-ui,Arial'; x.fillText(' · '+r.months+' mo', X+18+aw+4, Y+50); }
+      else { x.fillStyle='#c1362f'; x.font='900 16px system-ui,Arial'; const at=fmtRs(r.pending); x.fillText(at, X+18, Y+50); if(r.paid>0){ const aw=x.measureText(at).width; x.fillStyle='#9a7b4a'; x.font='700 12px system-ui,Arial'; x.fillText(' · diya '+fmtRs(r.paid), X+18+aw+4, Y+50); } }
     });
     const fy=H-footH+34;
     x.fillStyle='#7c7264'; x.font='700 13px system-ui,Arial'; x.fillText('Total pending: '+fmtRs(grand), pad, fy);
@@ -321,8 +322,9 @@
     const from=($('#pFrom').value||curMonth), to=($('#pTo').value||curMonth);
     const months=monthRange(from,to);
     const rows=custs.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(c=>{
-      let pc=0; months.forEach(m=>{ if(!payOf(c.id,m)) pc++; });
-      return {name:c.name, months:pc, pending:pc*(Number(c.amount)||0)};
+      const mo=Number(c.amount)||0; const due=mo*months.length;
+      let paid=0; months.forEach(m=>{ const p=payOf(c.id,m); if(p) paid+=(Number(p.amount)||0); });
+      return {name:c.name, due, paid, pending:Math.max(0,due-paid)};
     });
     const grand=rows.reduce((s,r)=>s+r.pending,0);
     const cv=buildPending(rangeLbl(from,to), rows, grand);
@@ -334,7 +336,7 @@
     $('#mLabel').textContent = ymLabel(curMonth);
     // summary
     let jama=0, pend=0;
-    custs.forEach(c=>{ const p=payOf(c.id,curMonth); if(p) jama+=(p.amount||0); else pend+=(c.amount||0); });
+    custs.forEach(c=>{ const p=payOf(c.id,curMonth); const paid=p?(Number(p.amount)||0):0; jama+=paid; pend+=Math.max(0,(Number(c.amount)||0)-paid); });
     const drv=driverOf(curMonth);
     $('#sJama').textContent=fmtRs(jama);
     $('#sPend').textContent=fmtRs(pend);
@@ -346,12 +348,15 @@
     const el=$('#list');
     if(!custs.length){ el.innerHTML='<div class="empty">Abhi koi customer nahi. Neeche se add karein.</div>'; return; }
     const sorted=custs.slice().sort((a,b)=>{ const pa=payOf(a.id,curMonth)?1:0, pb=payOf(b.id,curMonth)?1:0; if(pa!==pb) return pa-pb; return (a.name||'').localeCompare(b.name||''); });
-    const paidN=sorted.filter(c=>payOf(c.id,curMonth)).length;
+    const paidN=sorted.filter(c=>{ const p=payOf(c.id,curMonth); return p && (Number(p.amount)||0)>=(Number(c.amount)||0); }).length;
     $('#listSub').innerHTML='Wasooli: <b style="color:var(--green)">'+fmtRs(jama)+'</b> &nbsp;·&nbsp; <b>'+paidN+' / '+custs.length+' paid</b> — pending par tap karke mark karein';
     el.innerHTML = sorted.map(c=>{
-      const p=payOf(c.id,curMonth);
-      const st = p ? '<span class="pc-st paid">✓ '+fmtRs(p.amount)+'</span>' : '<span class="pc-st pend">⏳ Pending</span>';
-      return '<div class="pcard'+(p?' paid':'')+'" data-pay="'+c.id+'"><div class="pc-nm">'+esc(c.name)+'</div>'+st+'<div class="pc-tools"><button class="pc-x" data-edit="'+c.id+'" title="Badlein">✎</button><button class="pc-x del" data-del="'+c.id+'" title="Hatayein">🗑</button></div></div>';
+      const p=payOf(c.id,curMonth); const mo=Number(c.amount)||0; const paid=p?(Number(p.amount)||0):0;
+      let cls='', st;
+      if(paid>0 && paid>=mo){ cls=' paid'; st='<span class="pc-st paid">✓ '+fmtRs(paid)+'</span>'; }
+      else if(paid>0){ cls=' partial'; st='<span class="pc-st part">'+fmtRs(paid)+' diya · '+fmtRs(mo-paid)+' baqi</span>'; }
+      else { st='<span class="pc-st pend">⏳ Pending</span>'; }
+      return '<div class="pcard'+cls+'" data-pay="'+c.id+'"><div class="pc-nm">'+esc(c.name)+'</div>'+st+'<div class="pc-tools"><button class="pc-x" data-edit="'+c.id+'" title="Badlein">✎</button><button class="pc-x del" data-del="'+c.id+'" title="Hatayein">🗑</button></div></div>';
     }).join('');
     el.querySelectorAll('.pcard').forEach(b=>b.addEventListener('click',()=>{ const c=custs.find(x=>x.id===b.dataset.pay); if(c) markPay(c); }));
     el.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',(e)=>{ e.stopPropagation(); const c=custs.find(x=>x.id===b.dataset.edit); if(c) editCust(c); }));
