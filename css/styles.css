@@ -142,6 +142,8 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .og-card { position: relative; min-width: 0; background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 12px; padding: 9px 10px 10px; box-shadow: 0 2px 8px rgba(120,90,30,.08); cursor: pointer; }
 .og-card:active { transform: scale(.98); }
 .og-card.paid { background: linear-gradient(180deg,#f2fbf6,#eaf7ef); border-left-color: var(--green); box-shadow: 0 4px 12px rgba(16,150,90,.15); }
+.og-card.partial { background: linear-gradient(180deg,#fffaf0,#fdf2e0); border-left-color: var(--gold2); }
+.og-st.part { color: var(--gold2); }
 .og-cn { font-weight: 800; font-size: 13.5px; color: #2b2620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 58px; }
 .og-st { display: inline-block; margin-top: 4px; font-weight: 900; font-size: 12.5px; }
 .og-st.paid { color: #0c8a52; }
