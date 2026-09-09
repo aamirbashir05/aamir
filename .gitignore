@@ -86,3 +86,12 @@ lint/tmp/
 
 # Scratch/working files (not part of the site)
 scratchpad/
+
+# Python cache
+copa-downloader/__pycache__/
+*.pyc
+
+# Android build
+android/.buildozer/
+android/bin/
+android/copa_downloader.py
