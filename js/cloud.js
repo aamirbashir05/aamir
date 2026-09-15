@@ -96,7 +96,9 @@ const Cloud = (() => {
     return new TextDecoder().decode(buf);
   }
   const RKEY = 'altariq_reset';
-  const PSIG = 'altariq_pushsig'; // aakhri kamyab push ka signature
+  const PSIG = 'altariq_pushsig_v2'; // aakhri kamyab push ka signature (v2: ek dafa poora
+  // re-push force karne ke liye key badli — purane devices jinhone galti se local ko
+  // "pushed" mark kar liya tha, ab khud poora data server par bhej denge)
   // Reset-marker DURABLE: localStorage + IndexedDB dono me. Agar localStorage clear
   // ho jaye to bhi marker mehfooz — warna purana ek-baar ka import-reset dobara chal
   // kar (baad ki) entries mita sakta tha. Ye us khatarnak data-loss ko rokta hai.
@@ -248,22 +250,28 @@ const Cloud = (() => {
       const pushedDel = JSON.stringify(snapData.deletedIds || {});
       const doc = { updatedAt: new Date().toISOString() };
       const r = getResetMarker(); if (r) doc.fullReset = r; // marker barqarar rakho
+      // FULL backup SEEDHA server par (shareDb = persistence OFF). db (persistence ON)
+      // se await sirf local-cache tak resolve hota tha — app "save" samajh leti thi
+      // magar data server tak na pohanchta (Abu/doosre phone ko na milta). shareDb se
+      // await tab resolve hota hai jab server ne likh liya — is liye backup pakka.
+      const wdb = shareDb || db;
+      const wcol = wdb.collection('khatas');
       const gz = await gzipB64(json);
       if (gz) {
         if (gz.length <= 900000) { doc.gz = gz; doc.chunks = 0; }
         else {                                    // 1 MiB se bara — kai docs me tor do
           const parts = [];
           for (let i = 0; i < gz.length; i += CHUNK) parts.push(gz.slice(i, i + CHUNK));
-          for (let i = 0; i < parts.length; i++) await db.collection('khatas').doc(curSyncId + '_c' + i).set({ part: parts[i] });
+          for (let i = 0; i < parts.length; i++) await wcol.doc(curSyncId + '_c' + i).set({ part: parts[i] });
           doc.chunks = parts.length;              // chunks pehle likho, phir main doc
         }
       } else { doc.payload = json; doc.chunks = 0; }
-      await docRef.set(doc);
+      await wcol.doc(curSyncId).set(doc);
       dirty = false; clearTimeout(retryT);
       fullPushedIds = pushedIds; lastDelStr = pushedDel; // JO bheja wahi base (race-safe)
       try { localStorage.setItem(PSIG, dataSig()); } catch (e) {}
       // stale delta doc khaali kar do (ab main doc me sab kuch hai)
-      if (deltaRef) { try { await deltaRef.set({ d: JSON.stringify({ v: 1, c: [], s: [], del: snapData.deletedIds || {} }), updatedAt: new Date().toISOString() }); } catch (e) {} }
+      try { await wcol.doc(curSyncId + '_d').set({ d: JSON.stringify({ v: 1, c: [], s: [], del: snapData.deletedIds || {} }), updatedAt: new Date().toISOString() }); } catch (e) {}
       // agar upload ke doran koi nayi entry aayi thi (jo bheji nahi gayi), foran delta bhej do
       if (dataSig() !== localStorage.getItem(PSIG)) schedulePush();
       setStatus('saved');
