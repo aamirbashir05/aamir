@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hisaab (View) — Al Tariq Printers</title>
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<meta name="theme-color" content="#2b3039">
+<style>
+  :root{
+    --bg:#f6f1e8; --card:#fff; --text:#2b2620; --muted:#7c7264; --border:#e6ddcd;
+    --orange:#e7a24c; --gold2:#c9851f; --green:#10b981; --red:#e0524d;
+    --shadow:0 2px 8px rgba(120,90,30,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;line-height:1.5;min-height:100vh}
+  .top{background:linear-gradient(180deg,#2b3039,#20242b);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+  .top img{height:38px;width:auto;filter:drop-shadow(0 0 8px rgba(231,162,76,.6))}
+  .top b{font-size:16px;font-weight:900}
+  .top span{display:block;font-size:11px;color:#c9bfae;letter-spacing:.04em}
+  .live{margin-left:auto;font-size:11px;font-weight:800;color:#7ee0a8;display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .wrap{max-width:620px;margin:0 auto;padding:14px}
+  .sum{display:flex;gap:10px;margin-bottom:12px}
+  .sc{flex:1;background:var(--card);border:1px solid var(--border);border-left:4px solid var(--orange);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow)}
+  .sc .l{font-size:11px;color:var(--muted);font-weight:800}
+  .sc .v{font-size:19px;font-weight:900;margin-top:2px}
+  .sc.lena{border-left-color:var(--green)} .sc.lena .v{color:#0f7a52}
+  .sc.dena{border-left-color:var(--red)} .sc.dena .v{color:var(--red)}
+  .mini{display:flex;gap:10px;margin-bottom:14px}
+  .mc{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 10px;text-align:center;box-shadow:var(--shadow)}
+  .mc .v{font-size:16px;font-weight:900;color:var(--text)} .mc .l{font-size:10px;color:var(--muted);font-weight:700}
+  .mc .v.net{color:var(--gold2)}
+  h3{font-size:14px;margin:6px 2px 8px;display:flex;align-items:center;gap:6px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:var(--shadow);margin-bottom:14px}
+  .today{max-height:230px;overflow-y:auto}
+  .trow{display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border)}
+  .trow:last-child{border-bottom:none}
+  .trow .who{flex:1;min-width:0}
+  .trow .who b{font-weight:800;font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trow .who span{font-size:11px;color:var(--muted)}
+  .amt{flex:0 0 auto;font-weight:900;font-size:14px;white-space:nowrap;padding:3px 9px;border-radius:8px}
+  .amt.pos{color:#0f7a52;background:rgba(16,185,129,.12)}
+  .amt.neg{color:var(--red);background:rgba(224,82,77,.12)}
+  .amt.zero{color:var(--gold2);background:rgba(201,133,31,.12)}
+  .search{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:11px;font-size:15px;background:#fff;color:var(--text);margin-bottom:8px}
+  .search:focus{outline:none;border-color:var(--orange)}
+  .clist{list-style:none}
+  .ci{display:flex;align-items:center;gap:10px;padding:11px 8px;border-bottom:1px solid var(--border);cursor:pointer}
+  .ci:active{background:#faf5ec}
+  .av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:#f0e6d3;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--gold2);font-size:13px}
+  .ci .nm{flex:1;min-width:0}
+  .ci .nm b{font-weight:800;font-size:15px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ci .nm span{font-size:11px;color:var(--muted)}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
+  .status{font-size:12px;color:var(--muted);text-align:center;padding:14px}
+  .status.ok{color:#0f7a52}
+  /* detail overlay */
+  .ov{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;flex-direction:column}
+  .ov.open{display:flex}
+  .ov-top{background:linear-gradient(180deg,#2b3039,#20242b);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px}
+  .ov-top button{background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;font-weight:800;width:38px;height:38px;border-radius:10px}
+  .ov-top .t{flex:1;min-width:0}
+  .ov-top .t b{font-size:16px;font-weight:900;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ov-top .t span{font-size:12px;color:#c9bfae}
+  .ov-bal{margin:14px;padding:14px;border-radius:14px;text-align:center;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow)}
+  .ov-bal .l{font-size:12px;color:var(--muted);font-weight:800}
+  .ov-bal .v{font-size:30px;font-weight:900;margin-top:2px}
+  .ov-body{flex:1;overflow-y:auto;padding:0 14px 24px}
+  .le{display:flex;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border)}
+  .le .d{flex:0 0 auto;font-size:11px;color:var(--muted);width:74px}
+  .le .n{flex:1;min-width:0;font-size:13.5px}
+  .le .a{flex:0 0 auto;font-weight:900;font-size:14px;white-space:nowrap}
+  .le .a.pos{color:#0f7a52} .le .a.neg{color:var(--red)}
+  .le .r{flex:0 0 auto;font-size:11px;color:var(--muted);width:70px;text-align:right}
+  .foot{font-size:11px;color:var(--muted);text-align:center;margin:8px 2px 20px}
+</style>
+</head>
+<body>
+  <div class="top">
+    <img src="assets/mark.png" alt="T" onerror="this.style.display='none'">
+    <div><b id="shopName">Al Tariq Printers</b><span>HISAAB — SIRF DEKHNE KE LIYE</span></div>
+    <div class="live"><span class="dot"></span><span id="liveT">LIVE</span></div>
+  </div>
+
+  <div class="wrap">
+    <div class="status" id="status">Hisaab load ho raha hai…</div>
+    <div id="app" style="display:none">
+      <div class="sum">
+        <div class="sc lena"><div class="l">Total Lena</div><div class="v" id="sLena">Rs 0</div></div>
+        <div class="sc dena"><div class="l">Total Dena</div><div class="v" id="sDena">Rs 0</div></div>
+      </div>
+      <div class="mini">
+        <div class="mc"><div class="v" id="mCust">0</div><div class="l">Customers</div></div>
+        <div class="mc"><div class="v" id="mToday">0</div><div class="l">Aaj ki entries</div></div>
+        <div class="mc"><div class="v net" id="mNet">Rs 0</div><div class="l">Net Baqaya</div></div>
+      </div>
+
+      <h3>🧾 Aaj ki entries</h3>
+      <div class="card"><div class="today" id="todayList"></div></div>
+
+      <h3>👥 Customers</h3>
+      <input class="search" id="search" placeholder="🔍 Customer dhoondein..." autocomplete="off">
+      <div class="card"><ul class="clist" id="custList"></ul></div>
+      <div class="foot" id="foot"></div>
+    </div>
+  </div>
+
+  <!-- customer detail -->
+  <div class="ov" id="detail">
+    <div class="ov-top">
+      <button id="dBack">‹</button>
+      <div class="t"><b id="dName">—</b><span id="dPhone"></span></div>
+    </div>
+    <div class="ov-bal"><div class="l" id="dBalLbl">Baqaya</div><div class="v" id="dBal">Rs 0</div></div>
+    <div class="ov-body" id="dBody"></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+  const $ = s => document.querySelector(s);
+  const SKEY='altariq_abu_sync';
+  const DEFAULT_SYNC='altariq-q7f3k9m2xp';
+  let db=null, syncId='', base={customers:[],suppliers:[],deletedIds:{}}, delta={c:[],s:[],del:{}};
+  let customers=[], suppliers=[], curId=null, curKind='customer';
+
+  function esc(s){ return (s+'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+  function fmtRs(n){ n=Math.round(Math.abs(n||0)); return 'Rs '+n.toLocaleString('en-PK'); }
+  function signRs(n){ n=Math.round(n||0); return (n<0?'−':'')+'Rs '+Math.abs(n).toLocaleString('en-PK'); }
+  function localDay(iso){ const d=new Date(iso); if(isNaN(d))return ''; return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function fmtD(iso){ const d=new Date(iso); if(isNaN(d))return ''; return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'}); }
+  function balOf(c){ return (c.txns||[]).reduce((s,t)=>s+(t.type==='debit'?(Number(t.amount)||0):-(Number(t.amount)||0)),0); }
+  function getSync(){ const u=new URLSearchParams(location.search).get('sync'); if(u){ try{localStorage.setItem(SKEY,u.trim());}catch(e){} return u.trim(); } let s=''; try{ s=(localStorage.getItem(SKEY)||'').trim(); }catch(e){} return s||DEFAULT_SYNC; }
+
+  async function gunzipB64(b64){
+    const bin=atob(b64); const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    const ds=new DecompressionStream('gzip');
+    const buf=await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+    return new TextDecoder().decode(buf);
+  }
+
+  // base + delta ko mila kar current state banao (union txns by id, deletedIds hatao)
+  function rebuild(){
+    const dead=Object.assign({}, base.deletedIds||{}, delta.del||{});
+    const mk=(bl,dl)=>{
+      const by={};
+      (bl||[]).forEach(p=>{ by[p.id]={id:p.id,name:p.name,phone:p.phone,shareId:p.shareId,txns:(p.txns||[]).slice()}; });
+      (dl||[]).forEach(p=>{
+        if(!by[p.id]) by[p.id]={id:p.id,name:p.name,phone:p.phone,shareId:p.shareId,txns:[]};
+        else { if(p.name) by[p.id].name=p.name; if(p.phone!=null) by[p.id].phone=p.phone; }
+        const have=new Set(by[p.id].txns.map(t=>t.id));
+        (p.txns||[]).forEach(t=>{ if(!have.has(t.id)){ by[p.id].txns.push(t); have.add(t.id);} });
+      });
+      return Object.values(by).filter(p=>!dead[p.id]).map(p=>{ p.txns=(p.txns||[]).filter(t=>!dead[t.id]); return p; });
+    };
+    customers=mk(base.customers, delta.c);
+    suppliers=mk(base.suppliers, delta.s);
+    render();
+    if(curId) renderDetail();
+  }
+
+  function render(){
+    if(!customers.length && !suppliers.length){ $('#status').textContent='Abhi koi hisaab nahi'; return; }
+    $('#status').style.display='none'; $('#app').style.display='block';
+    let lena=0, dena=0;
+    customers.forEach(c=>{ const b=balOf(c); if(b>0) lena+=b; else if(b<0) dena+=-b; });
+    $('#sLena').textContent=fmtRs(lena); $('#sDena').textContent=fmtRs(dena);
+    $('#mCust').textContent=customers.length;
+    $('#mNet').textContent=signRs(lena-dena);
+    // aaj ki entries
+    const today=localDay(new Date()); const rows=[];
+    customers.forEach(c=>(c.txns||[]).forEach(t=>{ if(localDay(t.date)===today) rows.push({name:c.name,t}); }));
+    rows.sort((a,b)=>(b.t.date||'').localeCompare(a.t.date||''));
+    $('#mToday').textContent=rows.length;
+    const tl=$('#todayList');
+    tl.innerHTML = rows.length ? rows.map(r=>{
+      const deb=r.t.type==='debit'; const amt=Number(r.t.amount)||0;
+      return '<div class="trow"><div class="who"><b>'+esc(r.name)+'</b><span>'+fmtD(r.t.date)+(r.t.note?' · '+esc(r.t.note):'')+'</span></div><span class="amt '+(deb?'neg':'pos')+'">'+(deb?'−':'+')+fmtRs(amt)+'</span></div>';
+    }).join('') : '<div class="empty">Aaj abhi koi entry nahi</div>';
+    // customer list (baqaya wale pehle, phir naam)
+    const q=($('#search').value||'').trim().toLowerCase();
+    const list=customers.map(c=>({c,b:balOf(c)})).filter(x=>!q || (x.c.name||'').toLowerCase().includes(q))
+      .sort((a,b)=>{ const aa=Math.abs(a.b)>0?1:0, bb=Math.abs(b.b)>0?1:0; if(aa!==bb) return bb-aa; return (a.c.name||'').localeCompare(b.c.name||''); });
+    $('#custList').innerHTML = list.length ? list.map(x=>{
+      const b=x.b; const cls=b>0?'pos':(b<0?'neg':'zero'); const tag=b>0?'Lena':(b<0?'Dena':'Barabar');
+      const ini=(x.c.name||'?').trim().charAt(0).toUpperCase();
+      return '<li class="ci" data-id="'+x.c.id+'"><div class="av">'+esc(ini)+'</div><div class="nm"><b>'+esc(x.c.name)+'</b><span>'+tag+'</span></div><span class="amt '+cls+'">'+fmtRs(b)+'</span></li>';
+    }).join('') : '<div class="empty">Koi customer nahi mila</div>';
+    $$('.ci').forEach(li=>li.addEventListener('click',()=>openDetail(li.dataset.id)));
+    $('#foot').textContent='Kul '+customers.length+' customers · aakhri update '+new Date().toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'});
+  }
+  const $$=s=>Array.from(document.querySelectorAll(s));
+
+  function openDetail(id){ curId=id; renderDetail(); $('#detail').classList.add('open'); }
+  function renderDetail(){
+    const c=customers.find(x=>x.id===curId); if(!c){ $('#detail').classList.remove('open'); curId=null; return; }
+    $('#dName').textContent=c.name||'';
+    $('#dPhone').textContent=c.phone||'';
+    const b=balOf(c);
+    $('#dBalLbl').textContent=b>0?'Inse Lena (baqaya)':(b<0?'Inko Dena':'Hisaab barabar');
+    const be=$('#dBal'); be.textContent=fmtRs(b); be.style.color=b>0?'#0f7a52':(b<0?'var(--red)':'var(--gold2)');
+    const txns=(c.txns||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    let run=0;
+    const html=txns.map(t=>{ const deb=t.type==='debit'; const amt=Number(t.amount)||0; run+=deb?amt:-amt;
+      return '<div class="le"><div class="d">'+fmtD(t.date)+'</div><div class="n">'+(t.note?esc(t.note):(deb?'Maal / raqam':'Payment'))+'</div><div class="a '+(deb?'neg':'pos')+'">'+(deb?'−':'+')+fmtRs(amt)+'</div><div class="r">Bal. '+fmtRs(run)+'</div></div>';
+    }).reverse().join('');
+    $('#dBody').innerHTML = txns.length ? html : '<div class="empty">Koi entry nahi</div>';
+  }
+  $('#dBack').addEventListener('click',()=>{ $('#detail').classList.remove('open'); curId=null; });
+  $('#search').addEventListener('input', render);
+
+  async function loadBase(sd){
+    let json=null;
+    if(sd.chunks && sd.chunks>0){ let b64=''; for(let i=0;i<sd.chunks;i++){ const cs=await db.collection('khatas').doc(syncId+'_c'+i).get(); if(!cs.exists){ return; } b64+=(cs.data().part||''); } json=await gunzipB64(b64); }
+    else if(sd.gz) json=await gunzipB64(sd.gz);
+    else if(sd.payload) json=sd.payload;
+    if(!json) return;
+    try{ const rd=JSON.parse(json); base={customers:rd.customers||[], suppliers:rd.suppliers||[], deletedIds:rd.deletedIds||{}};
+      if(rd.shop && rd.shop.name) $('#shopName').textContent=rd.shop.name;
+    }catch(e){ console.warn('parse',e); }
+  }
+
+  async function start(){
+    if(!window.FIREBASE_CONFIG){ $('#status').textContent='Config nahi mila'; return; }
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    await firebase.auth().signInAnonymously();
+    db=firebase.firestore(); // persistence OFF -> hamesha server se taza
+    const docRef=db.collection('khatas').doc(syncId);
+    const deltaRef=db.collection('khatas').doc(syncId+'_d');
+    // pehli dafa base
+    try{ const s=await docRef.get(); if(s.exists){ await loadBase(s.data()); } }catch(e){ console.warn(e); }
+    try{ const s=await deltaRef.get(); if(s.exists && s.data().d){ delta=JSON.parse(s.data().d); } }catch(e){}
+    rebuild();
+    // LIVE: delta par har change foran (Aamir ki nayi entry seedha yahan)
+    deltaRef.onSnapshot(s=>{ if(s.exists && s.data() && s.data().d){ try{ delta=JSON.parse(s.data().d); }catch(e){} } else { delta={c:[],s:[],del:{}}; } rebuild(); flash(); }, e=>console.warn('dsub',e));
+    // full snapshot badle to base dobara (12s wala poora backup)
+    docRef.onSnapshot(async s=>{ if(s.exists){ await loadBase(s.data()); rebuild(); } }, e=>console.warn('sub',e));
+  }
+  function flash(){ const l=$('#liveT'); l.textContent='UPDATED'; clearTimeout(l._t); l._t=setTimeout(()=>l.textContent='LIVE',1400); }
+
+  syncId=getSync();
+  start();
+  </script>
+</body>
+</html>
