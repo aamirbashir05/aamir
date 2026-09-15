@@ -1,0 +1,67 @@
+name: Build MuckRock EXE
+
+# MuckRock Case Downloader ka Windows .exe (PyInstaller).
+# Download: repo -> Actions -> yeh run -> Artifacts -> MuckRock-Downloader-Windows
+# Ya permanent: releases/latest/download/MuckRock-Downloader.exe
+
+on:
+  push:
+    branches:
+      - claude/chicago-copa-downloader-jvwb19
+    paths:
+      - "muckrock/**"
+      - ".github/workflows/build-muckrock-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller curl_cffi
+
+      - name: Build EXE
+        run: >
+          pyinstaller --noconfirm --onefile --windowed
+          --name "MuckRock-Downloader"
+          --collect-all curl_cffi
+          muckrock/muckrock_downloader.py
+
+      - name: Smoke test (exe chalta hai?)
+        run: |
+          dist\MuckRock-Downloader.exe --help
+        shell: cmd
+        continue-on-error: true
+
+      - name: Upload EXE (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MuckRock-Downloader-Windows
+          path: dist/MuckRock-Downloader.exe
+          if-no-files-found: error
+
+      - name: Publish to permanent Release (kabhi expire na ho)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view latest 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create latest --target $env:GITHUB_SHA `
+              --title "COPA Downloader (latest)" `
+              --notes "Windows EXE + Android APK. Hamesha yahin latest milega (login ki zaroorat nahi)."
+          }
+          gh release upload latest dist/MuckRock-Downloader.exe --clobber
