@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v104'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v105'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -896,6 +896,20 @@ function setBulkType(t) {
   $('#bulkDebit').classList.toggle('act-debit', t === 'debit');
   $('#bulkCredit').classList.toggle('act-credit', t === 'credit');
 }
+// Bulk mode: 'paste' = naam+payment likha (auto-detect) | 'tafseel' = sirf saman ki
+// tafseel paste karo, aage har line ke saamne customer-search + payment box aa jayega.
+let bulkMode = 'paste';
+function setBulkMode(m) {
+  bulkMode = (m === 'tafseel') ? 'tafseel' : 'paste';
+  $$('#bulkModeSeg [data-bmode]').forEach(b => b.classList.toggle('active', b.dataset.bmode === bulkMode));
+  const tf = bulkMode === 'tafseel';
+  const h1 = $('#bulkPasteHint'), h2 = $('#bulkTafHint');
+  if (h1) h1.classList.toggle('hidden', tf);
+  if (h2) h2.classList.toggle('hidden', !tf);
+  const ta = $('#bulkText');
+  if (ta) ta.placeholder = tf ? 'Saad Charpai\nHotel Royal Samaa\nMishal Tag VC 3 Size' : '(Saad Charpai) - (Aslam Al Madinah 1000)\n(Hotel Royal Samaa) - (Kohistan Press 1000)';
+}
+$$('#bulkModeSeg [data-bmode]').forEach(b => b.addEventListener('click', () => setBulkMode(b.dataset.bmode)));
 let bulkFromInbox = false; // review-mode: rows Muzammil ke inbox se aayi hain
 $('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
   bulkFromInbox = false;
@@ -903,7 +917,7 @@ $('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
   const tt = $('#bulkTitle'); if (tt) tt.textContent = '📋 Ek saath kai entries';
   $('#bulkText').value = ''; $('#bulkResult').innerHTML = ''; $('#bulkNotify').checked = true;
   const mg = $('#bulkMerge'); if (mg) mg.checked = true;
-  setBulkType('debit'); refreshBulkTags();
+  setBulkType('debit'); setBulkMode('paste'); refreshBulkTags();
   openModal('bulkModal');
 });
 $('#inboxReview') && $('#inboxReview').addEventListener('click', openInboxReview);
@@ -1013,6 +1027,16 @@ function parseBulkLines(text) {
 }
 let bulkRows = [];
 $('#bulkPreview').addEventListener('click', () => {
+  // TAFSEEL mode: har line sirf saman ki tafseel — customer aur payment agli screen par
+  // har row ke saamne (search + amount box) bhar lein.
+  if (bulkMode === 'tafseel') {
+    const lines = ($('#bulkText').value || '').split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) { toast('Kuch tafseel to paste karein'); return; }
+    bulkRows = lines.map(line => ({ raw: line, detail: line, name: '', amount: 0, type: bulkType, custId: null, candidates: [] }));
+    bulkFromInbox = false;
+    renderBulkPreview();
+    return;
+  }
   const parsed = parseBulkLines($('#bulkText').value);
   if (!parsed.length) { toast('Kuch paste to karein'); return; }
   const idx = buildCustIndex();
