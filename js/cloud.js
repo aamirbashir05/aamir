@@ -96,9 +96,9 @@ const Cloud = (() => {
     return new TextDecoder().decode(buf);
   }
   const RKEY = 'altariq_reset';
-  const PSIG = 'altariq_pushsig_v2'; // aakhri kamyab push ka signature (v2: ek dafa poora
-  // re-push force karne ke liye key badli — purane devices jinhone galti se local ko
-  // "pushed" mark kar liya tha, ab khud poora data server par bhej denge)
+  const PSIG = 'altariq_pushsig_v3'; // aakhri kamyab push ka signature (v3: ek dafa poora
+  // re-push force — v2 me concurrent chunk writes se base gzip corrupt ho gaya tha; ab
+  // atomic batch se har device apna poora data saaf dobara bhej dega, base theek ho jaye)
   // Reset-marker DURABLE: localStorage + IndexedDB dono me. Agar localStorage clear
   // ho jaye to bhi marker mehfooz — warna purana ek-baar ka import-reset dobara chal
   // kar (baad ki) entries mita sakta tha. Ye us khatarnak data-loss ko rokta hai.
@@ -257,16 +257,22 @@ const Cloud = (() => {
       const wdb = shareDb || db;
       const wcol = wdb.collection('khatas');
       const gz = await gzipB64(json);
+      // ATOMIC batch: saare chunks + main doc aik hi atomic commit me. Pehle alag-alag
+      // await se agar DO device aik waqt me push karte to unke chunks aapas me mix ho kar
+      // base gzip CORRUPT ho jata tha (torn write). Batch se poora set ek saath lagta hai —
+      // kisi doosre device ka push ya to poora pehle ya poora baad, beech me mix nahi.
+      const batch = wdb.batch();
       if (gz) {
         if (gz.length <= 900000) { doc.gz = gz; doc.chunks = 0; }
         else {                                    // 1 MiB se bara — kai docs me tor do
           const parts = [];
           for (let i = 0; i < gz.length; i += CHUNK) parts.push(gz.slice(i, i + CHUNK));
-          for (let i = 0; i < parts.length; i++) await wcol.doc(curSyncId + '_c' + i).set({ part: parts[i] });
-          doc.chunks = parts.length;              // chunks pehle likho, phir main doc
+          for (let i = 0; i < parts.length; i++) batch.set(wcol.doc(curSyncId + '_c' + i), { part: parts[i] });
+          doc.chunks = parts.length;
         }
       } else { doc.payload = json; doc.chunks = 0; }
-      await wcol.doc(curSyncId).set(doc);
+      batch.set(wcol.doc(curSyncId), doc);
+      await batch.commit();
       dirty = false; clearTimeout(retryT);
       fullPushedIds = pushedIds; lastDelStr = pushedDel; // JO bheja wahi base (race-safe)
       try { localStorage.setItem(PSIG, dataSig()); } catch (e) {}
