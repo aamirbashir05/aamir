@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v105'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v106'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1595,6 +1595,17 @@ function setupAutoUpdate() {
   // start cloud sync if configured (non-blocking)
   Cloud.init(onCloudRemote).then(r => {
     if (r && r.ok) { renderOverview(); if (Cloud.getStatus) renderBackupBar(Cloud.getStatus().state); }
+    // EK DAFA: purane sync gap ki wajah se kuch bheje gaye LINKS adhoore/purane data par
+    // atke the (jaise koi entry link me na dikhe). Is update par SAARE shared links ko
+    // mojooda (sahi) data se dobara publish karne ke liye pending me daal do -> flushShares
+    // unhe taaza kar dega. Marker se sirf ek baar chale.
+    try {
+      if (Cloud.isReady && Cloud.isReady() && !localStorage.getItem('altariq_reshare_v1')) {
+        [...Store.getCustomers(), ...Store.getSuppliers()].forEach(c => { if (c.shareId) { pendingShares.add(c.shareId); Store.recordShareToken(c.name, c.shareId); } });
+        savePendingShares();
+        localStorage.setItem('altariq_reshare_v1', '1');
+      }
+    } catch (e) {}
     flushShares(); // app khulte hi: koi baqi link-update (pichli dafa net na hone se) ab bhej do
     maybeRunImport();
   }).catch(() => { maybeRunImport(); });
