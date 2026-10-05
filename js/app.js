@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v107'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v108'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1568,7 +1568,7 @@ async function openDeletedRecovery() {
   (cashList || []).forEach(e => {
     const key = 'cb_' + e.id;
     if (e.dir !== 'in' || !e.customerName || !(Number(e.amount) > 0) || e.noLedger || have.has(key)) return;
-    if (!Store.isDeleted(key) || names.has(e.customerName.trim().toLowerCase())) return;
+    if (!Store.isDeleted(key) || names.has(e.customerName.trim().toLowerCase()) || CASH_ALIAS[normName(e.customerName)]) return;
     const note = (e.method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' payment' + (e.by ? ' (' + e.by + ')' : '') + (e.note ? ' — ' + e.note : '');
     items.push({ key, kind: 'customer', partyName: e.customerName, partyId: 'cash:' + e.customerName, delAt: 0, txn: { amount: Number(e.amount), type: 'credit', note, date: e.ts } });
   });
@@ -1695,6 +1695,8 @@ function renderCashBox() {
 // Cash "Jama (aaya)" jab kisi customer ke sath ho -> us customer ke hisaab me bhi
 // payment (credit) khud add ho jaye. tid ('cb_'+docId) se duplicate-safe (do phone /
 // baar baar snapshot par bhi aik hi dafa). Naam saaf match na ho to skip (sirf cash book me).
+// Muzammil Cash Book me jo naam kisi aur customer ke liye likha jata hai -> asal customer id
+const CASH_ALIAS = { 'bilal hazara printers': 'im44011byw' }; // = Bilal Ghani Bhai
 function applyCashToLedger(list) {
   if (!(list && list.length)) return;
   let idx = null, added = 0, lastC = null;
@@ -1702,10 +1704,13 @@ function applyCashToLedger(list) {
     if (e.dir !== 'in' || !e.customerName || !(Number(e.amount) > 0)) return;
     if (e.noLedger) return;                          // cash customer — sirf Cash Book, hisab me nahi
     if (!idx) idx = buildCustIndex();
-    const m = matchCustomer(e.customerName, idx);
+    const alias = CASH_ALIAS[normName(e.customerName)];
+    const m = alias && Store.getCustomer(alias) ? { custId: alias } : matchCustomer(e.customerName, idx);
     if (!m.custId) return;                       // saaf match nahi — cash book me hi rahe
     const c = Store.getCustomer(m.custId); if (!c) return;
-    const tid = 'cb_' + e.id;
+    let tid = 'cb_' + e.id;
+    // alias wali payment ka purana customer delete ho chuka tha (tid tombstoned) — nayi id se wapas
+    if (alias && Store.isDeleted(tid)) tid = 'cbr_' + e.id;
     if ((c.txns || []).some(x => x.id === tid)) return; // pehle se dala hua
     const label = (e.method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' payment' + (e.by ? ' (' + e.by + ')' : '') + (e.note ? ' — ' + e.note : '');
     Store.addPartyTxn('customer', c.id, { amount: e.amount, type: 'credit', note: label, date: e.ts || new Date().toISOString(), tid });
