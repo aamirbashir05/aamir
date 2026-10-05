@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v106'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v107'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -564,7 +564,14 @@ $('#saveCust').addEventListener('click', () => {
   else { const c = Store.addParty(currentKind, { name, phone }); closeModal('custModal'); openDetail(currentKind, c.id); }
 });
 $('#deleteCust').addEventListener('click', () => {
-  if (confirm('Ye account aur iska poora hisaab delete ho jayega. Yaqeen hai?')) { Store.deleteParty(currentKind, currentCustId); closeModal('custModal'); backFromDetail(); }
+  const p = curParty(); const n = p ? (p.txns || []).length : 0; const b = p ? Store.balanceOf(p) : 0;
+  const warn = n
+    ? '⚠️ "' + (p.name || '') + '" ki ' + n + ' entries hain' + (b ? ' (baqaya ' + fmtMoney(b) + ')' : '') + ' — account ke sath YE SAB ENTRIES BHI delete ho jayengi.\n\nAgar ye doosre customer ka duplicate hai to pehle entries us me daal dein.\n\nPhir bhi delete karein?'
+    : 'Ye account delete ho jayega. Yaqeen hai?';
+  if (!confirm(warn)) return;
+  if (n >= 1 && !confirm('Pakka? ' + n + ' entries hamesha ke liye hat jayengi.\n(Ghalti ho to: Settings → Purani Backups → "Delete hue khaton ki entries")')) return;
+  try { Store.forceSnapshot('delete: ' + (p && p.name || '')); } catch (e) {}
+  Store.deleteParty(currentKind, currentCustId); closeModal('custModal'); backFromDetail();
 });
 
 /* ---- Contacts se number chuno (Contact Picker API — Android Chrome) ---- */
@@ -1536,10 +1543,11 @@ $('#importFile').addEventListener('change', e => {
 $('#btnSnapshots').addEventListener('click', async () => {
   const snaps = await Store.listSnapshots();
   const list = $('#snapList');
-  if (snaps.length === 0) { list.innerHTML = `<div class="empty" style="padding:20px;">Abhi koi auto-backup nahi.</div>`; }
+  if (snaps.length === 0) { list.innerHTML = `<button class="snap-merge" id="btnDelRec" style="width:100%;margin-bottom:10px">🗑️ Delete hue khaton ki entries wapas laao</button><div class="empty" style="padding:20px;">Abhi koi auto-backup nahi.</div>`; $('#btnDelRec').addEventListener('click', openDeletedRecovery); }
   else {
-    list.innerHTML = snaps.map(s => `<div class="snap"><div class="s-info"><b>${fmtDateTime(s.at)}</b>${s.customers} customers · ${s.txns != null ? s.txns + ' entries' : ''}</div><button class="snap-merge" data-ts="${s.ts}">↩︎ Ghayeb wapas laao</button></div>`).join('');
-    $$('#snapList .snap-merge').forEach(btn => btn.addEventListener('click', async () => {
+    list.innerHTML = `<button class="snap-merge" id="btnDelRec" style="width:100%;margin-bottom:10px">🗑️ Delete hue khaton ki entries wapas laao</button>` + snaps.map(s => `<div class="snap"><div class="s-info"><b>${fmtDateTime(s.at)}</b>${s.customers} customers · ${s.txns != null ? s.txns + ' entries' : ''}</div><button class="snap-merge" data-ts="${s.ts}">↩︎ Ghayeb wapas laao</button></div>`).join('');
+    $('#btnDelRec').addEventListener('click', openDeletedRecovery);
+    $$('#snapList .snap-merge[data-ts]').forEach(btn => btn.addEventListener('click', async () => {
       if (!confirm('Is purane backup ka ghayeb data mojooda hisaab me MILA diya jayega.\n\n✅ Aap ki nayi entries zaya NAHI hongi — sirf jo purana ghayeb tha wo wapas aayega.\n\nJari rakhein?')) return;
       btn.disabled = true; btn.textContent = 'Ho raha hai…';
       await Store.mergeSnapshot(Number(btn.dataset.ts));
@@ -1548,6 +1556,45 @@ $('#btnSnapshots').addEventListener('click', async () => {
   }
   openModal('snapModal');
 });
+
+/* Delete hue customers ki entries wapas laao (trash + auto-backups + Cash Book se) */
+async function openDeletedRecovery() {
+  const list = $('#snapList');
+  list.innerHTML = `<div class="empty" style="padding:20px;">Dhoond raha hai…</div>`;
+  const items = await Store.findDeletedEntries();
+  // Cash Book: jin "Jama" entries ka customer delete ho gaya (har phone par cloud se milti hain)
+  const have = new Set(items.map(x => x.key));
+  const names = new Set(Store.getCustomers().map(c => (c.name || '').trim().toLowerCase()));
+  (cashList || []).forEach(e => {
+    const key = 'cb_' + e.id;
+    if (e.dir !== 'in' || !e.customerName || !(Number(e.amount) > 0) || e.noLedger || have.has(key)) return;
+    if (!Store.isDeleted(key) || names.has(e.customerName.trim().toLowerCase())) return;
+    const note = (e.method === 'easypaisa' ? 'Easypaisa' : 'Cash') + ' payment' + (e.by ? ' (' + e.by + ')' : '') + (e.note ? ' — ' + e.note : '');
+    items.push({ key, kind: 'customer', partyName: e.customerName, partyId: 'cash:' + e.customerName, delAt: 0, txn: { amount: Number(e.amount), type: 'credit', note, date: e.ts } });
+  });
+  // jo pehle hi wapas aa chuki (usi naam ke customer me same raqam/date/note) unhe chhupao
+  const sameIn = it => Store.getCustomers().concat(Store.getSuppliers()).some(c => (c.name || '').trim().toLowerCase() === (it.partyName || '').trim().toLowerCase() &&
+    (c.txns || []).some(t => Number(t.amount) === Number(it.txn.amount) && t.type === it.txn.type && (t.note || '') === (it.txn.note || '') && localDay(t.date) === localDay(it.txn.date)));
+  const groups = {};
+  items.filter(it => !sameIn(it)).forEach(it => { (groups[it.partyId] = groups[it.partyId] || { kind: it.kind, name: it.partyName, delAt: it.delAt, items: [] }).items.push(it); });
+  const gs = Object.values(groups).sort((a, b) => b.delAt - a.delAt);
+  if (!gs.length) { list.innerHTML = `<div class="empty" style="padding:20px;">Koi delete hua khata nahi mila (is phone ki backups me).</div>`; return; }
+  const dl = `<datalist id="recNames">${Store.getCustomers().map(c => `<option value="${esc(c.name)}">`).join('')}</datalist>`;
+  list.innerHTML = dl + gs.map((g, gi) => `<div class="snap" style="display:block">
+    <div class="s-info"><b>${esc(g.name || '(be-naam)')}</b>${g.delAt ? 'Delete: ' + fmtDateTime(new Date(g.delAt).toISOString()) + ' · ' : ''}${g.items.length} entries</div>
+    ${g.items.map(it => `<div style="font-size:12px;opacity:.85;margin:3px 0">${fmtDate(it.txn.date)} · ${it.txn.type === 'credit' ? '+' : '−'}${fmtMoney(it.txn.amount)} · ${esc(it.txn.note || '')}</div>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+      <input class="rec-to" data-g="${gi}" list="recNames" value="${esc(g.name || '')}" placeholder="Kis customer me?" style="flex:1;min-width:0;padding:8px;border-radius:8px;border:1px solid var(--line,#ccc)">
+      <button class="snap-merge rec-go" data-g="${gi}">↩︎ Wapas laao</button></div></div>`).join('');
+  $$('#snapList .rec-go').forEach(btn => btn.addEventListener('click', () => {
+    const g = gs[Number(btn.dataset.g)]; const to = ($(`#snapList .rec-to[data-g="${btn.dataset.g}"]`).value || '').trim() || g.name;
+    if (!confirm(g.items.length + ' entries "' + to + '" ke hisaab me wapas daal dein?\n(Is naam ka customer na ho to naya ban jayega)')) return;
+    const p = Store.recoverEntries(g.kind, to, g.items.map(x => x.txn));
+    try { republishIfShared(p); } catch (e) {}
+    toast('✅ ' + g.items.length + ' entries wapas aa gayin — ' + p.name);
+    openDeletedRecovery();
+  }));
+}
 
 /* ---------- Boot ---------- */
 // App khud ko chup-chaap update karta rahe: jab bhi khule/foreground aaye, naya code
