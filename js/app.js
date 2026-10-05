@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v108'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v109'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1696,8 +1696,17 @@ function renderCashBox() {
 // payment (credit) khud add ho jaye. tid ('cb_'+docId) se duplicate-safe (do phone /
 // baar baar snapshot par bhi aik hi dafa). Naam saaf match na ho to skip (sirf cash book me).
 // Muzammil Cash Book me jo naam kisi aur customer ke liye likha jata hai -> asal customer id
-const CASH_ALIAS = { 'bilal hazara printers': 'im44011byw' }; // = Bilal Ghani Bhai
+const CASH_ALIAS = {};
+// v108 me ghalti se 'Bilal Hazara Printers' ki cash entries Bilal Ghani Bhai me chali gayin
+// (wo alag customer tha) — wapas hata do (tombstone se baqi phones se bhi hat jayengi).
+function undoWrongAlias() {
+  const c = Store.getCustomer('im44011byw'); if (!c) return;
+  ['cbr_dZLfIGGOxjO3lJHhhXwM', 'cb_HB4GTSE3zVfJKwjgFFz4'].forEach(id => {
+    if ((c.txns || []).some(t => t.id === id)) { try { Store.deletePartyTxn('customer', c.id, id); } catch (e) {} }
+  });
+}
 function applyCashToLedger(list) {
+  try { undoWrongAlias(); } catch (e) {}
   if (!(list && list.length)) return;
   let idx = null, added = 0, lastC = null;
   list.forEach(e => {
