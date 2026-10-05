@@ -288,6 +288,46 @@ const Store = (() => {
     save();             // cloud par bhi push (recovered entries sync ho jayein)
     return true;
   }
+  // Delete hue customers (poora khata delete) ki entries dhoondo — trash + auto-backups se.
+  // Sirf wo entries jin ka customer ab mojood NAHI (ghalti se delete) — single entry jaan
+  // boojh kar mitayi ho to wo yahan nahi aati.
+  async function findDeletedEntries() {
+    const dead = data.deletedIds || {};
+    const alive = new Set(); data.customers.concat(data.suppliers).forEach(p => { alive.add(p.id); (p.txns || []).forEach(t => alive.add(t.id)); });
+    const out = [], seen = new Set();
+    const take = (p, kind) => {
+      if (!p || !p.id || alive.has(p.id) || !dead[p.id]) return;
+      (p.txns || []).forEach(t => {
+        if (!t || seen.has(t.id) || alive.has(t.id) || !(Number(t.amount) > 0)) return;
+        seen.add(t.id);
+        out.push({ key: t.id, kind, partyName: p.name || '', partyId: p.id, delAt: dead[p.id], txn: clone(t) });
+      });
+    };
+    try { const tr = await idbGet(S_KV, 'trash'); (tr || []).forEach(p => take(p, p.kind || 'customer')); } catch (e) {}
+    try {
+      const keys = (await idbKeys(S_SNAP)).sort((a, b) => b - a);
+      for (const k of keys) {
+        const sn = await idbGet(S_SNAP, k); if (!sn || !sn.data) continue;
+        (sn.data.customers || []).forEach(p => take(p, 'customer'));
+        (sn.data.suppliers || []).forEach(p => take(p, 'supplier'));
+      }
+    } catch (e) {}
+    return out;
+  }
+  function isDeleted(id) { return !!(data.deletedIds && data.deletedIds[id]); }
+  // Wapas laao: NAYI id se (purani id tombstoned hai, sync use phir mita deta). targetId na
+  // ho to usi naam ka customer dhoondo, warna naya bana do (link token naam se wapas lagta hai).
+  function recoverEntries(kind, partyName, txns, targetId) {
+    let p = targetId ? getParty(kind, targetId) : null;
+    if (!p) { const n = (partyName || '').trim().toLowerCase(); p = listOf(kind).find(x => (x.name || '').trim().toLowerCase() === n); }
+    if (!p) { p = { id: uid(), name: (partyName || 'Wapas aaya customer').trim(), phone: '', txns: [], quotes: [], m: Date.now() }; listOf(kind).push(p); }
+    (txns || []).forEach(t => {
+      p.txns.push({ id: uid(), amount: Number(t.amount) || 0, type: t.type === 'credit' ? 'credit' : 'debit', note: t.note || '', date: t.date || new Date().toISOString(), img: '', m: Date.now() });
+    });
+    p.txns.sort((a, b) => new Date(a.date) - new Date(b.date));
+    p.m = Date.now(); save();
+    return p;
+  }
   // Poora replace (khatarnak) — sirf jab jaan boojh kar sab kuch is version par le jana ho
   async function restoreSnapshot(ts) {
     const s = await idbGet(S_SNAP, ts);
@@ -325,6 +365,9 @@ const Store = (() => {
     if (p) { p.txns.forEach(t => t.img && delImage(t.img)); (p.quotes || []).forEach(q => q.img && delImage(q.img)); }
     // party + uski saari entries/rates ko tombstone karo (sync wapas na laaye)
     if (p) { markDeleted(id); (p.txns || []).forEach(t => markDeleted(t.id)); (p.quotes || []).forEach(q => markDeleted(q.id)); }
+    // delete se pehle poori copy 'trash' me rakh do — galti ho to entries wapas laayi ja sakein
+    if (p) { try { const copy = Object.assign(clone(p), { kind, deletedAt: Date.now() });
+      idbGet(S_KV, 'trash').then(arr => { arr = Array.isArray(arr) ? arr : []; arr.unshift(copy); idbPut(S_KV, arr.slice(0, 200), 'trash'); }).catch(() => {}); } catch (e) {} }
     const l = listOf(kind); const i = l.findIndex(x => x.id === id);
     if (i >= 0) { l.splice(i, 1); save(); }
   }
@@ -449,7 +492,7 @@ const Store = (() => {
     addQuote, updateQuote, deleteQuote, allQuotes,
     putImage, getImage,
     balanceOf, totals, recentTxns,
-    listSnapshots, restoreSnapshot, mergeSnapshot, recoverShareIds, recordShareToken, forceSnapshot,
+    listSnapshots, restoreSnapshot, mergeSnapshot, findDeletedEntries, recoverEntries, isDeleted, recoverShareIds, recordShareToken, forceSnapshot,
     getMeta, setMeta,
     markBackup, lastBackup, exportJSON, importJSON
   };
