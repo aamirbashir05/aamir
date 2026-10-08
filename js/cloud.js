@@ -5,6 +5,7 @@
    Stays a no-op until a Firebase config is present (firebase-config.js or Settings). */
 
 const Cloud = (() => {
+  let baseRev = '', staleTries = 0;
   let ready = false, syncOn = false, db = null, docRef = null, unsub = null, pushT = null, onRemote = null;
   let status = 'idle', onStatusCb = null, dirty = false, retryT = null, onlineHooked = false, curSyncId = null;
   let shareDb = null; // share/PDF links ke liye alag instance (persistence OFF — seedha server)
@@ -106,8 +107,9 @@ const Cloud = (() => {
   function setResetMarker(m) { try { localStorage.setItem(RKEY, m); } catch (e) {} try { Store.setMeta('reset', m); } catch (e) {} }
 
   // Data ka halka signature (bina poora stringify) — add/edit/delete pakadta hai
-  function dataSig() {
-    const d = Store.getData(); let n = 0, s = 0;
+  function dataSig() { return sigOf(Store.getData()); }
+  function sigOf(d) {
+    let n = 0, s = 0;
     const acc = arr => (arr || []).forEach(c => (c.txns || []).forEach(t => { n++; s += (t.amount || 0); }));
     acc(d.customers); acc(d.suppliers);
     return (d.customers || []).length + '/' + (d.suppliers || []).length + '/' + n + '/' + Math.round(s);
@@ -158,6 +160,7 @@ const Cloud = (() => {
     } catch (e) { console.warn('decompress', e); return false; }
     if (!json) return false;
     let rd; try { rd = JSON.parse(json); } catch (e) { return false; }
+    baseRev = sd.rev || sd.updatedAt || baseRev; // cloud ka ye version hum ne dekh liya
 
     // startup: cloud me jo pehle se hai wahi "base" hai — is se aage ki (aur band app
     // ke doran ki) entries chhote delta me foran jayengi, na ke bara snapshot ka intezaar.
@@ -184,7 +187,19 @@ const Cloud = (() => {
     let changed = false;
     try { changed = Store.mergeRemote(rd); } catch (e) { console.warn('merge', e); return false; }
     if (changed) { if (onRemote) onRemote(); schedulePush(); }
+    // SELF-HEAL: is phone par aisi entries hain jo cloud base me NAHI (kisi doosre phone ke
+    // purane backup ne overwrite kar di) -> foran dobara bhejo, warna wo cloud se ghayeb rehti.
+    else if (hasLocalMissing(rd)) schedulePush();
     return changed;
+  }
+  function remoteIds(rd) {
+    const out = [];
+    (rd.customers || []).concat(rd.suppliers || []).forEach(p => { (p.txns || []).forEach(t => out.push(t.id)); (p.quotes || []).forEach(q => out.push(q.id)); });
+    return out;
+  }
+  function hasLocalMissing(rd) {
+    const r = new Set(remoteIds(rd)); const d = Store.getData();
+    return (d.customers || []).concat(d.suppliers || []).some(p => (p.txns || []).some(t => !r.has(t.id)) || (p.quotes || []).some(q => !r.has(q.id)));
   }
   /* ---- FAST delta backup ---- */
   // Aakhri poore push ke baad se jo nayi entries/rates hain unhe jama karo
@@ -257,27 +272,58 @@ const Cloud = (() => {
       const wdb = shareDb || db;
       const wcol = wdb.collection('khatas');
       const gz = await gzipB64(json);
-      // ATOMIC batch: saare chunks + main doc aik hi atomic commit me. Pehle alag-alag
-      // await se agar DO device aik waqt me push karte to unke chunks aapas me mix ho kar
-      // base gzip CORRUPT ho jata tha (torn write). Batch se poora set ek saath lagta hai —
-      // kisi doosre device ka push ya to poora pehle ya poora baad, beech me mix nahi.
-      const batch = wdb.batch();
+      // ATOMIC: saare chunks + main doc aik hi commit me (neeche transaction) — do device
+      // aik waqt me push karein to chunks mix ho kar base gzip corrupt na ho.
+      const pushedSig = sigOf(snapData); // isi data ka signature (upload ke doran nayi entry alag pakri jaye)
+      const parts = [];
       if (gz) {
         if (gz.length <= 900000) { doc.gz = gz; doc.chunks = 0; }
         else {                                    // 1 MiB se bara — kai docs me tor do
-          const parts = [];
           for (let i = 0; i < gz.length; i += CHUNK) parts.push(gz.slice(i, i + CHUNK));
-          for (let i = 0; i < parts.length; i++) batch.set(wcol.doc(curSyncId + '_c' + i), { part: parts[i] });
           doc.chunks = parts.length;
         }
       } else { doc.payload = json; doc.chunks = 0; }
-      batch.set(wcol.doc(curSyncId), doc);
-      await batch.commit();
+      const rev = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      doc.rev = rev;
+      // TRANSACTION: likhne se pehle dekho cloud wahi version hai jo hum ne aakhri dafa dekha
+      // tha. Agar beech me kisi aur phone ne naya backup daal diya (ya hamara upload slow net
+      // par der tak atka raha) to PURANA data us par overwrite NAHI hoga — pehle naya mila
+      // kar phir bhejenge. Delta doc bhi sirf tab khaali hoga jab us ki sab entries is
+      // backup me shamil hon (doosre phone ki taaza entries mitein nahi).
+      const mainRef = wcol.doc(curSyncId), dRef = wcol.doc(curSyncId + '_d');
+      let stale = null, extraDelta = null;
+      await wdb.runTransaction(async tx => {
+        stale = null; extraDelta = null;
+        const cur = await tx.get(mainRef);
+        const ds = await tx.get(dRef);
+        const cd = cur.exists ? cur.data() : null;
+        const curRev = cd ? (cd.rev || cd.updatedAt || '') : '';
+        if (baseRev && curRev && curRev !== baseRev) { stale = cd; return; }
+        let clearDelta = true;
+        if (ds.exists) {
+          try {
+            const p = JSON.parse(ds.data().d || '{}');
+            const ids = remoteIds({ customers: p.c, suppliers: p.s });
+            if (ids.some(id => !pushedIds.has(id))) { clearDelta = false; extraDelta = ds.data(); }
+          } catch (e) {}
+        }
+        for (let i = 0; i < parts.length; i++) tx.set(wcol.doc(curSyncId + '_c' + i), { part: parts[i] });
+        tx.set(mainRef, doc);
+        if (clearDelta) tx.set(dRef, { d: JSON.stringify({ v: 1, c: [], s: [], del: snapData.deletedIds || {} }), updatedAt: new Date().toISOString() });
+      });
+      if (stale) {
+        // cloud par naya version hai — pehle use mila lo, phir dobara (zyada se zyada 3 dafa)
+        staleTries++;
+        const ok = await pull(stale);
+        baseRev = stale.rev || stale.updatedAt || '';
+        if (staleTries <= 3) return push();
+        if (!ok) throw new Error('stale base');
+      }
+      staleTries = 0; baseRev = rev;
       dirty = false; clearTimeout(retryT);
       fullPushedIds = pushedIds; lastDelStr = pushedDel; // JO bheja wahi base (race-safe)
-      try { localStorage.setItem(PSIG, dataSig()); } catch (e) {}
-      // stale delta doc khaali kar do (ab main doc me sab kuch hai)
-      try { await wcol.doc(curSyncId + '_d').set({ d: JSON.stringify({ v: 1, c: [], s: [], del: snapData.deletedIds || {} }), updatedAt: new Date().toISOString() }); } catch (e) {}
+      try { localStorage.setItem(PSIG, pushedSig); } catch (e) {}
+      if (extraDelta) pullDelta(extraDelta); // doosre phone ki delta entries bhi le lo
       // agar upload ke doran koi nayi entry aayi thi (jo bheji nahi gayi), foran delta bhej do
       if (dataSig() !== localStorage.getItem(PSIG)) schedulePush();
       setStatus('saved');
