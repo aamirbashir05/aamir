@@ -49,6 +49,9 @@
       background: linear-gradient(180deg, rgba(255,255,255,.30), transparent); pointer-events: none; }
     .balance .lbl { position: relative; z-index: 1; font-size: 14px; color: #6a4a12; font-weight: 700; }
     .balance .amt { position: relative; z-index: 1; font-size: 32px; font-weight: 900; margin-top: 4px; color: #3a2705; }
+    .balance .since { position: relative; z-index: 1; margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(90,60,10,.35);
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; font-size: 13px; font-weight: 600; color: #6a4a12; }
+    .balance .since b { font-size: 18px; font-weight: 900; color: #8a2b1a; white-space: nowrap; }
     .pos-t { color: #0b5a3d; } .neg-t { color: #8a2b1a; } .zero-t { color: #3a2705; }
     h3 { margin: 10px 24px 4px; font-size: 13px; color: #9a7b45; text-transform: uppercase; letter-spacing: .05em; font-weight: 800; }
     .ttbl { margin: 0 10px 20px; }
@@ -166,6 +169,19 @@
       catch (e) { showErr('Link kharab ho gaya lagta hai. Naya link mangwayein.'); return; }
       renderData(data);
     }
+    // Aakhri payment (usi din ki saari payments mila kar) ke BAAD aaye bills ka total
+    function sinceHtml(data) {
+      const ts = data.txns || [];
+      let lastT = -Infinity, last = null;
+      ts.forEach(t => { if (t.y === 'credit') { const x = new Date(t.d).getTime(); if (x >= lastT) { lastT = x; last = t; } } });
+      let pay = 0;
+      if (last) { const day = new Date(last.d).toDateString(); ts.forEach(t => { if (t.y === 'credit' && new Date(t.d).toDateString() === day) pay += Number(t.a) || 0; }); }
+      let total = 0;
+      ts.forEach(t => { if (t.y === 'debit' && new Date(t.d).getTime() > lastT) total += Number(t.a) || 0; });
+      if (!total) return '';
+      const lbl = last ? `Aakhri payment (${fmtDate(last.d)}: ${fmtMoney(pay)}) ke baad naye bills` : 'Bills (ab tak koi payment nahi)';
+      return `<div class="since"><span>${lbl}</span><b>${fmtMoney(total)}</b></div>`;
+    }
     function renderData(data) {
       const b = data.balance;
       const balCls = b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero';
@@ -204,6 +220,7 @@
         <div class="balance ${balCls}">
           <div class="lbl">${balLbl}</div>
           <div class="amt ${balTxtCls}">${fmtMoney(b)}</div>
+          ${sinceHtml(data)}
         </div>
         <h3>Lein-Dein ki Tafseel</h3>
         <div class="ttbl"><table>
