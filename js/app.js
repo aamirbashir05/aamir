@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v112'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v113'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -306,6 +306,8 @@ $('#btnReminders').addEventListener('click', () => {
       <div class="info"><div class="name">${esc(c.name)}</div><div class="phone">${fmtMoney(Store.balanceOf(c))} lena</div></div>
       <button class="remind-one" data-id="${c.id}">🔔 Yaad dilayein</button></div>`).join('');
     $$('#reminderList .remind-one').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); sendReminder(b.dataset.id); }));
+    // customer par click -> us ka poora hisaab khul jaye
+    $$('#reminderList .cust').forEach(el => { el.style.cursor = 'pointer'; el.addEventListener('click', () => { closeModal('reminderModal'); openDetail('customer', el.dataset.id); }); });
   }
   openModal('reminderModal');
 });
