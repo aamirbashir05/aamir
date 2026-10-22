@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v113'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v114'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -325,7 +325,7 @@ async function sendReminder(custId) {
   if (!phone) { toast('Is customer ka number add karein'); return; }
   await ensurePublished(c);
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
-  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\nAap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${sinceLine(c)}Aap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   waOpen(phone, msg);
 }
 
@@ -484,6 +484,14 @@ function renderDetail() {
   $('#dBalLabel').textContent = b > 0 ? L.balPos : b < 0 ? L.balNeg : 'Hisaab barabar hai';
   $('#dBalAmt').textContent = fmtMoney(b);
   $('#dBalAmt').className = 'b-amt ' + (b > 0 ? 'pos' : b < 0 ? 'neg' : 'zero');
+  const sEl = $('#dBalSince');
+  if (sEl) {
+    const sp = currentKind === 'customer' ? sinceLastPay(c) : { total: 0 };
+    if (sp.total) {
+      sEl.innerHTML = `<span>${sp.last ? 'Aakhri payment ' + fmtDate(sp.last.date) + ' (' + fmtMoney(sp.last.amount) + ') ke baad naya saman' : 'Naya saman (koi payment nahi)'}</span><b>${fmtMoney(sp.total)}</b>`;
+      sEl.classList.remove('hidden');
+    } else sEl.classList.add('hidden');
+  }
 
   const q = detailSearch.trim().toLowerCase();
   const list = $('#txnList');
@@ -1365,6 +1373,21 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', flushShares);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) flushShares(); });
 }
+// Aakhri payment (credit) ke BAAD jo saman (debit) aaya us ka total
+function sinceLastPay(c) {
+  const ts = (c.txns || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+  let li = -1; for (let i = ts.length - 1; i >= 0; i--) if (ts[i].type === 'credit') { li = i; break; }
+  let total = 0, count = 0;
+  for (let i = li + 1; i < ts.length; i++) if (ts[i].type === 'debit') { total += Number(ts[i].amount) || 0; count++; }
+  return { last: li >= 0 ? ts[li] : null, total: Math.round(total * 100) / 100, count };
+}
+function sinceLine(c) {
+  const sp = sinceLastPay(c);
+  if (!sp.total) return '';
+  return sp.last
+    ? `Aakhri payment (${fmtDate(sp.last.date)}: ${fmtMoney(sp.last.amount)}) ke baad naya saman: *${fmtMoney(sp.total)}*\n`
+    : `Naya saman (ab tak koi payment nahi): *${fmtMoney(sp.total)}*\n`;
+}
 function bizLine() { const l = (Store.getShop().bizLink || '').trim(); return l ? '\n' + l : ''; }
 function payFooter() { const p = (Store.getShop().paymentInfo || '').trim(); return p ? '\n\n' + p : ''; }
 // Sirf us entry ke pese aur total — baaki kuch nahi (per-entry auto WhatsApp)
@@ -1373,7 +1396,7 @@ function entryMessage(c, entry) {
   const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
   const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
   const link = shareLinkFor(c);
-  return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + balLine +
+  return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + sinceLine(c) + balLine +
     `\n\nPoora hisaab (PDF):\n${link}`;
 }
 async function sendEntryNotification(custId, entry, preWin) {
@@ -1399,7 +1422,7 @@ $('#btnWhatsApp').addEventListener('click', async () => {
   await ensurePublished(c);
   const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
   const balLine = b > 0 ? `Aap par baqi hai: *${fmtMoney(b)}*` : b < 0 ? `Hamare zimmay: *${fmtMoney(b)}*` : `Hisaab barabar hai.`;
-  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
+  const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${sinceLine(c)}${balLine}\n\nApna poora hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   waOpen(phone, msg);
 });
 $('#btnCopyLink').addEventListener('click', async () => {
