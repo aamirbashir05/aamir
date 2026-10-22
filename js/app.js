@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v110'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v111'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -924,7 +924,7 @@ $('#btnBulk') && $('#btnBulk').addEventListener('click', () => {
   const tt = $('#bulkTitle'); if (tt) tt.textContent = '📋 Ek saath kai entries';
   $('#bulkText').value = ''; $('#bulkResult').innerHTML = ''; $('#bulkNotify').checked = true;
   const mg = $('#bulkMerge'); if (mg) mg.checked = true;
-  setBulkType('debit'); setBulkMode('paste'); refreshBulkTags();
+  setBulkType('debit'); setBulkMode('paste'); refreshBulkTags(); resetBulkWhen();
   openModal('bulkModal');
 });
 $('#inboxReview') && $('#inboxReview').addEventListener('click', openInboxReview);
@@ -1033,6 +1033,8 @@ function parseBulkLines(text) {
   return out;
 }
 let bulkRows = [];
+let bulkDateV = '', bulkTimeV = ''; // bulk entries ki date/time (khaali time = abhi ka waqt)
+function resetBulkWhen() { bulkDateV = workDate || localDay(new Date()); bulkTimeV = ''; }
 $('#bulkPreview').addEventListener('click', () => {
   // TAFSEEL mode: har line sirf saman ki tafseel — customer aur payment agli screen par
   // har row ke saamne (search + amount box) bhar lein.
@@ -1133,10 +1135,16 @@ function renderBulkPreview() {
       <input class="bdet-in" type="text" data-det="${i}" value="${esc(r.detail || '')}" placeholder="Tafseel / kaam (optional)" autocomplete="off">
     </div>`;
   }).join('');
-  const dLbl = workDate ? fmtDate(workDate) : 'Aaj';
-  html += `<div class="bulk-note">Date: <b>${dLbl}</b>. Har entry ka naam, raqam aur tafseel yahin theek kar sakte hain. Save se pehle achi tarah dekh lein.</div>`;
+  if (!bulkDateV) resetBulkWhen();
+  html += `<div class="bulk-when"><label>📅 Date<input type="date" id="bulkDateIn" value="${bulkDateV}"></label>
+    <label>🕒 Time<input type="time" id="bulkTimeIn" value="${bulkTimeV}"></label>
+    <button type="button" class="bulk-now" id="bulkNowBtn">Abhi</button></div>`;
+  html += `<div class="bulk-note">Sab entries isi date/time par save hongi (time khaali = abhi ka waqt). Har entry ka naam, raqam aur tafseel yahin theek kar sakte hain. Save se pehle achi tarah dekh lein.</div>`;
   html += `<button class="save" id="bulkSave" style="width:100%;margin-top:6px">✅ Save karein</button>`;
   const res = $('#bulkResult'); res.innerHTML = html;
+  $('#bulkDateIn').addEventListener('change', e => { bulkDateV = e.target.value || localDay(new Date()); });
+  $('#bulkTimeIn').addEventListener('change', e => { bulkTimeV = e.target.value || ''; });
+  $('#bulkNowBtn').addEventListener('click', () => { bulkDateV = localDay(new Date()); bulkTimeV = ''; $('#bulkDateIn').value = bulkDateV; $('#bulkTimeIn').value = ''; });
   $$('#bulkResult [data-pick]').forEach(b => b.addEventListener('click', () => openAssign(+b.dataset.pick)));
   $$('#bulkResult [data-type]').forEach(b => b.addEventListener('click', () => { const r = bulkRows[+b.dataset.type]; if (r) { r.type = (r.type || bulkType) === 'debit' ? 'credit' : 'debit'; renderBulkPreview(); } }));
   $$('#bulkResult [data-amt]').forEach(inp => inp.addEventListener('input', () => { const r = bulkRows[+inp.dataset.amt]; if (r) { r.amount = parseFloat(inp.value) || 0; updateBulkSummary(); } }));
@@ -1192,8 +1200,9 @@ function renderAssign(q, candidates) {
 }
 $('#assignSearch') && $('#assignSearch').addEventListener('input', () => renderAssign($('#assignSearch').value, (bulkRows[assignIdx] || {}).candidates));
 async function bulkSave(rows) {
-  const date = (workDate || new Date().toISOString().slice(0, 10)) + 'T' + new Date().toTimeString().slice(0, 8);
-  const iso = new Date(date).toISOString();
+  const day = bulkDateV || workDate || localDay(new Date());
+  const tm = bulkTimeV ? bulkTimeV + ':00' : new Date().toTimeString().slice(0, 8);
+  const iso = new Date(day + 'T' + tm).toISOString();
   await Store.forceSnapshot('pre-bulk'); // safety net — bulk se pehle backup
   const done = [];
   for (const r of rows) {
@@ -2141,6 +2150,7 @@ function openInboxReview() {
   const pa = $('#bulkPaste'); if (pa) pa.classList.add('hidden');
   const tt = $('#bulkTitle'); if (tt) tt.textContent = '🆕 Muzammil ki nayi entries';
   const nb = $('#bulkNotify'); if (nb) nb.checked = true;
+  resetBulkWhen();
   renderBulkPreview();
   openModal('bulkModal');
 }
