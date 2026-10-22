@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v111'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v112'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1233,22 +1233,52 @@ async function showBulkSendList(done) {
   }
   // No API: har customer ka apna button (jinke number hai)
   const withPhone = done.filter(d => intlPhone(d.cust.phone));
-  let html = `<div class="bulk-note">Har customer ko alag bhejna hai — neeche har naam par <b>💬</b> dabayein (WhatsApp khulega, bhej kar wapas aayen aur agla dabayein).</div>`;
+  let html = withPhone.length ? `<button class="save" id="bulkAuto" style="width:100%;margin:4px 0 8px">🚀 Sab ko baari baari bhejein (${withPhone.length})</button>
+    <div class="bulk-note">Aik dafa dabayein — WhatsApp me <b>Send</b> karein aur <b>wapas aayein</b>, agla customer <b>khud khul jayega</b>. (Na khule to upar wala button dabayein.)</div>` : '';
   html += withPhone.map((d, i) => `<div class="bulk-row"><div class="bcol"><span class="bname">${esc(d.cust.name)}</span>${d.detail ? `<span class="bdet">${esc(d.detail)}</span>` : ''}</div><span class="bamt">${fmtMoney(d.amount)}</span><button class="bwa" data-i="${i}">💬 Bhejein</button></div>`).join('');
   const noPhone = done.length - withPhone.length;
   if (noPhone) html += `<div class="bulk-note">${noPhone} customer ka number nahi — unko message nahi jayega.</div>`;
   html += `<button class="cancel" id="bulkDone" style="width:100%;margin-top:10px">Ho gaya — band karein</button>`;
   const res = $('#bulkResult'); res.innerHTML = html;
-  $$('#bulkResult .bwa').forEach(btn => btn.addEventListener('click', () => {
-    const d = withPhone[+btn.dataset.i];
-    const c = Store.getCustomer(d.cust.id); if (!c) return;
+  const sent = new Set();
+  const sendOne = i => {
+    const d = withPhone[i]; const btn = $(`#bulkResult .bwa[data-i="${i}"]`);
+    const c = Store.getCustomer(d.cust.id); if (!c) { sent.add(i); return; }
     const phone = intlPhone(c.phone);
     const msg = entryMessage(c, { amount: d.amount, type: d.type || bulkType, note: d.detail || '' });
     ensurePublished(c).catch(() => {});
+    sent.add(i);
+    if (btn) { btn.textContent = '✓ Bhej diya'; btn.classList.add('done'); }
+    updAuto();
     waOpen(phone, msg);
-    btn.textContent = '✓ Bhej diya'; btn.classList.add('done');
-  }));
-  $('#bulkDone').addEventListener('click', () => closeModal('bulkModal'));
+  };
+  const nextIdx = () => withPhone.findIndex((_, i) => !sent.has(i));
+  const updAuto = () => {
+    const ab = $('#bulkAuto'); if (!ab) return;
+    const n = nextIdx();
+    if (n < 0) { ab.textContent = '✅ Sab ko bhej diya (' + withPhone.length + ')'; ab.disabled = true; return; }
+    ab.textContent = (sent.size ? '▶ Agla: ' : '🚀 Shuru: ') + withPhone[n].cust.name + '  (' + (sent.size + 1) + '/' + withPhone.length + ')';
+  };
+  let auto = false;
+  const onBack = () => {
+    if (document.hidden || !auto) return;
+    if (!$('#bulkModal').classList.contains('open') || !$('#bulkAuto')) { stopAuto(); return; }
+    setTimeout(() => {
+      if (!auto || document.hidden) return;
+      const n = nextIdx();
+      if (n < 0) { stopAuto(); toast('✅ Sab customers ko message chala gaya'); return; }
+      sendOne(n);
+    }, 900);
+  };
+  const stopAuto = () => { auto = false; document.removeEventListener('visibilitychange', onBack); };
+  const ab = $('#bulkAuto');
+  if (ab) ab.addEventListener('click', () => {
+    const n = nextIdx(); if (n < 0) return;
+    if (!auto) { auto = true; document.addEventListener('visibilitychange', onBack); }
+    sendOne(n);
+  });
+  $$('#bulkResult .bwa').forEach(btn => btn.addEventListener('click', () => sendOne(+btn.dataset.i)));
+  $('#bulkDone').addEventListener('click', () => { stopAuto(); closeModal('bulkModal'); });
 }
 
 /* ---------- Link + WhatsApp ---------- */
