@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v116'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v117'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1375,11 +1375,15 @@ if (typeof window !== 'undefined') {
 }
 // Aakhri payment (credit) ke BAAD jo saman (debit) aaya us ka total
 function sinceLastPay(c) {
-  const ts = (c.txns || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-  let li = -1; for (let i = ts.length - 1; i >= 0; i--) if (ts[i].type === 'credit') { li = i; break; }
+  const ts = c.txns || [];
+  let lastT = -Infinity, last = null;
+  ts.forEach(t => { if (t.type === 'credit') { const x = new Date(t.date).getTime(); if (x >= lastT) { lastT = x; last = t; } } });
+  // usi DIN ki saari payments aik "aakhri payment" (jaise cash + easypaisa aik saath)
+  let payAmt = 0;
+  if (last) { const day = localDay(last.date); ts.forEach(t => { if (t.type === 'credit' && localDay(t.date) === day) payAmt += Number(t.amount) || 0; }); }
   let total = 0, count = 0;
-  for (let i = li + 1; i < ts.length; i++) if (ts[i].type === 'debit') { total += Number(ts[i].amount) || 0; count++; }
-  return { last: li >= 0 ? ts[li] : null, total: Math.round(total * 100) / 100, count };
+  ts.forEach(t => { if (t.type === 'debit' && new Date(t.date).getTime() > lastT) { total += Number(t.amount) || 0; count++; } });
+  return { last: last ? { date: last.date, amount: Math.round(payAmt * 100) / 100 } : null, total: Math.round(total * 100) / 100, count };
 }
 function sinceLine(c) {
   const sp = sinceLastPay(c);
