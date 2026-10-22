@@ -182,7 +182,7 @@
         running += isDebit ? t.a : -t.a;
         return `<tr>
           <td>${fmtDate(t.d)}</td>
-          <td>${esc(t.n) || (isDebit ? 'Maal Diya' : 'Paisay Milay')}</td>
+          <td>${esc(t.n) || (isDebit ? 'Bill' : 'Payment Received')}</td>
           <td class="r ${isDebit ? 'debit' : ''}">${isDebit ? fmtAmt(t.a) : ''}</td>
           <td class="r ${!isDebit ? 'credit' : ''}">${!isDebit ? fmtAmt(t.a) : ''}</td>
           <td class="r">${fmtAmt(running)}</td>
@@ -208,7 +208,7 @@
         <h3>Lein-Dein ki Tafseel</h3>
         <div class="ttbl"><table>
           <thead>
-            <tr><th>Tareekh</th><th>Tafseel</th><th class="r">Maal</th><th class="r">Jama</th><th class="r">Baqaya</th></tr>
+            <tr><th>Tareekh</th><th>Tafseel</th><th class="r">Bill</th><th class="r">Payment</th><th class="r">Baqaya</th></tr>
           </thead>
           <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px;">Koi lein-dein nahi</td></tr>'}</tbody>
           <tfoot>

@@ -207,7 +207,7 @@
     const txns=(c.txns||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     let run=0;
     const html=txns.map(t=>{ const deb=t.type==='debit'; const amt=Number(t.amount)||0; run+=deb?amt:-amt;
-      return '<div class="le"><div class="d">'+fmtD(t.date)+'</div><div class="n">'+(t.note?esc(t.note):(deb?'Maal / raqam':'Payment'))+'</div><div class="a '+(deb?'neg':'pos')+'">'+(deb?'−':'+')+fmtRs(amt)+'</div><div class="r">Bal. '+fmtRs(run)+'</div></div>';
+      return '<div class="le"><div class="d">'+fmtD(t.date)+'</div><div class="n">'+(t.note?esc(t.note):(deb?'Bill':'Payment'))+'</div><div class="a '+(deb?'neg':'pos')+'">'+(deb?'−':'+')+fmtRs(amt)+'</div><div class="r">Bal. '+fmtRs(run)+'</div></div>';
     }).reverse().join('');
     $('#dBody').innerHTML = txns.length ? html : '<div class="empty">Koi entry nahi</div>';
   }

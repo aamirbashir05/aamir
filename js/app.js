@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v114'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v115'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -18,13 +18,13 @@ let workDate = '';       // "Entry date" mode: set ho to nayi entries isi date p
 
 function kindLabels(kind) {
   if (kind === 'supplier') return {
-    debit: 'Maal Liya', credit: 'Paisa Diya',
+    debit: 'Bill', credit: 'Payment Paid',
     addTitle: 'Naya Supplier', editTitle: 'Supplier Edit', delText: 'Supplier Delete',
     balPos: 'Supplier ko dena hai', balNeg: 'Supplier se lena hai',
     addBtn: '+ Naya Supplier', search: '🔍 Supplier dhoondein...'
   };
   return {
-    debit: 'Maal Diya', credit: 'Paisay Milay',
+    debit: 'Bill', credit: 'Payment Received',
     addTitle: 'Naya Customer', editTitle: 'Customer Edit', delText: 'Customer Delete',
     balPos: 'Customer se lena hai', balNeg: 'Customer ko dena hai',
     addBtn: '+ Naya Customer', search: '🔍 Customer dhoondein...'
@@ -249,7 +249,7 @@ function renderOvPanel() {
     let tDeb = 0, tCred = 0;
     rows.forEach(x => { if (x.t.type === 'debit') tDeb += x.t.amount; else tCred += x.t.amount; });
     const totHtml = rows.length ? `<div class="day-tot">
-        <div><span>Maal / Kaam</span><b class="neg">${fmtMoney(tDeb)}</b></div>
+        <div><span>Bill</span><b class="neg">${fmtMoney(tDeb)}</b></div>
         <div><span>Payment aayi</span><b class="pos">${fmtMoney(tCred)}</b></div>
       </div>` : '';
     // Din se pehle vs is din ke baad grand total (taake yaad rakhne ki zaroorat na ho)
@@ -269,7 +269,7 @@ function renderOvPanel() {
             const canWa = x.kind === 'customer' && intlPhone(x.c.phone);
             return `<div class="cust" data-kind="${x.kind}" data-id="${x.c.id}">
               <div class="t-icon ${x.t.type}">${d ? '↑' : '↓'}</div>
-              <div class="info"><div class="name">${esc(x.c.name)}</div><div class="phone">${esc(x.t.note) || (d ? 'Maal diya' : 'Paisay milay')} • ${fmtDateTime(x.t.date)}</div></div>
+              <div class="info"><div class="name">${esc(x.c.name)}</div><div class="phone">${esc(x.t.note) || (d ? 'Bill' : 'Payment received')} • ${fmtDateTime(x.t.date)}</div></div>
               <div class="bal"><div class="amt ${d ? 'neg' : 'pos'}">${d ? '−' : '+'}${fmtMoney(x.t.amount)}</div></div>
               ${canWa ? `<button class="t-wa" data-wa="${x.c.id}|${x.t.id}" title="WhatsApp bhejein">💬</button>` : ''}</div>`;
           }).join('') + `</div>`
@@ -488,7 +488,7 @@ function renderDetail() {
   if (sEl) {
     const sp = currentKind === 'customer' ? sinceLastPay(c) : { total: 0 };
     if (sp.total) {
-      sEl.innerHTML = `<span>${sp.last ? 'Aakhri payment ' + fmtDate(sp.last.date) + ' (' + fmtMoney(sp.last.amount) + ') ke baad naya saman' : 'Naya saman (koi payment nahi)'}</span><b>${fmtMoney(sp.total)}</b>`;
+      sEl.innerHTML = `<span>${sp.last ? 'Aakhri payment ' + fmtDate(sp.last.date) + ' (' + fmtMoney(sp.last.amount) + ') ke baad naye bills' : 'Bills (koi payment nahi)'}</span><b>${fmtMoney(sp.total)}</b>`;
       sEl.classList.remove('hidden');
     } else sEl.classList.add('hidden');
   }
@@ -1118,8 +1118,8 @@ function bulkSummaryHtml() {
   const cred = ok.filter(r => (r.type || bulkType) === 'credit');
   const debT = deb.reduce((s, r) => s + r.amount, 0), credT = cred.reduce((s, r) => s + r.amount, 0);
   let h = '';
-  if (deb.length) h += `<div class="ok"><b>${deb.length}</b><span>Maal (${fmtMoney(debT)})</span></div>`;
-  if (cred.length) h += `<div class="ok pos"><b>${cred.length}</b><span>Paisa (${fmtMoney(credT)})</span></div>`;
+  if (deb.length) h += `<div class="ok"><b>${deb.length}</b><span>Bill (${fmtMoney(debT)})</span></div>`;
+  if (cred.length) h += `<div class="ok pos"><b>${cred.length}</b><span>Payment (${fmtMoney(credT)})</span></div>`;
   if (need) h += `<div class="bad"><b>${need}</b><span>Adhoori</span></div>`;
   return h || `<div class="bad"><b>0</b><span>Kuch nahi</span></div>`;
 }
@@ -1138,7 +1138,7 @@ function renderBulkPreview() {
     return `<div class="bulk-erow ${cust ? '' : 'need'}">
       <div class="brow-top">
         <button class="bpick ${cust ? '' : 'need'}" data-pick="${i}">${who}</button>
-        <button class="btype ${isDeb ? 'neg' : 'pos'}" data-type="${i}" title="Maal/Paisa badlein">${isDeb ? '− Maal' : '+ Paisa'}</button>
+        <button class="btype ${isDeb ? 'neg' : 'pos'}" data-type="${i}" title="Bill/Payment badlein">${isDeb ? '− Bill' : '+ Payment'}</button>
         <input class="bamt-in ${isDeb ? 'neg' : 'pos'}" type="number" inputmode="decimal" data-amt="${i}" value="${r.amount || ''}" placeholder="0">
         <button class="bdel" data-del="${i}" title="Hatayein">✕</button>
       </div>
@@ -1385,15 +1385,15 @@ function sinceLine(c) {
   const sp = sinceLastPay(c);
   if (!sp.total) return '';
   return sp.last
-    ? `Aakhri payment (${fmtDate(sp.last.date)}: ${fmtMoney(sp.last.amount)}) ke baad naya saman: *${fmtMoney(sp.total)}*\n`
-    : `Naya saman (ab tak koi payment nahi): *${fmtMoney(sp.total)}*\n`;
+    ? `Aakhri payment (${fmtDate(sp.last.date)}: ${fmtMoney(sp.last.amount)}) ke baad naye bills: *${fmtMoney(sp.total)}*\n`
+    : `Bills (ab tak koi payment nahi): *${fmtMoney(sp.total)}*\n`;
 }
 function bizLine() { const l = (Store.getShop().bizLink || '').trim(); return l ? '\n' + l : ''; }
 function payFooter() { const p = (Store.getShop().paymentInfo || '').trim(); return p ? '\n\n' + p : ''; }
 // Sirf us entry ke pese aur total — baaki kuch nahi (per-entry auto WhatsApp)
 function entryMessage(c, entry) {
   const b = Store.balanceOf(c);
-  const kind = entry.type === 'debit' ? 'Maal Diya' : 'Paisay Milay';
+  const kind = entry.type === 'debit' ? 'Bill' : 'Payment Received';
   const balLine = b > 0 ? `Total baqaya: *${fmtMoney(b)}*` : b < 0 ? `Total (hamare zimmay): *${fmtMoney(b)}*` : `Total: barabar`;
   const link = shareLinkFor(c);
   return `${kind}: *${fmtMoney(entry.amount)}*\n` + (entry.note ? `Tafseel: ${entry.note}\n` : '') + sinceLine(c) + balLine +
