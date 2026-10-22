@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v115'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v116'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1663,6 +1663,22 @@ async function openDeletedRecovery() {
 /* ---------- Boot ---------- */
 // App khud ko chup-chaap update karta rahe: jab bhi khule/foreground aaye, naya code
 // (aur naya data padhne ki salahiyat) aa jaye — doosre phone par kuch na karna parre.
+// Server par naya version ho to (purana cache atka ho tab bhi) foran laga do: version.json
+// hamesha taaza (no-store) padho; farq ho to saari purani cache mita kar reload — har version par 1 dafa.
+async function forceUpdateCheck() {
+  try {
+    const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const v = ((await r.json()) || {}).v;
+    if (!v || v === APP_VERSION) return;
+    const key = 'altariq_forced_' + v;
+    if (localStorage.getItem(key)) return; // isi version par pehle koshish ho chuki — loop nahi
+    localStorage.setItem(key, '1');
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+    try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) await reg.update(); } catch (e) {}
+    location.reload();
+  } catch (e) {}
+}
 function setupAutoUpdate() {
   const hadController = !!navigator.serviceWorker.controller;
   let refreshing = false;
@@ -1686,6 +1702,10 @@ function setupAutoUpdate() {
     Store.setShop({ viewerBase: location.origin + location.pathname.replace(/\/[^\/]*\.html.*$/, "").replace(/\/$/, '') });
   }
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) setupAutoUpdate();
+  if (location.protocol.startsWith('http')) {
+    forceUpdateCheck();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) forceUpdateCheck(); });
+  }
   applyBranding();
   nav('overview');
   const av = document.getElementById('appVer'); if (av) av.textContent = 'Al Tariq Hisaab · ' + APP_VERSION;
