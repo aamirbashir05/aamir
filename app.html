@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=114">
+  <link rel="stylesheet" href="css/styles.css?v=115">
 </head>
 <body>
 
@@ -204,8 +204,8 @@
       </div>
     </div>
     <div class="detail-actions" id="detailActions">
-      <button class="btn act-debit" id="btnGave">− Maal Diya</button>
-      <button class="btn act-credit" id="btnGot">+ Paisay Milay</button>
+      <button class="btn act-debit" id="btnGave">− Bill</button>
+      <button class="btn act-credit" id="btnGot">+ Payment Received</button>
     </div>
   </div>
 
@@ -239,7 +239,7 @@
   <div class="modal-bg" id="txnModal">
     <div class="modal">
       <h2 id="txnModalTitle">Lein-Dein</h2>
-      <div class="type-toggle"><button id="typeDebit">− Maal Diya</button><button id="typeCredit">+ Paisay Milay</button></div>
+      <div class="type-toggle"><button id="typeDebit">− Bill</button><button id="typeCredit">+ Payment Received</button></div>
       <div class="field"><label>Raqam (Rs) — calculator use karein</label>
         <input id="txnAmount" class="amount-input" readonly value="0">
         <div class="calc-eq" id="txnEq"></div>
@@ -412,9 +412,9 @@
         <button data-bmode="tafseel">✍️ Sirf tafseel</button>
       </div>
       <div id="bulkPaste">
-        <p class="hint" id="bulkPasteHint"><b>Orders aur Payments aik saath</b> paste kar sakte hain — app khud pehchan legi:<br><b>Order (Maal):</b> (500 Sticker Sehat KPK)(Flex zone 9500)<br><b>Payment (Paisa):</b> 6000 Amjad Press<br><span style="color:var(--muted)">Bracket wali line = Maal (debit). Number se shuru hone wali = Payment (credit). Har line ka type agli screen par badla bhi ja sakta hai. Poora naam lazmi nahi — "Kohistan Press" bhi "Hamza Kohistan Press" ko dhoond lega.</span></p>
+        <p class="hint" id="bulkPasteHint"><b>Orders aur Payments aik saath</b> paste kar sakte hain — app khud pehchan legi:<br><b>Order (Bill):</b> (500 Sticker Sehat KPK)(Flex zone 9500)<br><b>Payment:</b> 6000 Amjad Press<br><span style="color:var(--muted)">Bracket wali line = Bill (debit). Number se shuru hone wali = Payment (credit). Har line ka type agli screen par badla bhi ja sakta hai. Poora naam lazmi nahi — "Kohistan Press" bhi "Hamza Kohistan Press" ko dhoond lega.</span></p>
         <p class="hint hidden" id="bulkTafHint"><b>Sirf saman ki tafseel paste karein</b> — har line aik entry. Aage har tafseel ke saamne <b>customer (search se chunein)</b> + <b>payment</b> ka box aa jayega.</p>
-        <div class="type-toggle"><button id="bulkDebit">− Maal / Kaam Diya</button><button id="bulkCredit">+ Payment Aayi</button></div>
+        <div class="type-toggle"><button id="bulkDebit">− Bill</button><button id="bulkCredit">+ Payment Aayi</button></div>
         <p class="hint" style="margin-top:-4px;color:var(--muted)">Uper wala default hai — sirf un lines ke liye jo khud pehchani na jayein.</p>
         <div class="field"><label>Yahan paste karein</label>
           <div class="tag-row" id="bulkTags">
@@ -479,10 +479,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=114"></script>
-  <script src="js/logo.js?v=114"></script>
-  <script src="js/store.js?v=114"></script>
-  <script src="js/cloud.js?v=114"></script>
-  <script src="js/app.js?v=114"></script>
+  <script src="js/firebase-config.js?v=115"></script>
+  <script src="js/logo.js?v=115"></script>
+  <script src="js/store.js?v=115"></script>
+  <script src="js/cloud.js?v=115"></script>
+  <script src="js/app.js?v=115"></script>
 </body>
 </html>
