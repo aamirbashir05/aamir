@@ -753,3 +753,6 @@ body { background: radial-gradient(600px 300px at 100% -6%, rgba(231,162,76,.08)
 .bulk-when label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .bulk-when input { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.03); color: var(--text); font: inherit; font-size: 14px; }
 .bulk-now { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.05); color: var(--text); font-weight: 600; }
+/* aakhri payment ke baad naya saman */
+.balance-box .b-since { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.balance-box .b-since b { font-size: 16px; color: var(--red); white-space: nowrap; }
