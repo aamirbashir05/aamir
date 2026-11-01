@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v118'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v119'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1338,11 +1338,36 @@ const PENDING_SHARES_KEY = 'altariq_pendingshares';
 function loadPendingShares() { try { return new Set(JSON.parse(localStorage.getItem(PENDING_SHARES_KEY) || '[]')); } catch (e) { return new Set(); } }
 function savePendingShares() { try { localStorage.setItem(PENDING_SHARES_KEY, JSON.stringify([...pendingShares])); } catch (e) {} }
 const pendingShares = loadPendingShares();
+// LINK AUTO-HEAL: har shared customer ka "signature" (entries ginti + raqam + aakhri edit)
+// yaad rakho jo AAKHRI KAMYAB publish par tha. Agar abhi ka data us se mukhtalif hai —
+// chahe entry is phone par dali, sync se aayi, ya pichla publish fail hua — to link
+// dobara publish ho jaye. Is se koi link purane data par atka nahi rehta.
+const PUB_SIG_KEY = 'altariq_pubsig_v1';
+let pubSigs = {}; try { pubSigs = JSON.parse(localStorage.getItem(PUB_SIG_KEY) || '{}') || {}; } catch (e) { pubSigs = {}; }
+function partySig(c) {
+  let n = 0, s = 0, m = 0;
+  (c.txns || []).forEach(t => { n++; s += (t.type === 'debit' ? 1 : -1) * (Number(t.amount) || 0); m = Math.max(m, Number(t.m) || 0); });
+  return n + '|' + Math.round(s * 100) + '|' + m + '|' + (c.name || '') + '|' + (c.phone || '');
+}
+function markPublished(sid, c) { pubSigs[sid] = partySig(c); try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} }
+let healT = null;
+function healLinks() {
+  clearTimeout(healT);
+  healT = setTimeout(() => {
+    if (!Cloud.isReady || !Cloud.isReady()) return;
+    let n = 0;
+    [...Store.getCustomers(), ...Store.getSuppliers()].forEach(c => {
+      if (c.shareId && pubSigs[c.shareId] !== partySig(c) && !pendingShares.has(c.shareId)) { pendingShares.add(c.shareId); n++; }
+    });
+    if (n) { savePendingShares(); flushShares(); }
+  }, 4000);
+}
 function republishIfShared(party) {
   if (!party || !party.shareId) return;
   Store.recordShareToken(party.name, party.shareId); // token permanently yaad rakho
   if (Cloud.isReady() && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
-    Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) { pendingShares.add(party.shareId); savePendingShares(); } });
+    const sig = partySig(party);
+    Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) { pendingShares.add(party.shareId); savePendingShares(); } else { pubSigs[party.shareId] = sig; try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} } });
   } else {
     pendingShares.add(party.shareId); savePendingShares(); // baad me update hogi
   }
@@ -1356,7 +1381,7 @@ async function republishAllShared() {
   let done = 0;
   for (const c of all) {
     Store.recordShareToken(c.name, c.shareId);
-    try { const ok = await Cloud.publishShare(c.shareId, sharePayload(c)); if (ok) done++; } catch (e) {}
+    try { const ok = await Cloud.publishShare(c.shareId, sharePayload(c)); if (ok) { done++; markPublished(c.shareId, c); } } catch (e) {}
   }
   toast('✅ ' + done + '/' + all.length + ' links update ho gaye');
 }
@@ -1366,7 +1391,8 @@ function flushShares() {
   [...pendingShares].forEach(id => {
     const p = all.find(x => x.shareId === id);
     if (!p) { pendingShares.delete(id); savePendingShares(); return; }
-    Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) { pendingShares.delete(id); savePendingShares(); } });
+    const sig = partySig(p);
+    Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) { pendingShares.delete(id); savePendingShares(); pubSigs[id] = sig; try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} } });
   });
 }
 if (typeof window !== 'undefined') {
@@ -1538,6 +1564,7 @@ $('#btnRemovePin').addEventListener('click', () => {
 });
 let _remoteRenderT = null, _lastRemoteToast = 0;
 function onCloudRemote() {
+  healLinks(); // sync se aayi entries -> link bhi taaza
   // rapid updates (live sync) ko aik saath karo — har delta par poora re-render na ho (jank/lag se bacho)
   clearTimeout(_remoteRenderT);
   _remoteRenderT = setTimeout(() => {
@@ -1742,6 +1769,8 @@ function setupAutoUpdate() {
       }
     } catch (e) {}
     flushShares(); // app khulte hi: koi baqi link-update (pichli dafa net na hone se) ab bhej do
+    healLinks();   // jo link data se peeche hain (kisi bhi wajah se) unhe taaza karo
+    try { Store.onSave(healLinks); } catch (e) {}
     maybeRunImport();
   }).catch(() => { maybeRunImport(); });
 })();
