@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v120'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v121'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -299,18 +299,61 @@ function renderOvPanel() {
 $('#btnReminders').addEventListener('click', () => {
   const debtors = Store.getCustomers().filter(c => Store.balanceOf(c) > 0).sort((a, b) => Store.balanceOf(b) - Store.balanceOf(a));
   const list = $('#reminderList');
+  stopRemChain();
   if (debtors.length === 0) { list.innerHTML = `<div class="empty" style="padding:24px;">Kisi se lena baqi nahi 🎉</div>`; }
   else {
-    list.innerHTML = debtors.map(c => `<div class="cust" data-id="${c.id}">
+    const withPhone = debtors.filter(c => intlPhone(c.phone)).length;
+    list.innerHTML = (withPhone ? `<button class="save" id="remAuto" style="width:100%;margin:2px 0 6px">🚀 Sab ko baari baari reminder bhejein (${withPhone})</button>
+      <div class="bulk-note" style="margin-bottom:8px">Aik dafa dabayein — WhatsApp me <b>Send</b> karein aur <b>wapas aayein</b>, agla customer <b>khud khul jayega</b>. Jis ko nahi bhejna us ka ☑ hata dein.</div>` : '') +
+      debtors.map(c => `<div class="cust" data-id="${c.id}">
+      ${intlPhone(c.phone) ? `<input type="checkbox" class="rem-pick" data-id="${c.id}" checked style="width:20px;height:20px;flex:none;accent-color:#e7a24c" onclick="event.stopPropagation()">` : ''}
       <div class="avatar" style="background:${avatarColor(c.id)}">${initials(c.name)}</div>
-      <div class="info"><div class="name">${esc(c.name)}</div><div class="phone">${fmtMoney(Store.balanceOf(c))} lena</div></div>
+      <div class="info"><div class="name">${esc(c.name)}</div><div class="phone">${fmtMoney(Store.balanceOf(c))} lena${intlPhone(c.phone) ? '' : ' · number nahi'}</div></div>
       <button class="remind-one" data-id="${c.id}">🔔 Yaad dilayein</button></div>`).join('');
-    $$('#reminderList .remind-one').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); sendReminder(b.dataset.id); }));
+    remSent = new Set();
+    $$('#reminderList .remind-one').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); remSent.add(b.dataset.id); markRemSent(b.dataset.id); updRemAuto(); sendReminder(b.dataset.id); }));
     // customer par click -> us ka poora hisaab khul jaye
-    $$('#reminderList .cust').forEach(el => { el.style.cursor = 'pointer'; el.addEventListener('click', () => { closeModal('reminderModal'); openDetail('customer', el.dataset.id); }); });
+    $$('#reminderList .cust').forEach(el => { el.style.cursor = 'pointer'; el.addEventListener('click', () => { stopRemChain(); closeModal('reminderModal'); openDetail('customer', el.dataset.id); }); });
+    $$('#reminderList .rem-pick').forEach(cb => cb.addEventListener('change', updRemAuto));
+    const ab = $('#remAuto');
+    if (ab) ab.addEventListener('click', () => {
+      const id = nextRemId(); if (!id) return;
+      if (!remAuto) { remAuto = true; document.addEventListener('visibilitychange', onRemBack); }
+      sendRemOne(id);
+    });
+    updRemAuto();
   }
   openModal('reminderModal');
 });
+// --- Udhaar reminders: baari baari chain (bulk WhatsApp jaisa) ---
+let remSent = new Set(), remAuto = false;
+function remQueue() { return $$('#reminderList .rem-pick').filter(cb => cb.checked).map(cb => cb.dataset.id); }
+function nextRemId() { return remQueue().find(id => !remSent.has(id)) || null; }
+function markRemSent(id) {
+  const b = $(`#reminderList .remind-one[data-id="${id}"]`);
+  if (b) { b.textContent = '✓ Bhej diya'; b.classList.add('done'); }
+}
+function updRemAuto() {
+  const ab = $('#remAuto'); if (!ab) return;
+  const q = remQueue(), done = q.filter(id => remSent.has(id)).length, nx = nextRemId();
+  if (!q.length) { ab.textContent = 'Koi customer chuna nahi'; ab.disabled = true; return; }
+  if (!nx) { ab.textContent = '✅ Sab ko reminder chala gaya (' + q.length + ')'; ab.disabled = true; return; }
+  ab.disabled = false;
+  const c = Store.getCustomer(nx);
+  ab.textContent = (done ? '▶ Agla: ' : '🚀 Shuru: ') + (c ? c.name : '') + '  (' + (done + 1) + '/' + q.length + ')';
+}
+function sendRemOne(id) { remSent.add(id); markRemSent(id); updRemAuto(); sendReminder(id); }
+function onRemBack() {
+  if (document.hidden || !remAuto) return;
+  if (!$('#reminderModal').classList.contains('open')) { stopRemChain(); return; }
+  setTimeout(() => {
+    if (!remAuto || document.hidden) return;
+    const id = nextRemId();
+    if (!id) { stopRemChain(); toast('✅ Sab ko reminder chala gaya'); return; }
+    sendRemOne(id);
+  }, 900);
+}
+function stopRemChain() { remAuto = false; document.removeEventListener('visibilitychange', onRemBack); }
 // WhatsApp DIRECT kholo — `wa.me` link pehle api.whatsapp.com ka "Continue to WhatsApp?"
 // intermediate page dikhata tha. `whatsapp://send` scheme seedha app kholta hai.
 // location.href use karte hain (popup-blocker se azad) is liye pehle se blank tab kholne
