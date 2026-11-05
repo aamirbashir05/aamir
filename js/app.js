@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v119'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v120'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -1327,7 +1327,7 @@ async function ensurePublished(party) {
   if (!party || !Cloud.isReady()) return;
   const token = Store.ensureShareId(currentKind, party.id);
   const timeout = new Promise(res => setTimeout(res, 5000));
-  try { await Promise.race([Cloud.publishShare(token, sharePayload(party)), timeout]); }
+  try { await Promise.race([Cloud.publishShare(token, sharePayload(party), partyVer(party)), timeout]); }
   catch (e) { console.warn('publish', e); }
 }
 // Shared customers jinki PDF link update honi hai. Agar abhi net/cloud na ho to
@@ -1342,12 +1342,18 @@ const pendingShares = loadPendingShares();
 // yaad rakho jo AAKHRI KAMYAB publish par tha. Agar abhi ka data us se mukhtalif hai —
 // chahe entry is phone par dali, sync se aayi, ya pichla publish fail hua — to link
 // dobara publish ho jaye. Is se koi link purane data par atka nahi rehta.
-const PUB_SIG_KEY = 'altariq_pubsig_v1';
+const PUB_SIG_KEY = 'altariq_pubsig_v2'; // v2: sab links aik dafa version ke sath dobara
 let pubSigs = {}; try { pubSigs = JSON.parse(localStorage.getItem(PUB_SIG_KEY) || '{}') || {}; } catch (e) { pubSigs = {}; }
 function partySig(c) {
   let n = 0, s = 0, m = 0;
   (c.txns || []).forEach(t => { n++; s += (t.type === 'debit' ? 1 : -1) * (Number(t.amount) || 0); m = Math.max(m, Number(t.m) || 0); });
   return n + '|' + Math.round(s * 100) + '|' + m + '|' + (c.name || '') + '|' + (c.phone || '');
+}
+// party ka version: aakhri tabdeeli ka waqt (nayi entry/edit = txn.m, delete/naam = party.m)
+function partyVer(c) {
+  let v = Number(c.m) || 0;
+  (c.txns || []).forEach(t => { const m = Number(t.m) || 0; if (m > v) v = m; });
+  return v;
 }
 function markPublished(sid, c) { pubSigs[sid] = partySig(c); try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} }
 let healT = null;
@@ -1367,7 +1373,7 @@ function republishIfShared(party) {
   Store.recordShareToken(party.name, party.shareId); // token permanently yaad rakho
   if (Cloud.isReady() && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
     const sig = partySig(party);
-    Cloud.publishShare(party.shareId, sharePayload(party)).then(ok => { if (!ok) { pendingShares.add(party.shareId); savePendingShares(); } else { pubSigs[party.shareId] = sig; try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} } });
+    Cloud.publishShare(party.shareId, sharePayload(party), partyVer(party)).then(ok => { if (!ok) { pendingShares.add(party.shareId); savePendingShares(); } else { pubSigs[party.shareId] = sig; try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} } });
   } else {
     pendingShares.add(party.shareId); savePendingShares(); // baad me update hogi
   }
@@ -1381,7 +1387,7 @@ async function republishAllShared() {
   let done = 0;
   for (const c of all) {
     Store.recordShareToken(c.name, c.shareId);
-    try { const ok = await Cloud.publishShare(c.shareId, sharePayload(c)); if (ok) { done++; markPublished(c.shareId, c); } } catch (e) {}
+    try { const ok = await Cloud.publishShare(c.shareId, sharePayload(c), partyVer(c)); if (ok) { done++; markPublished(c.shareId, c); } } catch (e) {}
   }
   toast('✅ ' + done + '/' + all.length + ' links update ho gaye');
 }
@@ -1392,7 +1398,7 @@ function flushShares() {
     const p = all.find(x => x.shareId === id);
     if (!p) { pendingShares.delete(id); savePendingShares(); return; }
     const sig = partySig(p);
-    Cloud.publishShare(id, sharePayload(p)).then(ok => { if (ok) { pendingShares.delete(id); savePendingShares(); pubSigs[id] = sig; try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} } });
+    Cloud.publishShare(id, sharePayload(p), partyVer(p)).then(ok => { if (ok) { pendingShares.delete(id); savePendingShares(); pubSigs[id] = sig; try { localStorage.setItem(PUB_SIG_KEY, JSON.stringify(pubSigs)); } catch (e) {} } });
   });
 }
 if (typeof window !== 'undefined') {
@@ -2290,7 +2296,7 @@ async function maybeRunImport() {
     // pehle bheje gaye shared links ki PDF ko naye data se update kar do (globally)
     const shared = [...Store.getCustomers(), ...Store.getSuppliers()].filter(c => c.shareId);
     let done = 0;
-    for (const c of shared) { Store.recordShareToken(c.name, c.shareId); try { await Cloud.publishShare(c.shareId, sharePayload(c)); done++; } catch (e) {} }
+    for (const c of shared) { Store.recordShareToken(c.name, c.shareId); try { await Cloud.publishShare(c.shareId, sharePayload(c), partyVer(c)); done++; } catch (e) {} }
     alert('Import mukammal ✓\n\nCustomers: ' + out.customers + '\nEntries: ' + out.txns +
       (shared.length ? '\nShared links update: ' + done + '/' + shared.length : '') +
       '\n\nAbu ke phone par bhi khud-ba-khud aa jayega.');
