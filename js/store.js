@@ -383,7 +383,9 @@ const Store = (() => {
     const p = getParty(kind, id); if (!p) return;
     const t = p.txns.find(x => x.id === txnId); if (t && t.img) delImage(t.img);
     markDeleted(txnId); // tombstone — doosre phone se dobara wapas na aaye
-    p.txns = p.txns.filter(x => x.id !== txnId); save();
+    p.txns = p.txns.filter(x => x.id !== txnId);
+    p.m = Date.now(); // party ka version barhao (link par purana data overwrite na ho)
+    save();
   }
   function updatePartyTxn(kind, id, txnId, patch) {
     const p = getParty(kind, id); if (!p) return null;

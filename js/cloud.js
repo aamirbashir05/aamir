@@ -189,13 +189,19 @@ const Cloud = (() => {
     if (changed) { if (onRemote) onRemote(); schedulePush(); }
     // SELF-HEAL: is phone par aisi entries hain jo cloud base me NAHI (kisi doosre phone ke
     // purane backup ne overwrite kar di) -> foran dobara bhejo, warna wo cloud se ghayeb rehti.
-    else if (hasLocalMissing(rd)) schedulePush();
+    else if (hasLocalMissing(rd) || hasTombMissing(rd)) schedulePush();
     return changed;
   }
   function remoteIds(rd) {
     const out = [];
     (rd.customers || []).concat(rd.suppliers || []).forEach(p => { (p.txns || []).forEach(t => out.push(t.id)); (p.quotes || []).forEach(q => out.push(q.id)); });
     return out;
+  }
+  // is phone par delete hui entries jo cloud base me (tombstone) nahi pohanchi
+  function hasTombMissing(rd) {
+    const r = rd.deletedIds || {}, l = Store.getData().deletedIds || {};
+    for (const k in l) if (!(k in r)) return true;
+    return false;
   }
   function hasLocalMissing(rd) {
     const r = new Set(remoteIds(rd)); const d = Store.getData();
@@ -240,8 +246,18 @@ const Cloud = (() => {
     // pohanch jaye. Pehle db (persistence ON) me delta local-queue me (bade snapshot
     // writes ke peeche) phas jata tha, is liye Abu ko der se + tukron me milta tha.
     const dref = (shareDb && curSyncId) ? shareDb.collection('khatas').doc(curSyncId + '_d') : deltaRef;
+    // MERGE (overwrite nahi): delta doc dono phone share karte hain — pehle seedha set karne se
+    // aik phone doosre ki taaza entries/deletes mita deta tha. Ab mojooda delta ke sath jama karo.
+    const mergeWrite = () => (shareDb && dref !== deltaRef)
+      ? shareDb.runTransaction(async tx => {
+          const cur = await tx.get(dref);
+          let p = payload;
+          if (cur.exists) { try { p = mergeDeltaPayload(JSON.parse(cur.data().d || '{}'), payload); } catch (e) {} }
+          tx.set(dref, { d: JSON.stringify(p), updatedAt: new Date().toISOString() });
+        })
+      : dref.set(body);
     try {
-      dref.set(body).catch(e => {
+      mergeWrite().catch(e => {
         // direct-to-server fail (shayad abhi offline) -> persistence-on se queue kar do
         // (net aate hi khud chala jayega); 12s wala poora snapshot bhi cover karta hai.
         if (dref !== deltaRef && deltaRef) { try { deltaRef.set(body).catch(() => {}); } catch (_) {} }
@@ -251,6 +267,22 @@ const Cloud = (() => {
     setStatus('saved'); // seedha server par ja raha — foran "ho gaya"
   }
 
+  function mergeDeltaPayload(a, b) {
+    const ml = (x, y) => {
+      const m = new Map();
+      (x || []).concat(y || []).forEach(p => {
+        const o = m.get(p.id);
+        if (!o) { m.set(p.id, { id: p.id, name: p.name, phone: p.phone, shareId: p.shareId, txns: (p.txns || []).slice(), quotes: (p.quotes || []).slice() }); return; }
+        const ids = new Set(o.txns.map(t => t.id)); (p.txns || []).forEach(t => { if (!ids.has(t.id)) o.txns.push(t); });
+        const qids = new Set(o.quotes.map(q => q.id)); (p.quotes || []).forEach(q => { if (!qids.has(q.id)) o.quotes.push(q); });
+        if (!o.shareId && p.shareId) o.shareId = p.shareId;
+      });
+      return [...m.values()];
+    };
+    const del = Object.assign({}, a.del || {});
+    for (const k in (b.del || {})) if (!(k in del) || b.del[k] > del[k]) del[k] = b.del[k];
+    return { v: 1, c: ml(a.c, b.c), s: ml(a.s, b.s), del };
+  }
   async function push() {
     if (!docRef) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) { dirty = true; setStatus('offline'); return; }
@@ -426,12 +458,25 @@ const Cloud = (() => {
   }
 
   /* ---- live share links ---- */
-  async function publishShare(token, data) {
+  async function publishShare(token, data, ver) {
     if (!ready || !token) return false;
     const sdb = shareDb || db; if (!sdb) return false;   // shareDb: persistence-off -> seedha server
     // JSON string me store karo — Firestore nested arrays (txn payload) ko allow nahi karta.
-    try { await sdb.collection('share').doc(token).set({ data: JSON.stringify(data), updatedAt: new Date().toISOString() }); return true; }
-    catch (e) { console.warn('publishShare', e); return false; }
+    const body = { data: JSON.stringify(data), updatedAt: new Date().toISOString() };
+    try {
+      if (ver == null) { await sdb.collection('share').doc(token).set(body); return true; }
+      // VERSION GUARD: link par jo version pehle se hai agar wo is phone ke data se NAYA hai
+      // (doosre phone ne taaza data se bana diya), to purane data se overwrite NA karo.
+      body.ver = ver;
+      const ref = sdb.collection('share').doc(token);
+      await sdb.runTransaction(async tx => {
+        const cur = await tx.get(ref);
+        const cv = cur.exists ? Number(cur.data().ver || 0) : 0;
+        if (cv > ver) return;            // link pehle se naya hai — chhor do
+        tx.set(ref, body);
+      });
+      return true;
+    } catch (e) { console.warn('publishShare', e); return false; }
   }
   async function fetchShare(token) {
     const sdb = shareDb || db; if (!sdb || !token) return null;
