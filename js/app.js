@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v121'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v122'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -317,6 +317,7 @@ $('#btnReminders').addEventListener('click', () => {
     $$('#reminderList .rem-pick').forEach(cb => cb.addEventListener('change', updRemAuto));
     const ab = $('#remAuto');
     if (ab) ab.addEventListener('click', () => {
+      if (Date.now() - remLastOpen < 1500) return; // WhatsApp khul raha hai — dobara tap se koi customer skip na ho
       const id = nextRemId(); if (!id) return;
       if (!remAuto) { remAuto = true; document.addEventListener('visibilitychange', onRemBack); }
       sendRemOne(id);
@@ -342,7 +343,11 @@ function updRemAuto() {
   const c = Store.getCustomer(nx);
   ab.textContent = (done ? '▶ Agla: ' : '🚀 Shuru: ') + (c ? c.name : '') + '  (' + (done + 1) + '/' + q.length + ')';
 }
-function sendRemOne(id) { remSent.add(id); markRemSent(id); updRemAuto(); sendReminder(id); }
+let remLastOpen = 0;
+function sendRemOne(id) {
+  remLastOpen = Date.now();
+  remSent.add(id); markRemSent(id); updRemAuto(); sendReminder(id);
+}
 function onRemBack() {
   if (document.hidden || !remAuto) return;
   if (!$('#reminderModal').classList.contains('open')) { stopRemChain(); return; }
@@ -362,14 +367,20 @@ function waOpen(phone, msg, preWin) {
   if (preWin) { try { preWin.close(); } catch (e) {} }
   location.href = 'whatsapp://send?phone=' + phone + '&text=' + encodeURIComponent(msg);
 }
-async function sendReminder(custId) {
-  const c = Store.getCustomer(custId); if (!c) return;
+// Entries wale message ki tarah FORAN: link ka intezaar nahi — WhatsApp seedha khulta hai,
+// link background me taaza hota hai (pehle 5s tak rukta tha, chain me gadbad hoti thi).
+function sendReminder(custId) {
+  const c = Store.getCustomer(custId); if (!c) return false;
   const phone = intlPhone(c.phone);
-  if (!phone) { toast('Is customer ka number add karein'); return; }
-  await ensurePublished(c);
-  const shop = Store.getShop(), link = shareLinkFor(c), b = Store.balanceOf(c);
+  if (!phone) { toast('Is customer ka number add karein'); return false; }
+  let link;
+  if (Cloud.isReady()) { const tok = c.shareId || Store.ensureShareId('customer', c.id); link = shareBase() + '/view.html?id=' + tok; }
+  else link = buildViewerLink(c);
+  try { republishIfShared(Store.getCustomer(custId)); } catch (e) {}
+  const shop = Store.getShop(), b = Store.balanceOf(c);
   const msg = `*${shop.name || 'Al Tariq Printers'}*\nAssalam-o-Alaikum ${c.name},\n\n${sinceLine(c)}Aap ke zimmay *${fmtMoney(b)}* baqaya hai. Baraye meharbani adaigi kar dein.\n\nApna hisaab (PDF) yahan dekhein:\n${link}${payFooter()}`;
   waOpen(phone, msg);
+  return true;
 }
 
 /* ---------- Accounts ---------- */
