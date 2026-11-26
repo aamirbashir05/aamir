@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v125'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v126'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2066,21 +2066,37 @@ function renderOghi() {
   el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
   el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c, b); }));
 }
+// Customer ka hisaab kab se: us ki pehli payment ya add hone ka mahina (jo pehle ho),
+// lekin Apr 2026 (Oghi hisaab ki shuruat) se pehle nahi.
+const OG_START = '2026-04';
+function ogCustStart(c) {
+  let s = (c.ts || '').slice(0, 7) || OG_START;
+  (oghiData.pays || []).forEach(p => { if (p.custId === c.id && p.month && p.month < s) s = p.month; });
+  return s < OG_START ? OG_START : s;
+}
+// is customer ka ab tak (dekhe ja rahe mahine tak) kitna baqi hai
+function ogDueUpTo(c, upto) {
+  const mo = Number(c.amount) || 0; let due = 0; if (upto < ogCustStart(c)) return 0;
+  ogMonthRange(ogCustStart(c), upto).forEach(m => { const p = ogPayOf(c.id, m); due += Math.max(0, mo - (p ? (Number(p.amount) || 0) : 0)); });
+  return due;
+}
 function ogMarkPay(c) {
   const mo = Number(c.amount) || 0;
-  const cur = ogPayOf(c.id, ogMonth); const paidCur = cur ? (Number(cur.amount) || 0) : 0;
-  const def = (mo - paidCur > 0) ? (mo - paidCur) : mo;
-  const v = prompt(c.name + '\n\nKitne paise aaye? (Rs)\n• Aghatta (kai mahine ek saath) ho to poora likhein — is month se aage ke mahine khud fill ho jayenge\n• Is month clear karna ho to 0 likhein', Math.round(def));
+  const cur = ogPayOf(c.id, ogMonth);
+  const owed = ogDueUpTo(c, ogMonth);
+  const def = owed > 0 ? owed : mo;
+  const v = prompt(c.name + '\n\nKitne paise aaye? (Rs)' + (owed > 0 ? '\nAb tak baqi: Rs ' + Math.round(owed) : '') + '\n• Jitne aaye poore likhein — pehle sab se PURANE baqi mahine bharenge, phir agle\n• Is month clear karna ho to 0 likhein', Math.round(def));
   if (v === null || v.trim() === '') return;
   const amt = parseFloat(v);
   if (amt === 0) { if (cur) Cloud.oghiDeletePay(c.id, ogMonth).then(() => toast('Is month clear')).catch(() => toast('Nahi hua')); return; }
   if (!isFinite(amt) || amt < 0) { toast('Ghalat raqam'); return; }
   if (mo <= 0) { toast('Is customer ki monthly 0 hai — pehle ✎ se set karein'); return; }
-  // amt = nayi payment; is month se aage ke mahine ki shortfall (monthly - diya) bharo
-  let left = amt, m = ogMonth, guard = 0, filled = 0; const writes = [];
-  while (left > 0 && guard < 48) { const cc = ogPayOf(c.id, m); const pc = cc ? (Number(cc.amount) || 0) : 0; const need = mo - pc; if (need > 0) { const take = Math.min(left, need); writes.push([m, pc + take]); left -= take; filled++; } m = ymShift(m, 1); guard++; }
+  // amt = nayi payment; SAB SE PURANE baqi mahine se shuru karke shortfall (monthly - diya) bharo
+  let left = amt, m = ogCustStart(c), guard = 0, filled = 0; const writes = [];
+  while (left > 0 && guard < 120) { const cc = ogPayOf(c.id, m); const pc = cc ? (Number(cc.amount) || 0) : 0; const need = mo - pc; if (need > 0) { const take = Math.min(left, need); writes.push([m, pc + take]); left -= take; filled++; } m = ymShift(m, 1); guard++; }
   if (!writes.length) { toast('Sab mahine already poore'); return; }
-  Promise.all(writes.map(w => Cloud.oghiSetPay(c.id, w[0], w[1], 'Aamir'))).then(() => toast(filled > 1 ? ('✅ ' + filled + ' mahine me laga diya') : '✅ Add ho gaya')).catch(() => toast('Nahi hua'));
+  const lbl = filled > 1 ? (ymLabel(writes[0][0]) + ' – ' + ymLabel(writes[writes.length - 1][0])) : ymLabel(writes[0][0]);
+  Promise.all(writes.map(w => Cloud.oghiSetPay(c.id, w[0], w[1], 'Aamir'))).then(() => toast('✅ ' + (filled > 1 ? filled + ' mahine: ' : '') + lbl)).catch(() => toast('Nahi hua'));
 }
 function ogEditCust(c) {
   const nm = prompt('Customer ka naam', c.name); if (nm === null) return;
