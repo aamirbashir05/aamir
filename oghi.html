@@ -44,13 +44,14 @@
   .pcard.paid{background:linear-gradient(180deg,#f2fbf6,#eaf7ef);border-left-color:var(--green);box-shadow:0 4px 12px rgba(16,150,90,.15)}
   .pcard.partial{background:linear-gradient(180deg,#fffaf0,#fdf2e0);border-left-color:var(--gold2)}
   .pc-st.part{color:var(--gold2)}
-  .pc-nm{font-weight:800;font-size:13.5px;color:#2b2620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:58px}
+  .pc-nm{font-weight:800;font-size:13.5px;color:#2b2620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:72px}
   .pc-st{display:inline-block;margin-top:4px;font-weight:900;font-size:12.5px}
   .pc-st.paid{color:#0c8a52}
   .pc-st.pend{color:var(--gold2)}
-  .pc-tools{position:absolute;top:6px;right:6px;display:flex;gap:3px}
-  .pc-x{width:23px;height:23px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.75);color:var(--muted);font-size:10px;font-weight:800;padding:0}
+  .pc-tools{position:absolute;top:5px;right:5px;display:flex;gap:5px}
+  .pc-x{min-width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.9);color:var(--muted);font-size:14px;font-weight:800;padding:0 4px}
   .pc-x.del{color:var(--red)}
+  .pc-x.del.sure{background:var(--red);color:#fff;border-color:var(--red);font-size:11px;padding:0 8px}
   .send{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(180deg,#f0b866,#e7a24c 60%,#c9851f);color:#3a2606;font-weight:900;font-size:16px;box-shadow:0 6px 16px rgba(231,162,76,.35)}
   .send:active{transform:translateY(2px)}
   .send:disabled{opacity:.5}
@@ -213,9 +214,15 @@
     if(!(nm.trim()) || !isFinite(a) || a<0){ toast('Ghalat'); return; }
     col('oghi_custs').doc(c.id).set({ name:nm.trim(), amount:Math.round(a*100)/100, ts:c.ts||new Date().toISOString(), by:'Oghi' }).then(()=>toast('✅ Update')).catch(()=>toast('Nahi hua'));
   }
-  function delCust(c){
-    if(!confirm('"'+c.name+'" ko hata dein? (Iski saari payments bhi ginti se nikal jayengi)')) return;
-    col('oghi_custs').doc(c.id).delete().then(()=>toast('Hata diya')).catch(()=>toast('Nahi hua'));
+  // popup ki jagah: pehla tap = "Pakka?", doosra tap = delete
+  function delCust(c,btn){
+    if(btn && !btn.classList.contains('sure')){
+      btn.classList.add('sure'); btn.textContent='Pakka?';
+      setTimeout(()=>{ if(btn.isConnected){ btn.classList.remove('sure'); btn.textContent='🗑'; } },3500);
+      toast('"'+c.name+'" hatane ke liye dobara dabayein');
+      return;
+    }
+    col('oghi_custs').doc(c.id).delete().then(()=>toast('✅ "'+c.name+'" hata diya')).catch(()=>toast('Nahi hua — internet check karein'));
   }
 
   function payOf(custId,ym){ return pays.find(p=>p.custId===custId && p.month===ym) || null; }
@@ -360,7 +367,7 @@
     }).join('');
     el.querySelectorAll('.pcard').forEach(b=>b.addEventListener('click',()=>{ const c=custs.find(x=>x.id===b.dataset.pay); if(c) markPay(c); }));
     el.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',(e)=>{ e.stopPropagation(); const c=custs.find(x=>x.id===b.dataset.edit); if(c) editCust(c); }));
-    el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',(e)=>{ e.stopPropagation(); const c=custs.find(x=>x.id===b.dataset.del); if(c) delCust(c); }));
+    el.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',(e)=>{ e.stopPropagation(); const c=custs.find(x=>x.id===b.dataset.del); if(c) delCust(c,b); }));
   }
 
   function startListeners(){
