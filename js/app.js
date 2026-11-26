@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v122'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v123'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2064,7 +2064,7 @@ function renderOghi() {
   }).join('');
   el.querySelectorAll('.og-card').forEach(b => b.addEventListener('click', () => { const c = custs.find(x => x.id === b.dataset.pay); if (c) ogMarkPay(c); }));
   el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
-  el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c); }));
+  el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c, b); }));
 }
 function ogMarkPay(c) {
   const mo = Number(c.amount) || 0;
@@ -2089,9 +2089,16 @@ function ogEditCust(c) {
   if (!nm.trim() || !isFinite(a) || a < 0) { toast('Ghalat'); return; }
   Cloud.oghiUpdateCust(c.id, nm.trim(), a, 'Aamir').then(() => toast('✅ Update')).catch(() => toast('Nahi hua'));
 }
-function ogDelCust(c) {
-  if (!confirm('"' + c.name + '" ko hata dein? (Iski payments bhi ginti se nikal jayengi)')) return;
-  Cloud.oghiDeleteCust(c.id).then(() => toast('Hata diya')).catch(() => toast('Nahi hua'));
+// Delete: popup (confirm) ki jagah button khud "Pakka?" ban jata hai — doosre tap par hat jata
+// hai (APK me popup na chale to bhi kaam kare, aur ghalti se aik tap par delete na ho).
+function ogDelCust(c, btn) {
+  if (btn && !btn.classList.contains('sure')) {
+    btn.classList.add('sure'); btn.textContent = 'Pakka?';
+    setTimeout(() => { if (btn.isConnected) { btn.classList.remove('sure'); btn.textContent = '🗑'; } }, 3500);
+    toast('"' + c.name + '" hatane ke liye dobara dabayein');
+    return;
+  }
+  Cloud.oghiDeleteCust(c.id).then(() => toast('✅ "' + c.name + '" hata diya')).catch(() => toast('Nahi hua — internet check karein'));
 }
 function openOghi() {
   if (!(Cloud.isSyncOn && Cloud.isSyncOn())) { toast('Pehle Cloud Sync ON karein (Settings)'); return; }

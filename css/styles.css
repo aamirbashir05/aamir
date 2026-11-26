@@ -144,13 +144,14 @@ input, select, textarea { font-family: inherit; font-size: 16px; color: var(--te
 .og-card.paid { background: linear-gradient(180deg,#f2fbf6,#eaf7ef); border-left-color: var(--green); box-shadow: 0 4px 12px rgba(16,150,90,.15); }
 .og-card.partial { background: linear-gradient(180deg,#fffaf0,#fdf2e0); border-left-color: var(--gold2); }
 .og-st.part { color: var(--gold2); }
-.og-cn { font-weight: 800; font-size: 13.5px; color: #2b2620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 58px; }
+.og-cn { font-weight: 800; font-size: 13.5px; color: #2b2620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 72px; }
 .og-st { display: inline-block; margin-top: 4px; font-weight: 900; font-size: 12.5px; }
 .og-st.paid { color: #0c8a52; }
 .og-st.pend { color: var(--gold2); }
-.og-tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; }
-.og-x { width: 23px; height: 23px; border: 1px solid var(--border); border-radius: 6px; background: rgba(255,255,255,.75); color: var(--muted); font-size: 10px; font-weight: 800; padding: 0; }
+.og-tools { position: absolute; top: 5px; right: 5px; display: flex; gap: 5px; }
+.og-x { min-width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,.9); color: var(--muted); font-size: 14px; font-weight: 800; padding: 0 4px; }
 .og-x.del { color: var(--red); }
+.og-x.del.sure { background: var(--red); color: #fff; border-color: var(--red); font-size: 11px; padding: 0 8px; }
 .og-pendbox { margin-top: 12px; padding: 12px; border: 1.5px dashed rgba(216,75,69,.4); background: rgba(216,75,69,.05); border-radius: 12px; }
 .og-pendt { font-size: 12px; font-weight: 800; color: #c1362f; margin-bottom: 8px; }
 .og-pendrow { display: flex; gap: 8px; align-items: center; }
