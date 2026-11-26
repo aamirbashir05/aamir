@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Al Tariq Printers — Report</title>
+<meta name="theme-color" content="#20242b">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<style>
+  :root { --bg:#f6f1e8; --ink:#2b2620; --muted:#857a68; --gold:#e3a24f; --green:#1fa855; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font:500 16px/1.5 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif; min-height:100vh; }
+  header { background:#20242b; color:#fff; padding:14px 16px; display:flex; align-items:center; gap:10px; }
+  header img { width:30px; height:30px; }
+  header b { font-size:16px; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  .pic { width:100%; border-radius:14px; box-shadow:0 10px 30px rgba(60,40,10,.18); background:#fff; display:block; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; height:56px; border:0; border-radius:14px;
+    font:700 17px/1 inherit; cursor:pointer; margin-top:14px; text-decoration:none; }
+  .wa { background:linear-gradient(180deg,#34d07a,var(--green)); color:#fff; box-shadow:0 8px 20px rgba(31,168,85,.3); }
+  .dl { background:#fff; color:var(--ink); border:1.5px solid #e2d6c2; }
+  .hint { color:var(--muted); font-size:14px; text-align:center; margin-top:12px; }
+  .msg { text-align:center; padding:60px 10px; color:var(--muted); }
+  .sticky { position:sticky; top:0; z-index:2; background:var(--bg); padding:4px 0 10px; }
+</style>
+</head>
+<body>
+<header><img src="assets/mark.png" alt=""><b>Al Tariq Printers</b></header>
+<main id="main"><div class="msg">Report load ho rahi hai…</div></main>
+<script src="js/firebase-config.js"></script>
+<script>
+  // Cloud par rakhi JPG (share/{id}.data = {img, t}) dikhao + asal Share button (Chrome me
+  // navigator.share se file seedha WhatsApp par jati hai). App ka WebView share nahi kar sakta.
+  const main = document.getElementById('main');
+  const id = new URL(location.href).searchParams.get('id');
+  function msg(t) { main.innerHTML = '<div class="msg">' + t + '</div>'; }
+  function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+  function toFile(durl, name) {
+    const b = atob(durl.split(',')[1]); const u = new Uint8Array(b.length);
+    for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    return new File([u], name, { type: 'image/jpeg' });
+  }
+  async function start() {
+    if (!id || !window.FIREBASE_CONFIG) { msg('Report nahi mili.'); return; }
+    try {
+      if (!(window.firebase && window.firebase.firestore)) {
+        const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+        await loadScript(base + 'firebase-app-compat.js');
+        await loadScript(base + 'firebase-firestore-compat.js');
+      }
+      firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
+      const doc = await firebase.firestore().collection('share').doc(id).get();
+      if (!doc.exists) { msg('Report nahi mili.'); return; }
+      let d = doc.data().data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) {} }
+      if (!d || !d.img) { msg('Report nahi mili.'); return; }
+      const name = (d.f || 'report') .replace(/[^\w.-]+/g, '-');
+      const file = toFile(d.img, name.endsWith('.jpg') ? name : name + '.jpg');
+      const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+      document.title = d.t || document.title;
+      main.innerHTML = `<div class="sticky">
+          ${canShare ? '<button class="btn wa" id="share">📤 WhatsApp par Share karein</button>' : ''}
+          <a class="btn dl" id="dl" download="${file.name}">⬇️ Phone me Save karein</a>
+        </div>
+        <img class="pic" src="${d.img}" alt="">
+        <p class="hint">${canShare ? 'Share dabayein aur WhatsApp / group chunein.' : 'Save karein, phir WhatsApp me gallery se bhejein.'}</p>`;
+      document.getElementById('dl').href = d.img;
+      const sb = document.getElementById('share');
+      if (sb) sb.addEventListener('click', () => { navigator.share({ files: [file], text: d.t || '' }).catch(() => {}); });
+    } catch (e) { msg('Load nahi hua. Internet check karke dobara kholein.'); }
+  }
+  start();
+</script>
+</body>
+</html>
