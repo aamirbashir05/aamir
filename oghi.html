@@ -103,12 +103,13 @@
           <div class="col"><div class="l">Bacha / kam</div><div class="v b" id="sBal">Rs 0</div></div>
         </div>
         <button class="send" id="shareBtn" style="margin-top:12px;background:linear-gradient(180deg,#34d399,#10b981);color:#06301f">📤 Share — is month ka JPG</button>
+        <button class="send" id="pendAll" style="margin-top:8px;background:linear-gradient(180deg,#f87171,#dc2626);color:#fff">📤 Pending JPG Share karein — abhi tak ka saara</button>
         <div class="pend-box">
-          <div class="pend-t">📋 Pending Report — kai mahine ka total (har customer + grand total)</div>
+          <div class="pend-t">📋 Ya khaas mahine chunein (har customer + grand total)</div>
           <div class="pend-row">
             <input id="pFrom" type="month"><span class="pend-se">se</span><input id="pTo" type="month">
           </div>
-          <button class="ghost" id="pendBtn" style="margin-top:8px">📤 Pending ka JPG banayein</button>
+          <button class="ghost" id="pendBtn" style="margin-top:8px">📤 Is range ka Pending JPG Share karein</button>
         </div>
         <div style="margin-top:12px">
           <label class="lbl">🚗 Driver ko is month kitna diya (Rs)</label>
@@ -325,8 +326,9 @@
     x.textAlign='right'; x.fillText(new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'}), W-pad, fy); x.textAlign='left';
     return cv;
   }
-  function sharePending(){
-    const from=($('#pFrom').value||curMonth), to=($('#pTo').value||curMonth);
+  function firstMonth(){ let f='2026-04'; pays.forEach(p=>{ if(p.month && p.month<f) f=p.month; }); return f; }
+  function sharePending(fromArg,toArg){
+    const from=(typeof fromArg==='string'&&fromArg)||$('#pFrom').value||curMonth, to=(typeof toArg==='string'&&toArg)||$('#pTo').value||curMonth;
     const months=monthRange(from,to);
     const rows=custs.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(c=>{
       const mo=Number(c.amount)||0; const due=mo*months.length;
@@ -337,7 +339,9 @@
     const cv=buildPending(rangeLbl(from,to), rows, grand);
     shareCanvasJPG(cv, 'oghi-pending-'+from+'_'+to+'.jpg', 'Oghi Garri — Pending Report ('+rangeLbl(from,to)+')');
   }
-  $('#pendBtn').addEventListener('click', sharePending);
+  $('#pendBtn').addEventListener('click', ()=>sharePending());
+  $('#pendAll').addEventListener('click', ()=>sharePending(firstMonth(), ymNowPend()));
+  function ymNowPend(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 
   function render(){
     $('#mLabel').textContent = ymLabel(curMonth);
