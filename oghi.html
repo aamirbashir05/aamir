@@ -193,18 +193,22 @@
 
   // ---- payment mark: partial ya aghatta (kai mahine ek saath, aage fill hote hain) ----
   function setPay(cid,m,amt){ return col('oghi_pays').doc(payId(cid,m)).set({ custId:cid, month:m, amount:Math.round(amt*100)/100, ts:new Date().toISOString(), by:'Oghi' }); }
+  const OG_START='2026-04';
+  function custStart(c){ let s=(c.ts||'').slice(0,7)||OG_START; pays.forEach(p=>{ if(p.custId===c.id && p.month && p.month<s) s=p.month; }); return s<OG_START?OG_START:s; }
+  function dueUpTo(c,upto){ const mo=Number(c.amount)||0; let due=0; if(upto<custStart(c)) return 0; monthRange(custStart(c),upto).forEach(m=>{ const p=payOf(c.id,m); due+=Math.max(0,mo-(p?(Number(p.amount)||0):0)); }); return due; }
   function markPay(c){
     const mo=Number(c.amount)||0;
-    const cur = payOf(c.id, curMonth); const paidCur = cur?(Number(cur.amount)||0):0;
-    const def = (mo-paidCur>0)?(mo-paidCur):mo;
-    const v = prompt(c.name+'\n\nKitne paise aaye? (Rs)\n• Aghatta (kai mahine ek saath) ho to poora likhein — is month se aage ke mahine khud fill ho jayenge\n• Is month clear karna ho to 0 likhein', Math.round(def));
+    const cur = payOf(c.id, curMonth);
+    const owed = dueUpTo(c, curMonth);
+    const def = owed>0?owed:mo;
+    const v = prompt(c.name+'\n\nKitne paise aaye? (Rs)'+(owed>0?'\nAb tak baqi: Rs '+Math.round(owed):'')+'\n• Jitne aaye poore likhein — pehle sab se PURANE baqi mahine bharenge, phir agle\n• Is month clear karna ho to 0 likhein', Math.round(def));
     if(v===null || v.trim()==='') return;
     const amt=parseFloat(v);
     if(amt===0){ if(cur) col('oghi_pays').doc(payId(c.id,curMonth)).delete().then(()=>toast('Is month clear')).catch(()=>toast('Nahi hua')); return; }
     if(!isFinite(amt)||amt<0){ toast('Ghalat raqam'); return; }
     if(mo<=0){ toast('Is customer ki monthly 0 hai — pehle ✎ se set karein'); return; }
-    let left=amt, m=curMonth, guard=0, filled=0; const writes=[];
-    while(left>0 && guard<48){ const cc=payOf(c.id,m); const pc=cc?(Number(cc.amount)||0):0; const need=mo-pc; if(need>0){ const take=Math.min(left,need); writes.push([m,pc+take]); left-=take; filled++; } m=ymShift(m,1); guard++; }
+    let left=amt, m=custStart(c), guard=0, filled=0; const writes=[];
+    while(left>0 && guard<120){ const cc=payOf(c.id,m); const pc=cc?(Number(cc.amount)||0):0; const need=mo-pc; if(need>0){ const take=Math.min(left,need); writes.push([m,pc+take]); left-=take; filled++; } m=ymShift(m,1); guard++; }
     if(!writes.length){ toast('Sab mahine already poore'); return; }
     Promise.all(writes.map(w=>setPay(c.id,w[0],w[1]))).then(()=>toast(filled>1?('✅ '+filled+' mahine me laga diya'):'✅ Add ho gaya')).catch(()=>toast('Nahi hua'));
   }

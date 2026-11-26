@@ -513,7 +513,7 @@ const Cloud = (() => {
   }
   function oghiUpdateCust(id, name, amount, by) {
     const c = _oc('oghi_custs'); if (!c || !id) return Promise.reject(new Error('bad'));
-    return c.doc(id).set({ name: (name || '').toString(), amount: Math.round(Number(amount) * 100) / 100, ts: new Date().toISOString(), by: (by || 'Aamir').toString() });
+    return c.doc(id).set({ name: (name || '').toString(), amount: Math.round(Number(amount) * 100) / 100, by: (by || 'Aamir').toString() }, { merge: true });
   }
   function oghiDeleteCust(id) {
     const c = _oc('oghi_custs'); if (!c || !id) return Promise.reject(new Error('bad'));
