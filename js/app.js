@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v124'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v125'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2160,10 +2160,41 @@ function ogShareCanvas(cv, fname, text) {
   try { const b = atob(durl.split(',')[1]); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); file = new File([u], fname, { type: 'image/jpeg' }); } catch (e) {}
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     navigator.share({ files: [file], text: text }).catch(() => {});
-  } else if ($('#imgFull')) {
-    $('#imgFull').src = durl; openModal('imgModal'); toast('Image tayyar — us par long-press karke WhatsApp par bhejein');
-  } else { const a = document.createElement('a'); a.href = durl; a.download = fname; a.click(); }
+  } else { shareImgFallback(durl, fname, text); }
 }
+// App (APK WebView) me seedha file share nahi hoti: JPG cloud par rakh kar Chrome me kholo
+// (wahan asal Share button WhatsApp tak file bhejta hai), ya WhatsApp par us ka link bhejo.
+let shImg = null;
+function shareImgFallback(durl, fname, text) {
+  shImg = { durl, fname, text, id: null, up: null };
+  $('#shImgPic').src = durl;
+  openModal('shareImgModal');
+  if (Cloud.isReady && Cloud.isReady()) {
+    const id = 'img_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    shImg.up = Cloud.publishShare(id, { img: durl, t: text || '', f: fname }).then(ok => { if (ok) shImg.id = id; return ok; });
+  }
+}
+function shImgUrl() { return shareBase() + '/img.html?id=' + shImg.id; }
+async function shImgReady() {
+  if (!shImg) return false;
+  if (!shImg.up) { toast('Internet / Cloud sync nahi — JPG par long-press karke bhejein'); return false; }
+  toast('Tayyar ho raha hai…');
+  const ok = await shImg.up;
+  if (!ok || !shImg.id) { toast('Upload nahi hua — internet check karein'); return false; }
+  return true;
+}
+$('#shImgWa') && $('#shImgWa').addEventListener('click', async () => {
+  if (!(await shImgReady())) return;
+  const url = shImgUrl();
+  // Chrome me kholo (googlechrome:// scheme) — na khule to link wala tareeqa
+  const t0 = Date.now();
+  location.href = 'googlechrome://navigate?url=' + encodeURIComponent(url);
+  setTimeout(() => { if (!document.hidden && Date.now() - t0 < 3000) { $('#shImgHint').innerHTML = 'Chrome nahi khula — <b>"WhatsApp par link bhejein"</b> dabayein, ya JPG par long-press karein.'; } }, 1800);
+});
+$('#shImgLink') && $('#shImgLink').addEventListener('click', async () => {
+  if (!(await shImgReady())) return;
+  location.href = 'whatsapp://send?text=' + encodeURIComponent((shImg.text ? shImg.text + '\n' : '') + shImgUrl());
+});
 function ogShareImage() {
   const custs = (oghiData.custs || []).slice().sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
   const rows = custs.map(c => { const p = ogPayOf(c.id, ogMonth); return { name: c.name, monthly: Number(c.amount) || 0, paid: !!p, amount: p ? (Number(p.amount) || 0) : 0 }; });
