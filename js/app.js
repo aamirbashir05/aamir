@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v123'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v124'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2205,8 +2205,16 @@ function ogBuildPending(rangeLabel, rows, grand) {
   x.textAlign = 'right'; x.fillText(new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }), W - pad, fy); x.textAlign = 'left';
   return cv;
 }
-function ogSharePending() {
-  const from = ($('#ogPFrom') && $('#ogPFrom').value) || ogMonth, to = ($('#ogPTo') && $('#ogPTo').value) || ogMonth;
+// "Abhi tak ka saara pending": pehli payment wale mahine (ya Apr 2026, hisaab ki shuruat) se is mahine tak
+function ogFirstMonth() {
+  let f = '2026-04';
+  (oghiData.pays || []).forEach(p => { if (p.month && p.month < f) f = p.month; });
+  return f;
+}
+function ogSharePendingAll() { ogSharePending(ogFirstMonth(), ymNow()); }
+function ogSharePending(fromArg, toArg) {
+  const from = (typeof fromArg === 'string' && fromArg) || ($('#ogPFrom') && $('#ogPFrom').value) || ogMonth;
+  const to = (typeof toArg === 'string' && toArg) || ($('#ogPTo') && $('#ogPTo').value) || ogMonth;
   const months = ogMonthRange(from, to);
   const rows = (oghiData.custs || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(c => {
     const mo = Number(c.amount) || 0; const due = mo * months.length;
@@ -2220,7 +2228,8 @@ function ogSharePending() {
 function wireOghi() {
   const box = $('#oghiBox'); if (box) box.addEventListener('click', openOghi);
   const sh = $('#ogShare'); if (sh) sh.addEventListener('click', ogShareImage);
-  const pb = $('#ogPendBtn'); if (pb) pb.addEventListener('click', ogSharePending);
+  const pb = $('#ogPendBtn'); if (pb) pb.addEventListener('click', () => ogSharePending());
+  const pa = $('#ogPendAll'); if (pa) pa.addEventListener('click', ogSharePendingAll);
   const p = $('#ogPrev'); if (p) p.addEventListener('click', () => { ogMonth = ymShift(ogMonth, -1); renderOghi(); });
   const n = $('#ogNext'); if (n) n.addEventListener('click', () => { ogMonth = ymShift(ogMonth, 1); renderOghi(); });
   const ds = $('#ogDrvSave'); if (ds) ds.addEventListener('click', () => {
