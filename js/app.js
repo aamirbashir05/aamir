@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v126'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v127'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2066,6 +2066,23 @@ function renderOghi() {
   el.querySelectorAll('[data-oedit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.oedit); if (c) ogEditCust(c); }));
   el.querySelectorAll('[data-odel]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); const c = custs.find(x => x.id === b.dataset.odel); if (c) ogDelCust(c, b); }));
 }
+// App ke andar ka form (prompt() ki jagah) — APK ke WebView me prompt OK ke baad bhi raqam
+// wapas nahi aati thi. Promise: {values} | {extra:true} | null (cancel).
+function askForm({ title, info, fields, okText, extraText }) {
+  return new Promise(resolve => {
+    $('#askTitle').textContent = title || '';
+    $('#askInfo').textContent = info || ''; $('#askInfo').style.display = info ? '' : 'none';
+    $('#askFields').innerHTML = fields.map((f, i) => `<div class="field"><label>${esc(f.label)}</label><input id="askF${i}" ${f.type === 'number' ? 'type="number" inputmode="decimal"' : 'type="text"'} autocomplete="off" value="${esc(String(f.value == null ? '' : f.value))}" placeholder="${esc(f.placeholder || '')}"></div>`).join('');
+    $('#askOk').textContent = okText || 'Save';
+    const ex = $('#askExtra'); ex.style.display = extraText ? '' : 'none'; ex.textContent = extraText || '';
+    const done = r => { closeModal('askModal'); $('#askOk').onclick = $('#askCancel').onclick = ex.onclick = null; resolve(r); };
+    $('#askOk').onclick = () => done({ values: fields.map((f, i) => $('#askF' + i).value) });
+    $('#askCancel').onclick = () => done(null);
+    ex.onclick = () => done({ extra: true });
+    openModal('askModal');
+    setTimeout(() => { const f0 = $('#askF0'); if (f0) { f0.focus(); try { f0.select(); } catch (e) {} } }, 80);
+  });
+}
 // Customer ka hisaab kab se: us ki pehli payment ya add hone ka mahina (jo pehle ho),
 // lekin Apr 2026 (Oghi hisaab ki shuruat) se pehle nahi.
 const OG_START = '2026-04';
@@ -2085,8 +2102,22 @@ function ogMarkPay(c) {
   const cur = ogPayOf(c.id, ogMonth);
   const owed = ogDueUpTo(c, ogMonth);
   const def = owed > 0 ? owed : mo;
-  const v = prompt(c.name + '\n\nKitne paise aaye? (Rs)' + (owed > 0 ? '\nAb tak baqi: Rs ' + Math.round(owed) : '') + '\n• Jitne aaye poore likhein — pehle sab se PURANE baqi mahine bharenge, phir agle\n• Is month clear karna ho to 0 likhein', Math.round(def));
-  if (v === null || v.trim() === '') return;
+  askForm({
+    title: c.name,
+    info: (owed > 0 ? 'Ab tak baqi: Rs ' + Math.round(owed).toLocaleString('en-PK') + '\n' : '') + 'Jitne paise aaye poore likhein — pehle sab se PURANE baqi mahine bharenge, phir agle.',
+    fields: [{ label: 'Kitne paise aaye? (Rs)', type: 'number', value: Math.round(def) }],
+    okText: '✅ Add karein',
+    extraText: cur ? ('🧹 ' + ymLabel(ogMonth) + ' clear karein') : ''
+  }).then(r => {
+    if (!r) return;
+    if (r.extra) { Cloud.oghiDeletePay(c.id, ogMonth).then(() => toast('Is month clear')).catch(() => toast('Nahi hua')); return; }
+    ogApplyPay(c, r.values[0]);
+  });
+}
+function ogApplyPay(c, v) {
+  const mo = Number(c.amount) || 0;
+  const cur = ogPayOf(c.id, ogMonth);
+  if (v == null || String(v).trim() === '') { toast('Raqam likhein'); return; }
   const amt = parseFloat(v);
   if (amt === 0) { if (cur) Cloud.oghiDeletePay(c.id, ogMonth).then(() => toast('Is month clear')).catch(() => toast('Nahi hua')); return; }
   if (!isFinite(amt) || amt < 0) { toast('Ghalat raqam'); return; }
@@ -2099,8 +2130,12 @@ function ogMarkPay(c) {
   Promise.all(writes.map(w => Cloud.oghiSetPay(c.id, w[0], w[1], 'Aamir'))).then(() => toast('✅ ' + (filled > 1 ? filled + ' mahine: ' : '') + lbl)).catch(() => toast('Nahi hua'));
 }
 function ogEditCust(c) {
-  const nm = prompt('Customer ka naam', c.name); if (nm === null) return;
-  const am = prompt('Monthly payment (Rs)', Math.round(c.amount)); if (am === null) return;
+  askForm({ title: 'Customer badlein', fields: [{ label: 'Naam', value: c.name }, { label: 'Monthly payment (Rs)', type: 'number', value: Math.round(c.amount) }] }).then(r => {
+    if (!r || !r.values) return;
+    ogSaveCust(c, r.values[0], r.values[1]);
+  });
+}
+function ogSaveCust(c, nm, am) {
   const a = parseFloat(am);
   if (!nm.trim() || !isFinite(a) || a < 0) { toast('Ghalat'); return; }
   Cloud.oghiUpdateCust(c.id, nm.trim(), a, 'Aamir').then(() => toast('✅ Update')).catch(() => toast('Nahi hua'));
@@ -2184,17 +2219,26 @@ let shImg = null;
 function shareImgFallback(durl, fname, text) {
   shImg = { durl, fname, text, id: null, up: null };
   $('#shImgPic').src = durl;
+  const hint = $('#shImgHint');
   openModal('shareImgModal');
-  if (Cloud.isReady && Cloud.isReady()) {
-    const id = 'img_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-    shImg.up = Cloud.publishShare(id, { img: durl, t: text || '', f: fname }).then(ok => { if (ok) shImg.id = id; return ok; });
-  }
+  if (!(Cloud.isReady && Cloud.isReady())) { hint.textContent = 'Cloud sync band hai — JPG par long-press karke bhejein.'; return; }
+  hint.textContent = '⏳ JPG upload ho rahi hai…';
+  // chhota version upload karo (jaldi + Firestore ki 1MB hadd se door)
+  let small = durl;
+  try { const im = $('#shImgPic'); const cv = document.createElement('canvas'); const go = () => { cv.width = im.naturalWidth; cv.height = im.naturalHeight; cv.getContext('2d').drawImage(im, 0, 0); small = cv.toDataURL('image/jpeg', 0.8); }; if (im.complete && im.naturalWidth) go(); } catch (e) {}
+  const id = 'img_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const timeout = new Promise(res => setTimeout(() => res('timeout'), 25000));
+  shImg.up = Promise.race([Cloud.publishShare(id, { img: small, t: text || '', f: fname }), timeout]).then(ok => {
+    if (ok === true) { shImg.id = id; hint.textContent = '✅ Tayyar — "WhatsApp par Share" dabayein (Chrome me khulegi, wahan Share dabayein).'; return true; }
+    hint.textContent = ok === 'timeout' ? '⚠️ Upload me der — internet check karein, ya JPG par long-press karke bhejein.' : '⚠️ Upload nahi hua — dobara koshish karein, ya JPG par long-press karke bhejein.';
+    return false;
+  }).catch(e => { hint.textContent = '⚠️ Upload error: ' + (e && e.message || e); return false; });
 }
 function shImgUrl() { return shareBase() + '/img.html?id=' + shImg.id; }
 async function shImgReady() {
   if (!shImg) return false;
   if (!shImg.up) { toast('Internet / Cloud sync nahi — JPG par long-press karke bhejein'); return false; }
-  toast('Tayyar ho raha hai…');
+  if (!shImg.id) toast('JPG upload ho rahi hai — 1 second…');
   const ok = await shImg.up;
   if (!ok || !shImg.id) { toast('Upload nahi hua — internet check karein'); return false; }
   return true;
