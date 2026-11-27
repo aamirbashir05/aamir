@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/styles.css?v=126">
+  <link rel="stylesheet" href="css/styles.css?v=127">
 </head>
 <body>
 
@@ -478,6 +478,19 @@
     </div>
   </div>
 
+  <div class="modal-bg" id="askModal">
+    <div class="modal">
+      <h2 id="askTitle"></h2>
+      <div class="hint" id="askInfo" style="margin:-4px 0 10px;white-space:pre-line"></div>
+      <div id="askFields"></div>
+      <div class="modal-actions" style="flex-wrap:wrap">
+        <button class="cancel" id="askCancel">Cancel</button>
+        <button class="save" id="askOk">Save</button>
+      </div>
+      <button class="cancel" id="askExtra" style="width:100%;margin-top:8px;display:none"></button>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <div id="lockScreen" class="lock hidden">
@@ -490,10 +503,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=126"></script>
-  <script src="js/logo.js?v=126"></script>
-  <script src="js/store.js?v=126"></script>
-  <script src="js/cloud.js?v=126"></script>
-  <script src="js/app.js?v=126"></script>
+  <script src="js/firebase-config.js?v=127"></script>
+  <script src="js/logo.js?v=127"></script>
+  <script src="js/store.js?v=127"></script>
+  <script src="js/cloud.js?v=127"></script>
+  <script src="js/app.js?v=127"></script>
 </body>
 </html>
