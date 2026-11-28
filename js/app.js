@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v127'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v128'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2255,9 +2255,37 @@ $('#shImgLink') && $('#shImgLink').addEventListener('click', async () => {
   if (!(await shImgReady())) return;
   location.href = 'whatsapp://send?text=' + encodeURIComponent((shImg.text ? shImg.text + '\n' : '') + shImgUrl());
 });
+// Phone (APK) file share kar sakta hai? Nahi to report WhatsApp par TEXT + link ki shakal me
+// jati hai (customers ke hisaab ki tarah) — JPG upload ki zaroorat nahi.
+function ogCanFileShare() {
+  try { const f = new File([new Uint8Array([1])], 'x.jpg', { type: 'image/jpeg' }); return !!(navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; }
+}
+function ogRepToken(suffix) {
+  let base = ''; try { base = localStorage.getItem('altariq_oghi_rep') || ''; } catch (e) {}
+  if (!base) { base = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem('altariq_oghi_rep', base); } catch (e) {} }
+  return 'og' + base + '_' + suffix.replace(/[^\w-]/g, '');
+}
+const ogRs = n => 'Rs ' + Math.round(n).toLocaleString('en-PK');
+function ogSendReport(rep, text, suffix) {
+  const tok = ogRepToken(suffix);
+  const link = shareBase() + '/oghi-report.html?id=' + tok;
+  rep.gen = new Date().toISOString();
+  if (Cloud.isReady && Cloud.isReady()) Cloud.publishShare(tok, rep).then(ok => { if (!ok) toast('Report link update nahi hua — internet check karein'); });
+  location.href = 'whatsapp://send?text=' + encodeURIComponent(text + '\n\nPoori report:\n' + link);
+}
 function ogShareImage() {
   const custs = (oghiData.custs || []).slice().sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
   const rows = custs.map(c => { const p = ogPayOf(c.id, ogMonth); return { name: c.name, monthly: Number(c.amount) || 0, paid: !!p, amount: p ? (Number(p.amount) || 0) : 0 }; });
+  if (!ogCanFileShare()) {
+    const t = ogTotals(ogMonth);
+    const lines = rows.map(r => r.amount >= r.monthly && r.amount > 0 ? '✅ ' + r.name + ' — ' + ogRs(r.amount)
+      : r.amount > 0 ? '🟡 ' + r.name + ' — ' + ogRs(r.amount) + ' diya, ' + ogRs(r.monthly - r.amount) + ' baqi'
+      : '⏳ ' + r.name + ' — ' + ogRs(r.monthly) + ' pending');
+    const text = '*Oghi Garri — ' + ymLabel(ogMonth) + '*\n\n' + lines.join('\n') +
+      '\n\nJama: *' + ogRs(t.jama) + '*  ·  Pending: *' + ogRs(t.pend) + '*\nDriver ko diya: ' + ogRs(t.driver) + '  ·  Bacha: ' + ogRs(t.jama - t.driver);
+    ogSendReport({ v: 1, kind: 'month', title: ymLabel(ogMonth), rows: rows.map(r => ({ n: r.name, m: r.monthly, a: r.amount })), jama: t.jama, pend: t.pend, driver: t.driver }, text, 'm' + ogMonth);
+    return;
+  }
   const cv = ogBuildCanvas(ymLabel(ogMonth), rows, ogTotals(ogMonth));
   ogShareCanvas(cv, 'oghi-' + ogMonth + '.jpg', 'Oghi Garri — ' + ymLabel(ogMonth));
 }
@@ -2313,6 +2341,12 @@ function ogSharePending(fromArg, toArg) {
     return { name: c.name, due, paid, pending: Math.max(0, due - paid) };
   });
   const grand = rows.reduce((s, r) => s + r.pending, 0);
+  if (!ogCanFileShare()) {
+    const lines = rows.map(r => r.pending > 0 ? '⏳ ' + r.name + ' — *' + ogRs(r.pending) + '*' : '✅ ' + r.name + ' — Clear');
+    const text = '*Oghi Garri — Pending Report*\n' + ogRangeLbl(from, to) + '\n\n' + lines.join('\n') + '\n\n*Total pending: ' + ogRs(grand) + '*';
+    ogSendReport({ v: 1, kind: 'pending', title: ogRangeLbl(from, to), rows: rows.map(r => ({ n: r.name, d: r.due, a: r.paid, p: r.pending })), grand }, text, 'p' + from + '_' + to);
+    return;
+  }
   const cv = ogBuildPending(ogRangeLbl(from, to), rows, grand);
   ogShareCanvas(cv, 'oghi-pending-' + from + '_' + to + '.jpg', 'Oghi Garri — Pending Report (' + ogRangeLbl(from, to) + ')');
 }

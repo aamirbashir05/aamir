@@ -1,5 +1,5 @@
 /* Service worker — offline support for Mera Khata */
-const CACHE = 'altariq-hisaab-v127';
+const CACHE = 'altariq-hisaab-v128';
 const ASSETS = [
   './app.html',
   './view.html',
@@ -7,6 +7,7 @@ const ASSETS = [
   './oghi.html',
   './hisaab.html',
   './img.html',
+  './oghi-report.html',
   './manifest.json',
   './css/styles.css',
   './js/firebase-config.js',
