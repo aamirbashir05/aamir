@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oghi Garri — Report</title>
+<meta name="theme-color" content="#20242b">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<style>
+  :root { --bg:#f6f1e8; --ink:#2b2620; --muted:#857a68; --gold:#e3a24f; --red:#c9392f; --green:#0c8a52; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font:500 15px/1.45 -apple-system,"Segoe UI",Roboto,system-ui,sans-serif; min-height:100vh; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  .head { background:linear-gradient(180deg,#2b3039,#20242b); color:#fff; border-radius:16px; padding:18px 18px 16px; border-bottom:4px solid var(--gold); }
+  .head h1 { font-size:26px; font-weight:800; }
+  .head .k { color:var(--gold); font-weight:800; font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; margin-top:2px; }
+  .head .r { color:#f3d9a8; font-weight:700; margin-top:6px; }
+  .tot { margin-top:14px; background:#fffaf6; border-radius:14px; border-left:5px solid var(--red); padding:14px 16px; box-shadow:0 4px 14px rgba(120,80,30,.1);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .tot small { color:var(--muted); font-weight:600; display:block; }
+  .tot b { color:var(--red); font-size:30px; font-weight:900; }
+  .tot .n { color:var(--muted); font-weight:700; font-size:13px; }
+  .row3 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+  .row3 div { background:#fffaf6; border-radius:12px; padding:10px; text-align:center; box-shadow:0 2px 8px rgba(120,80,30,.08); }
+  .row3 small { display:block; color:var(--muted); font-size:11.5px; font-weight:700; }
+  .row3 b { font-size:15px; }
+  h3 { margin:18px 2px 8px; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:#5b5040; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:420px) { .grid { grid-template-columns:1fr; } .row3 { grid-template-columns:1fr 1fr; } }
+  .c { background:#fffaf6; border-radius:12px; padding:10px 12px; border-left:4px solid var(--red); box-shadow:0 2px 8px rgba(120,80,30,.08); }
+  .c.ok { border-left-color:var(--green); background:#eff9f3; }
+  .c.part { border-left-color:var(--gold); }
+  .c .nm { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .c .v { font-weight:800; color:var(--red); }
+  .c.ok .v { color:var(--green); }
+  .c.part .v { color:#b07418; }
+  .c .s { color:var(--muted); font-size:12.5px; font-weight:600; }
+  .foot { display:flex; justify-content:space-between; color:var(--muted); font-size:12.5px; margin:16px 2px; }
+  .msg { text-align:center; padding:60px 10px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main id="main"><div class="msg">Report load ho rahi hai…</div></main>
+<script src="js/firebase-config.js"></script>
+<script>
+  // Oghi Garri ki report (app se WhatsApp par bheja gaya link): share/{id}.data = JSON
+  const main = document.getElementById('main');
+  const id = new URL(location.href).searchParams.get('id');
+  const rs = n => 'Rs ' + Math.round(n || 0).toLocaleString('en-PK');
+  const esc = s => String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  function msg(t) { main.innerHTML = '<div class="msg">' + t + '</div>'; }
+  function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+  function render(d) {
+    const gen = d.gen ? new Date(d.gen).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    let h = '';
+    if (d.kind === 'pending') {
+      const rows = (d.rows || []).slice();
+      h = `<div class="head"><h1>Oghi Garri</h1><div class="k">Pending Report</div><div class="r">${esc(d.title)}</div></div>
+        <div class="tot"><div><small>Total Pending (sab customers)</small><b>${rs(d.grand)}</b></div><span class="n">${rows.length} customers</span></div>
+        <h3>Har customer ka pending</h3><div class="grid">` +
+        rows.map(r => r.p > 0
+          ? `<div class="c${r.a > 0 ? ' part' : ''}"><div class="nm">${esc(r.n)}</div><div class="v">${rs(r.p)}</div>${r.a > 0 ? `<div class="s">diya ${rs(r.a)}</div>` : ''}</div>`
+          : `<div class="c ok"><div class="nm">${esc(r.n)}</div><div class="v">✓ Clear</div></div>`).join('') + '</div>';
+    } else {
+      const rows = d.rows || [];
+      h = `<div class="head"><h1>Oghi Garri</h1><div class="k">Driver Payment</div><div class="r">${esc(d.title)}</div></div>
+        <div class="row3"><div><small>Jama</small><b style="color:var(--green)">${rs(d.jama)}</b></div><div><small>Pending</small><b style="color:var(--red)">${rs(d.pend)}</b></div>
+        <div><small>Driver ko diya</small><b>${rs(d.driver)}</b></div><div><small>Bacha</small><b>${rs((d.jama || 0) - (d.driver || 0))}</b></div></div>
+        <h3>Members ki payment</h3><div class="grid">` +
+        rows.map(r => r.a >= r.m && r.a > 0
+          ? `<div class="c ok"><div class="nm">${esc(r.n)}</div><div class="v">✓ ${rs(r.a)}</div></div>`
+          : r.a > 0 ? `<div class="c part"><div class="nm">${esc(r.n)}</div><div class="v">${rs(r.a)} diya</div><div class="s">${rs(r.m - r.a)} baqi</div></div>`
+          : `<div class="c"><div class="nm">${esc(r.n)}</div><div class="v">⏳ ${rs(r.m)} pending</div></div>`).join('') + '</div>';
+    }
+    h += `<div class="foot"><span>Al Tariq Printers</span><span>${gen}</span></div>`;
+    main.innerHTML = h;
+  }
+  async function start() {
+    if (!id || !window.FIREBASE_CONFIG) { msg('Report nahi mili.'); return; }
+    try {
+      if (!(window.firebase && window.firebase.firestore)) {
+        const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+        await loadScript(base + 'firebase-app-compat.js');
+        await loadScript(base + 'firebase-firestore-compat.js');
+      }
+      firebase.apps.length ? firebase.app() : firebase.initializeApp(window.FIREBASE_CONFIG);
+      firebase.firestore().collection('share').doc(id).onSnapshot(doc => {
+        if (!doc.exists) { msg('Report abhi tayyar ho rahi hai — thori der baad dobara kholein.'); return; }
+        let d = doc.data().data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) {} }
+        if (!d || !d.rows) { msg('Report nahi mili.'); return; }
+        render(d);
+      }, () => msg('Load nahi hua. Internet check karke dobara kholein.'));
+    } catch (e) { msg('Load nahi hua. Internet check karke dobara kholein.'); }
+  }
+  start();
+</script>
+</body>
+</html>
