@@ -37,11 +37,19 @@
   .c .s { color:var(--muted); font-size:12.5px; font-weight:600; }
   .foot { display:flex; justify-content:space-between; color:var(--muted); font-size:12.5px; margin:16px 2px; }
   .msg { text-align:center; padding:60px 10px; color:var(--muted); }
+  .jpgbox { margin-bottom:14px; }
+  .jpgbox img { width:100%; border-radius:14px; box-shadow:0 10px 30px rgba(60,40,10,.18); display:block; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; height:56px; border:0; border-radius:14px;
+    font-family:inherit; font-weight:700; font-size:17px; line-height:1; cursor:pointer; margin-bottom:10px; text-decoration:none; }
+  .wa { background:linear-gradient(180deg,#34d07a,#1fa855); color:#fff; box-shadow:0 8px 20px rgba(31,168,85,.3); }
+  .dl { background:#fff; color:var(--ink); border:1.5px solid #e2d6c2; height:48px; font-size:15px; }
+  .hint { color:var(--muted); font-size:13.5px; text-align:center; margin:2px 0 12px; }
 </style>
 </head>
 <body>
 <main id="main"><div class="msg">Report load ho rahi hai…</div></main>
 <script src="js/firebase-config.js"></script>
+<script src="js/og-canvas.js"></script>
 <script>
   // Oghi Garri ki report (app se WhatsApp par bheja gaya link): share/{id}.data = JSON
   const main = document.getElementById('main');
@@ -73,7 +81,32 @@
           : `<div class="c"><div class="nm">${esc(r.n)}</div><div class="v">⏳ ${rs(r.m)} pending</div></div>`).join('') + '</div>';
     }
     h += `<div class="foot"><span>Al Tariq Printers</span><span>${gen}</span></div>`;
-    main.innerHTML = h;
+    main.innerHTML = jpgBlock(d) + h;
+    wireJpg();
+  }
+  // ---- JPG: app wala hi canvas design (js/og-canvas.js) ----
+  let jpgFile = null, jpgUrl = '', jpgText = '';
+  function jpgBlock(d) {
+    try {
+      let cv;
+      if (d.kind === 'pending') cv = ogBuildPending(d.title, (d.rows || []).map(r => ({ name: r.n, due: r.d, paid: r.a, pending: r.p })), d.grand || 0);
+      else cv = ogBuildCanvas(d.title, (d.rows || []).map(r => ({ name: r.n, monthly: r.m, paid: r.a > 0, amount: r.a })), { jama: d.jama || 0, pend: d.pend || 0, driver: d.driver || 0 });
+      jpgUrl = cv.toDataURL('image/jpeg', 0.95);
+      const b = atob(jpgUrl.split(',')[1]); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+      const fname = 'oghi-' + (d.kind === 'pending' ? 'pending' : 'month') + '-' + String(d.title || '').replace(/[^\w]+/g, '-') + '.jpg';
+      jpgFile = new File([u], fname, { type: 'image/jpeg' });
+      jpgText = 'Oghi Garri — ' + (d.kind === 'pending' ? 'Pending Report (' + d.title + ')' : d.title);
+      const can = !!(navigator.canShare && navigator.canShare({ files: [jpgFile] }));
+      return `<div class="jpgbox">${can ? '<button class="btn wa" id="jShare">📤 WhatsApp par JPG Share karein</button>' : ''}
+        <a class="btn dl" id="jSave" download="${fname}">⬇️ JPG phone me Save karein</a>
+        <p class="hint">${can ? 'Hara button dabayein → WhatsApp → group chunein.' : 'Save karein, phir WhatsApp me gallery se bhejein.'}</p>
+        <img src="${jpgUrl}" alt=""></div>`;
+    } catch (e) { return ''; }
+  }
+  function wireJpg() {
+    const sv = document.getElementById('jSave'); if (sv) sv.href = jpgUrl;
+    const sh = document.getElementById('jShare');
+    if (sh) sh.addEventListener('click', () => { navigator.share({ files: [jpgFile], text: jpgText }).catch(() => {}); });
   }
   async function start() {
     if (!id || !window.FIREBASE_CONFIG) { msg('Report nahi mili.'); return; }

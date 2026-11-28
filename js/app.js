@@ -1,5 +1,5 @@
 /* app.js — Al Tariq Printers Hisaab (Udhaar Book style) */
-const APP_VERSION = 'v128'; // har update par sw.js ke sath badalta hai
+const APP_VERSION = 'v129'; // har update par sw.js ke sath badalta hai
 
 // PERMANENT Sync ID — hamesha yehi. Kabhi naya random ID generate nahi hota.
 // Aap ke phone aur Abu ke phone, dono par yehi ID chalti hai (khud lag jati hai).
@@ -2159,101 +2159,48 @@ function openOghi() {
   openModal('oghiModal');
 }
 // ---- Share: is month ki report ki JPG banao aur WhatsApp par bhejo ----
-function ogFmt(n) { return 'Rs ' + Math.round(Number(n) || 0).toLocaleString('en-PK'); }
-function ogRoundRect(x, X, Y, W, H, r) { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + W, Y, X + W, Y + H, r); x.arcTo(X + W, Y + H, X, Y + H, r); x.arcTo(X, Y + H, X, Y, r); x.arcTo(X, Y, X + W, Y, r); x.closePath(); }
-function ogFit(x, s, maxW) { s = s + ''; if (x.measureText(s).width <= maxW) return s; while (s.length > 1 && x.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
-function ogGlass(x, X, Y, W, H, fill, glow, r) { r = r || 15; x.save(); x.shadowColor = glow; x.shadowBlur = 18; x.shadowOffsetY = 5; x.fillStyle = fill; ogRoundRect(x, X, Y, W, H, r); x.fill(); x.restore(); x.save(); ogRoundRect(x, X, Y, W, H, r); x.clip(); const hl = x.createLinearGradient(0, Y, 0, Y + H); hl.addColorStop(0, 'rgba(255,255,255,.55)'); hl.addColorStop(.45, 'rgba(255,255,255,0)'); x.fillStyle = hl; x.fillRect(X, Y, W, H); x.restore(); }
-// Share JPG: reference-app jaisa — green glowing header + wasooli/paid + 2-col
-// glowing cards (paid green ✓ Rs X, pending amber). Har customer ki status saaf.
-function ogBuildCanvas(monthLabel, rows, totals) {
-  const W = 760, pad = 30, gap = 16, cardW = (W - pad * 2 - gap) / 2, cardH = 70, cgap = 13;
-  const n = rows.length, gRows = Math.ceil(Math.max(n, 1) / 2);
-  const headH = 124, wy = 138, wh = 80, statY = 240, listHeadY = 282, gridTop = 300, footH = 66;
-  const H = gridTop + gRows * (cardH + cgap) + footH;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
-  const bg = x.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#f6f1e8'); bg.addColorStop(1, '#efe7d8'); x.fillStyle = bg; x.fillRect(0, 0, W, H);
-  const hg = x.createLinearGradient(0, 0, 0, headH); hg.addColorStop(0, '#2b3039'); hg.addColorStop(1, '#20242b'); x.fillStyle = hg; x.fillRect(0, 0, W, headH);
-  x.fillStyle = 'rgba(231,162,76,.95)'; x.fillRect(0, headH - 5, W, 5);
-  x.textBaseline = 'alphabetic';
-  x.fillStyle = '#fff'; x.font = '900 34px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 54);
-  x.fillStyle = '#f0c98a'; x.font = '800 20px system-ui,Arial'; x.fillText(monthLabel, pad, 86);
-  x.fillStyle = '#c9bfae'; x.font = '700 15px system-ui,Arial'; x.textAlign = 'right'; x.fillText('Al Tariq Printers', W - pad, 48); x.fillText('Driver Payment', W - pad, 70); x.textAlign = 'left';
-  // wasooli card + paid badge
-  ogGlass(x, pad, wy, W - pad * 2, wh, '#ffffff', 'rgba(201,133,31,.22)', 18);
-  x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText('Is mahinay ki wasooli', pad + 20, wy + 30);
-  x.fillStyle = '#0f7a52'; x.font = '900 32px system-ui,Arial'; x.fillText(ogFmt(totals.jama), pad + 20, wy + 66);
-  const paidN = rows.filter(r => r.paid).length;
-  const bw = 160, bx = W - pad - bw - 6, by = wy + wh / 2 - 24;
-  x.save(); x.shadowColor = 'rgba(231,162,76,.5)'; x.shadowBlur = 18; const pg = x.createLinearGradient(bx, by, bx, by + 48); pg.addColorStop(0, '#f0b866'); pg.addColorStop(0.6, '#e7a24c'); pg.addColorStop(1, '#c9851f'); x.fillStyle = pg; ogRoundRect(x, bx, by, bw, 48, 24); x.fill(); x.restore();
-  x.fillStyle = '#3a2606'; x.font = '900 20px system-ui,Arial'; x.textAlign = 'center'; x.fillText(paidN + ' / ' + n + ' paid', bx + bw / 2, by + 31); x.textAlign = 'left';
-  // stat chips
-  const chips = [['Pending', ogFmt(totals.pend), '#d84b45'], ['Driver diya', ogFmt(totals.driver), '#c9851f'], ['Bacha', (totals.jama - totals.driver < 0 ? '−' : '') + ogFmt(Math.abs(totals.jama - totals.driver)), '#2b2620']];
-  const cw = (W - pad * 2 - 2 * 10) / 3;
-  chips.forEach((c, i) => { const cx = pad + i * (cw + 10); ogGlass(x, cx, statY - 18, cw, 46, 'rgba(255,255,255,.92)', 'rgba(201,133,31,.14)', 12); x.fillStyle = '#7c7264'; x.font = '700 11px system-ui,Arial'; x.textAlign = 'center'; x.fillText(c[0], cx + cw / 2, statY - 1); x.fillStyle = c[2]; x.font = '900 15px system-ui,Arial'; x.fillText(ogFit(x, c[1], cw - 10), cx + cw / 2, statY + 19); x.textAlign = 'left'; });
-  x.fillStyle = '#5a4a2e'; x.font = '800 14px system-ui,Arial'; x.fillText('CUSTOMERS — PAYMENT STATUS', pad, listHeadY);
-  if (!n) { x.fillStyle = '#7c7264'; x.font = '700 16px system-ui,Arial'; x.textAlign = 'center'; x.fillText('Koi customer nahi', W / 2, gridTop + 30); x.textAlign = 'left'; }
-  rows.forEach((r, i) => { const col = i % 2, row = (i - col) / 2, X = pad + col * (cardW + gap), Y = gridTop + row * (cardH + cgap);
-    ogGlass(x, X, Y, cardW, cardH, r.paid ? '#f0faf4' : '#ffffff', r.paid ? 'rgba(16,150,90,.20)' : 'rgba(201,133,31,.16)', 15);
-    x.save(); ogRoundRect(x, X, Y, cardW, cardH, 15); x.clip(); x.fillStyle = r.paid ? '#10b981' : '#e7a24c'; x.fillRect(X, Y, 7, cardH); x.restore();
-    x.strokeStyle = r.paid ? 'rgba(16,150,90,.35)' : 'rgba(231,162,76,.4)'; x.lineWidth = 1.2; ogRoundRect(x, X, Y, cardW, cardH, 15); x.stroke();
-    x.fillStyle = '#2b2620'; x.font = '800 17px system-ui,Arial'; x.fillText(ogFit(x, r.name, cardW - 30), X + 18, Y + 30);
-    if (r.paid) { x.fillStyle = '#0c8a52'; x.font = '900 17px system-ui,Arial'; x.fillText('✓ ' + ogFmt(r.amount), X + 18, Y + 55); }
-    else { x.fillStyle = '#c9851f'; x.font = '800 16px system-ui,Arial'; x.fillText('Pending', X + 18, Y + 55); }
-  });
-  const fy = H - footH + 36;
-  x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText(n + ' customers  ·  ' + paidN + ' aayi  ·  ' + (n - paidN) + ' pending', pad, fy);
-  x.textAlign = 'right'; x.fillText(new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }), W - pad, fy); x.textAlign = 'left';
-  return cv;
-}
 function ogShareCanvas(cv, fname, text) {
   let durl; try { durl = cv.toDataURL('image/jpeg', 0.95); } catch (e) { toast('Image nahi bani'); return; }
   let file = null;
   try { const b = atob(durl.split(',')[1]); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); file = new File([u], fname, { type: 'image/jpeg' }); } catch (e) {}
   if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
     navigator.share({ files: [file], text: text }).catch(() => {});
-  } else { shareImgFallback(durl, fname, text); }
+  } else if ($('#imgFull')) {
+    $('#imgFull').src = durl; openModal('imgModal');
+  }
 }
-// App (APK WebView) me seedha file share nahi hoti: JPG cloud par rakh kar Chrome me kholo
-// (wahan asal Share button WhatsApp tak file bhejta hai), ya WhatsApp par us ka link bhejo.
+// App (APK WebView) file share nahi kar sakti, aur bari image upload phone se fail hoti thi.
+// Is liye: report ka CHHOTA data (JSON) share doc me, phir Chrome me oghi-report.html?jpg=1
+// khulta hai jo wahi JPG khud banata hai aur asal Share button se WhatsApp par bhejta hai.
 let shImg = null;
-function shareImgFallback(durl, fname, text) {
-  shImg = { durl, fname, text, id: null, up: null };
-  $('#shImgPic').src = durl;
+function shareJpgViaChrome(cv, rep, suffix, text) {
+  const tok = ogRepToken(suffix);
+  const url = shareBase() + '/oghi-report.html?id=' + tok + '&jpg=1';
+  rep.gen = new Date().toISOString();
+  shImg = { url, text, ok: null };
+  try { $('#shImgPic').src = cv.toDataURL('image/jpeg', 0.9); } catch (e) {}
   const hint = $('#shImgHint');
+  hint.textContent = '⏳ Tayyar ho raha hai…';
   openModal('shareImgModal');
-  if (!(Cloud.isReady && Cloud.isReady())) { hint.textContent = 'Cloud sync band hai — JPG par long-press karke bhejein.'; return; }
-  hint.textContent = '⏳ JPG upload ho rahi hai…';
-  // chhota version upload karo (jaldi + Firestore ki 1MB hadd se door)
-  let small = durl;
-  try { const im = $('#shImgPic'); const cv = document.createElement('canvas'); const go = () => { cv.width = im.naturalWidth; cv.height = im.naturalHeight; cv.getContext('2d').drawImage(im, 0, 0); small = cv.toDataURL('image/jpeg', 0.8); }; if (im.complete && im.naturalWidth) go(); } catch (e) {}
-  const id = 'img_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-  const timeout = new Promise(res => setTimeout(() => res('timeout'), 25000));
-  shImg.up = Promise.race([Cloud.publishShare(id, { img: small, t: text || '', f: fname }), timeout]).then(ok => {
-    if (ok === true) { shImg.id = id; hint.textContent = '✅ Tayyar — "WhatsApp par Share" dabayein (Chrome me khulegi, wahan Share dabayein).'; return true; }
-    hint.textContent = ok === 'timeout' ? '⚠️ Upload me der — internet check karein, ya JPG par long-press karke bhejein.' : '⚠️ Upload nahi hua — dobara koshish karein, ya JPG par long-press karke bhejein.';
+  if (!(Cloud.isReady && Cloud.isReady())) { hint.textContent = 'Cloud sync band hai — JPG par long-press karke bhejein.'; shImg.ok = Promise.resolve(false); return; }
+  const timeout = new Promise(res => setTimeout(() => res('timeout'), 20000));
+  shImg.ok = Promise.race([Cloud.publishShare(tok, rep), timeout]).then(ok => {
+    if (ok === true) { hint.textContent = '✅ Tayyar — "WhatsApp par JPG Share" dabayein: Chrome me JPG khulegi, wahan hara Share button dabayein.'; return true; }
+    hint.textContent = ok === 'timeout' ? '⚠️ Der ho rahi hai — internet check karein.' : '⚠️ Nahi hua — dobara koshish karein.';
     return false;
-  }).catch(e => { hint.textContent = '⚠️ Upload error: ' + (e && e.message || e); return false; });
-}
-function shImgUrl() { return shareBase() + '/img.html?id=' + shImg.id; }
-async function shImgReady() {
-  if (!shImg) return false;
-  if (!shImg.up) { toast('Internet / Cloud sync nahi — JPG par long-press karke bhejein'); return false; }
-  if (!shImg.id) toast('JPG upload ho rahi hai — 1 second…');
-  const ok = await shImg.up;
-  if (!ok || !shImg.id) { toast('Upload nahi hua — internet check karein'); return false; }
-  return true;
+  });
 }
 $('#shImgWa') && $('#shImgWa').addEventListener('click', async () => {
-  if (!(await shImgReady())) return;
-  const url = shImgUrl();
-  // Chrome me kholo (googlechrome:// scheme) — na khule to link wala tareeqa
+  if (!shImg) return;
+  if (!(await shImg.ok)) { toast('Abhi tayyar nahi — internet check karein'); return; }
   const t0 = Date.now();
-  location.href = 'googlechrome://navigate?url=' + encodeURIComponent(url);
-  setTimeout(() => { if (!document.hidden && Date.now() - t0 < 3000) { $('#shImgHint').innerHTML = 'Chrome nahi khula — <b>"WhatsApp par link bhejein"</b> dabayein, ya JPG par long-press karein.'; } }, 1800);
+  location.href = 'googlechrome://navigate?url=' + encodeURIComponent(shImg.url);
+  setTimeout(() => { if (!document.hidden && Date.now() - t0 < 4000) $('#shImgHint').innerHTML = 'Chrome nahi khula — neeche <b>"WhatsApp par link bhejein"</b> dabayein, ya JPG par long-press karein.'; }, 2000);
 });
 $('#shImgLink') && $('#shImgLink').addEventListener('click', async () => {
-  if (!(await shImgReady())) return;
-  location.href = 'whatsapp://send?text=' + encodeURIComponent((shImg.text ? shImg.text + '\n' : '') + shImgUrl());
+  if (!shImg) return;
+  if (!(await shImg.ok)) { toast('Abhi tayyar nahi — internet check karein'); return; }
+  location.href = 'whatsapp://send?text=' + encodeURIComponent((shImg.text ? shImg.text + '\n' : '') + shImg.url.replace('&jpg=1', ''));
 });
 // Phone (APK) file share kar sakta hai? Nahi to report WhatsApp par TEXT + link ki shakal me
 // jati hai (customers ke hisaab ki tarah) — JPG upload ki zaroorat nahi.
@@ -2265,25 +2212,13 @@ function ogRepToken(suffix) {
   if (!base) { base = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 8); try { localStorage.setItem('altariq_oghi_rep', base); } catch (e) {} }
   return 'og' + base + '_' + suffix.replace(/[^\w-]/g, '');
 }
-const ogRs = n => 'Rs ' + Math.round(n).toLocaleString('en-PK');
-function ogSendReport(rep, text, suffix) {
-  const tok = ogRepToken(suffix);
-  const link = shareBase() + '/oghi-report.html?id=' + tok;
-  rep.gen = new Date().toISOString();
-  if (Cloud.isReady && Cloud.isReady()) Cloud.publishShare(tok, rep).then(ok => { if (!ok) toast('Report link update nahi hua — internet check karein'); });
-  location.href = 'whatsapp://send?text=' + encodeURIComponent(text + '\n\nPoori report:\n' + link);
-}
 function ogShareImage() {
   const custs = (oghiData.custs || []).slice().sort((a, b) => { const pa = ogPayOf(a.id, ogMonth) ? 1 : 0, pb = ogPayOf(b.id, ogMonth) ? 1 : 0; if (pa !== pb) return pa - pb; return (a.name || '').localeCompare(b.name || ''); });
   const rows = custs.map(c => { const p = ogPayOf(c.id, ogMonth); return { name: c.name, monthly: Number(c.amount) || 0, paid: !!p, amount: p ? (Number(p.amount) || 0) : 0 }; });
   if (!ogCanFileShare()) {
     const t = ogTotals(ogMonth);
-    const lines = rows.map(r => r.amount >= r.monthly && r.amount > 0 ? '✅ ' + r.name + ' — ' + ogRs(r.amount)
-      : r.amount > 0 ? '🟡 ' + r.name + ' — ' + ogRs(r.amount) + ' diya, ' + ogRs(r.monthly - r.amount) + ' baqi'
-      : '⏳ ' + r.name + ' — ' + ogRs(r.monthly) + ' pending');
-    const text = '*Oghi Garri — ' + ymLabel(ogMonth) + '*\n\n' + lines.join('\n') +
-      '\n\nJama: *' + ogRs(t.jama) + '*  ·  Pending: *' + ogRs(t.pend) + '*\nDriver ko diya: ' + ogRs(t.driver) + '  ·  Bacha: ' + ogRs(t.jama - t.driver);
-    ogSendReport({ v: 1, kind: 'month', title: ymLabel(ogMonth), rows: rows.map(r => ({ n: r.name, m: r.monthly, a: r.amount })), jama: t.jama, pend: t.pend, driver: t.driver }, text, 'm' + ogMonth);
+    const cv0 = ogBuildCanvas(ymLabel(ogMonth), rows, t);
+    shareJpgViaChrome(cv0, { v: 1, kind: 'month', title: ymLabel(ogMonth), rows: rows.map(r => ({ n: r.name, m: r.monthly, a: r.amount })), jama: t.jama, pend: t.pend, driver: t.driver }, 'm' + ogMonth, 'Oghi Garri — ' + ymLabel(ogMonth));
     return;
   }
   const cv = ogBuildCanvas(ymLabel(ogMonth), rows, ogTotals(ogMonth));
@@ -2291,39 +2226,6 @@ function ogShareImage() {
 }
 function ogMonthRange(a, b) { if (a > b) { const t = a; a = b; b = t; } const out = []; let [y, m] = a.split('-').map(Number); const [ey, em] = b.split('-').map(Number); let g = 0; while ((y < ey || (y === ey && m <= em)) && g < 120) { out.push(y + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; y++; } g++; } return out; }
 function ogRangeLbl(a, b) { return a === b ? ymLabel(a) : (ymLabel(a) + ' – ' + ymLabel(b)); }
-function ogBuildPending(rangeLabel, rows, grand) {
-  const W = 760, pad = 30, gap = 16, cardW = (W - pad * 2 - gap) / 2, cardH = 62, cgap = 11;
-  const n = rows.length, gRows = Math.ceil(Math.max(n, 1) / 2);
-  const headH = 128, ty = 144, th = 86, listHeadY = 262, gridTop = 280, footH = 62;
-  const H = gridTop + gRows * (cardH + cgap) + footH;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
-  const bg = x.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#f6f1e8'); bg.addColorStop(1, '#efe7d8'); x.fillStyle = bg; x.fillRect(0, 0, W, H);
-  const hg = x.createLinearGradient(0, 0, 0, headH); hg.addColorStop(0, '#2b3039'); hg.addColorStop(1, '#20242b'); x.fillStyle = hg; x.fillRect(0, 0, W, headH);
-  x.fillStyle = 'rgba(231,162,76,.95)'; x.fillRect(0, headH - 5, W, 5);
-  x.textBaseline = 'alphabetic';
-  x.fillStyle = '#fff'; x.font = '900 32px system-ui,Segoe UI,Arial'; x.fillText('Oghi Garri', pad, 50);
-  x.fillStyle = '#e7a24c'; x.font = '900 15px system-ui,Arial'; x.fillText('PENDING REPORT', pad, 78);
-  x.fillStyle = '#f0c98a'; x.font = '800 18px system-ui,Arial'; x.fillText(rangeLabel, pad, 106);
-  x.fillStyle = '#c9bfae'; x.font = '700 15px system-ui,Arial'; x.textAlign = 'right'; x.fillText('Al Tariq Printers', W - pad, 50); x.fillText('Driver Payment', W - pad, 72); x.textAlign = 'left';
-  ogGlass(x, pad, ty, W - pad * 2, th, '#fff6ef', 'rgba(216,75,69,.22)', 18);
-  x.save(); ogRoundRect(x, pad, ty, W - pad * 2, th, 18); x.clip(); x.fillStyle = '#d84b45'; x.fillRect(pad, ty, 8, th); x.restore();
-  x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText('Total Pending (sab customers)', pad + 26, ty + 34);
-  x.fillStyle = '#c1362f'; x.font = '900 38px system-ui,Arial'; x.fillText(ogFmt(grand), pad + 26, ty + 74);
-  x.fillStyle = '#7c7264'; x.font = '800 14px system-ui,Arial'; x.textAlign = 'right'; x.fillText(n + ' customers', W - pad - 22, ty + th / 2 + 6); x.textAlign = 'left';
-  x.fillStyle = '#5a4a2e'; x.font = '800 14px system-ui,Arial'; x.fillText('HAR CUSTOMER KA PENDING', pad, listHeadY);
-  rows.forEach((r, i) => { const col = i % 2, row = (i - col) / 2, X = pad + col * (cardW + gap), Y = gridTop + row * (cardH + cgap);
-    const clear = r.pending <= 0;
-    ogGlass(x, X, Y, cardW, cardH, clear ? '#f0faf4' : '#fff6ef', clear ? 'rgba(16,150,90,.18)' : 'rgba(216,75,69,.16)', 14);
-    x.save(); ogRoundRect(x, X, Y, cardW, cardH, 14); x.clip(); x.fillStyle = clear ? '#10b981' : '#d84b45'; x.fillRect(X, Y, 7, cardH); x.restore();
-    x.fillStyle = '#2b2620'; x.font = '800 16px system-ui,Arial'; x.fillText(ogFit(x, r.name, cardW - 30), X + 18, Y + 27);
-    if (clear) { x.fillStyle = '#0c8a52'; x.font = '900 15px system-ui,Arial'; x.fillText('✓ Clear', X + 18, Y + 50); }
-    else { x.fillStyle = '#c1362f'; x.font = '900 16px system-ui,Arial'; const at = ogFmt(r.pending); x.fillText(at, X + 18, Y + 50); if (r.paid > 0) { const aw = x.measureText(at).width; x.fillStyle = '#9a7b4a'; x.font = '700 12px system-ui,Arial'; x.fillText(' · diya ' + ogFmt(r.paid), X + 18 + aw + 4, Y + 50); } }
-  });
-  const fy = H - footH + 34;
-  x.fillStyle = '#7c7264'; x.font = '700 13px system-ui,Arial'; x.fillText('Total pending: ' + ogFmt(grand), pad, fy);
-  x.textAlign = 'right'; x.fillText(new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }), W - pad, fy); x.textAlign = 'left';
-  return cv;
-}
 // "Abhi tak ka saara pending": pehli payment wale mahine (ya Apr 2026, hisaab ki shuruat) se is mahine tak
 function ogFirstMonth() {
   let f = '2026-04';
@@ -2342,9 +2244,8 @@ function ogSharePending(fromArg, toArg) {
   });
   const grand = rows.reduce((s, r) => s + r.pending, 0);
   if (!ogCanFileShare()) {
-    const lines = rows.map(r => r.pending > 0 ? '⏳ ' + r.name + ' — *' + ogRs(r.pending) + '*' : '✅ ' + r.name + ' — Clear');
-    const text = '*Oghi Garri — Pending Report*\n' + ogRangeLbl(from, to) + '\n\n' + lines.join('\n') + '\n\n*Total pending: ' + ogRs(grand) + '*';
-    ogSendReport({ v: 1, kind: 'pending', title: ogRangeLbl(from, to), rows: rows.map(r => ({ n: r.name, d: r.due, a: r.paid, p: r.pending })), grand }, text, 'p' + from + '_' + to);
+    const cv0 = ogBuildPending(ogRangeLbl(from, to), rows, grand);
+    shareJpgViaChrome(cv0, { v: 1, kind: 'pending', title: ogRangeLbl(from, to), rows: rows.map(r => ({ n: r.name, d: r.due, a: r.paid, p: r.pending })), grand }, 'p' + from + '_' + to, 'Oghi Garri — Pending Report (' + ogRangeLbl(from, to) + ')');
     return;
   }
   const cv = ogBuildPending(ogRangeLbl(from, to), rows, grand);
